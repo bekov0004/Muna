@@ -259,6 +259,7 @@ export class Muna {
                 ui: {
                     beginTextInput: onEnd => this._beginTextInput(onEnd),
                     endTextInput: () => this._endTextInput(),
+                    closeCapsule: () => this._settle(),
                 },
             }));
     }

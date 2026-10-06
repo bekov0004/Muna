@@ -901,3 +901,75 @@
 .muna-card-critical .muna-card-badge {
     background-color: #e5484d;
 }
+
+/* Shortcuts */
+.muna-shortcuts {
+    spacing: 8px;
+}
+
+.muna-shortcuts-column {
+    spacing: 8px;
+}
+
+.muna-shortcut {
+    border-radius: 14px;
+    background-color: rgba(255, 255, 255, 0.07);
+    padding: 0 12px;
+    min-height: 40px;
+}
+
+.muna-shortcut:hover,
+.muna-shortcut:focus {
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.muna-shortcut:active {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.muna-shortcut-row {
+    spacing: 10px;
+}
+
+.muna-shortcut-icon {
+    icon-size: 26px;
+}
+
+.muna-shortcut-label {
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.muna-shortcuts-empty {
+    spacing: 4px;
+}
+
+.muna-shortcuts-empty-icon {
+    icon-size: 28px;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.muna-shortcuts-empty-text {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.muna-shortcuts-empty-hint {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+}
+
+.muna-shortcut-stacked {
+    spacing: 1px;
+}
+
+.muna-shortcut-stacked .muna-shortcut-icon {
+    icon-size: 22px;
+}
+
+.muna-shortcut-label-small {
+    font-size: 10px;
+    max-width: 66px;
+}

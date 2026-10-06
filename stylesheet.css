@@ -639,30 +639,25 @@
 
 .muna-tray-target {
     border-radius: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.16);
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: rgba(255, 255, 255, 0.02);
 }
 
 .muna-tray-target:active {
-    border-color: rgba(255, 255, 255, 0.75);
-    background-color: rgba(255, 255, 255, 0.10);
+    background-color: rgba(60, 140, 255, 0.10);
 }
 
 .muna-tray-target-box {
-    spacing: 14px;
+    spacing: 3px;
+    padding: 0 20px;
 }
 
 .muna-tray-target-icon {
-    icon-size: 26px;
-    color: rgba(255, 255, 255, 0.55);
-}
-
-.muna-tray-target:active .muna-tray-target-icon {
-    color: white;
+    icon-size: 22px;
+    color: #3d8bff;
 }
 
 .muna-tray-target-title {
-    color: white;
+    color: #3d8bff;
     font-size: 14px;
     font-weight: 700;
 }

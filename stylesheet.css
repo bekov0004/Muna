@@ -973,3 +973,91 @@
     font-size: 10px;
     max-width: 66px;
 }
+
+/* Clipboard */
+.muna-clip {
+    width: 132px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.muna-clip-saved {
+    background-color: rgba(70, 140, 255, 0.16);
+}
+
+.muna-clip-main {
+    padding: 8px 9px 6px 9px;
+    border-radius: 12px;
+}
+
+.muna-clip-main:hover,
+.muna-clip-main:focus {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.muna-clip-text {
+    color: white;
+    font-size: 11px;
+}
+
+.muna-clip-foot {
+    spacing: 4px;
+    margin-top: 2px;
+}
+
+.muna-clip-when {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.muna-clip-star {
+    icon-size: 10px;
+    color: #4a9bff;
+}
+
+.muna-clip-actions {
+    spacing: 0;
+    padding: 3px;
+}
+
+.muna-button.muna-clip-action {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background-color: rgba(0, 0, 0, 0.55);
+    color: white;
+}
+
+.muna-button.muna-clip-action:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.muna-clip-action .muna-button-icon {
+    icon-size: 11px;
+}
+
+.muna-clip-new {
+    padding: 8px 9px 6px 9px;
+    spacing: 4px;
+    border: 1px dashed rgba(255, 255, 255, 0.25);
+    background-color: transparent;
+}
+
+.muna-clip-entry {
+    color: white;
+    font-size: 11px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid transparent;
+    caret-color: white;
+}
+
+.muna-clip-entry:focus {
+    border-color: rgba(120, 170, 255, 0.8);
+}
+
+.muna-clip-entry StLabel.hint-text {
+    color: rgba(255, 255, 255, 0.4);
+}

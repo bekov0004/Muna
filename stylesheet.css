@@ -1,10 +1,12 @@
-/* Muna — the capsule that replaces the GNOME clock. Sizes are CSS px (scaled by the shell). */
+/* Muna — a dark capsule that hangs from the top bar, like a Dynamic Island.
+   Sizes are CSS px (the shell scales them). Inline styles from the extension
+   override the corner radius, background, shadow and paddings. */
 
 .muna {
     background-color: rgba(14, 14, 16, 0.96);
     border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 36px;
-    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.50);
+    border-radius: 32px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
     padding: 0;
 }
 
@@ -26,46 +28,49 @@
     background-color: #f2a93b;
 }
 
-/* Open: pages of widget columns + footer */
+/* ---- Expanded: header (tabs, status, settings) ------------------------- */
+
 .muna-panel {
-    padding: 14px 0 8px 0;
+    padding: 0;
 }
 
-.muna-pages {
-    height: 172px;
+.muna-tabs {
+    spacing: 4px;
 }
 
-.muna-page {
-    spacing: 0;
-}
-
-.muna-column {
-    padding: 0 18px;
-}
-
-.muna-column-separated {
-    border-left-width: 1px;
-    border-color: rgba(255, 255, 255, 0.12);
-}
-
-.muna-widget {
-    spacing: 8px;
-}
-
-.muna-placeholder-icon {
-    icon-size: 28px;
-    color: rgba(255, 255, 255, 0.28);
-}
-
-.muna-placeholder-title {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.muna-footer {
-    padding: 6px 18px 0 18px;
+.muna-button.muna-tab {
     height: 24px;
+    padding: 0 10px;
+    border-radius: 12px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.muna-button.muna-tab:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.muna-button.muna-tab:active {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.13);
+}
+
+.muna-tab .muna-button-content {
+    spacing: 6px;
+}
+
+.muna-tab .muna-button-icon {
+    icon-size: 13px;
+}
+
+.muna-tab .muna-button-label {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.muna-header-status {
+    spacing: 8px;
 }
 
 .muna-dots {
@@ -73,8 +78,8 @@
 }
 
 .muna-dot {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     border-radius: 3px;
     background-color: rgba(255, 255, 255, 0.22);
 }
@@ -83,26 +88,189 @@
     background-color: rgba(255, 255, 255, 0.85);
 }
 
-/* Calendar widget */
+.muna-camera-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 4px;
+    background-color: #34c759;
+}
+
+.muna-button.muna-gear {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.muna-button.muna-gear:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.muna-gear .muna-button-icon {
+    icon-size: 14px;
+}
+
+/* ---- Expanded: widgets ---------------------------------------------------- */
+
+.muna-page {
+    spacing: 0;
+}
+
+.muna-column-separated {
+    border-left-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.muna-widget {
+    spacing: 6px;
+}
+
+/* Media player */
+.muna-media-card {
+    spacing: 8px;
+}
+
+.muna-media-top {
+    spacing: 12px;
+}
+
+.muna-media-art {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.muna-media-art-icon {
+    icon-size: 26px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.muna-media-badge {
+    icon-size: 18px;
+    margin: 0 -5px -5px 0;
+    border-radius: 5px;
+}
+
+.muna-media-texts {
+    spacing: 1px;
+}
+
+.muna-media-title {
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.muna-media-album {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 11px;
+}
+
+.muna-media-artist {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
+}
+
+.muna-media-controls {
+    spacing: 2px;
+    margin-top: 2px;
+}
+
+.muna-button.muna-media-button {
+    width: 26px;
+    height: 24px;
+    border-radius: 12px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.muna-button.muna-media-button:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.muna-media-button .muna-button-icon {
+    icon-size: 14px;
+}
+
+.muna-button.muna-media-play .muna-button-icon {
+    icon-size: 16px;
+}
+
+.muna-media-eq {
+    spacing: 2px;
+    margin-right: 4px;
+    height: 14px;
+}
+
+.muna-media-eq-bar {
+    width: 3px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.muna-media-progress {
+    spacing: 8px;
+}
+
+.muna-media-seek {
+    height: 10px;
+}
+
+.muna-media-bar {
+    height: 3px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.muna-media-fill {
+    border-radius: 2px;
+    background-color: white;
+}
+
+.muna-media-time {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 9px;
+}
+
+.muna-media-empty {
+    spacing: 6px;
+}
+
+.muna-media-empty-icon {
+    icon-size: 28px;
+    color: rgba(255, 255, 255, 0.28);
+}
+
+.muna-media-empty-text {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Calendar */
 .muna-calendar {
-    spacing: 3px;
+    spacing: 4px;
 }
 
 .muna-cal-header {
     spacing: 2px;
 }
 
-.muna-cal-title {
+.muna-cal-month {
     color: white;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 800;
 }
 
 .muna-cal-nav {
     width: 20px;
     height: 20px;
     border-radius: 10px;
-    color: rgba(255, 255, 255, 0.55);
+    color: rgba(255, 255, 255, 0.45);
 }
 
 .muna-cal-nav:hover {
@@ -114,46 +282,46 @@
     icon-size: 12px;
 }
 
-.muna-cal-weekday {
-    color: rgba(255, 255, 255, 0.35);
-    font-size: 8px;
-    font-weight: 700;
+.muna-cal-strip {
+    spacing: 0;
 }
 
 .muna-cal-day {
-    border-radius: 8px;
-    padding: 1px 0 0 0;
-    height: 17px;
+    border-radius: 10px;
+    padding: 3px 0;
 }
 
 .muna-cal-day:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.muna-cal-number {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 10px;
-    font-weight: 600;
-}
-
-.muna-cal-other .muna-cal-number {
-    color: rgba(255, 255, 255, 0.25);
-}
-
-.muna-cal-today {
-    background-color: white;
-}
-
-.muna-cal-today:hover {
-    background-color: rgba(255, 255, 255, 0.85);
-}
-
-.muna-cal-today .muna-cal-number {
-    color: black;
+    background-color: rgba(255, 255, 255, 0.07);
 }
 
 .muna-cal-selected {
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.muna-cal-weekday {
+    color: rgba(255, 255, 255, 0.32);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.muna-cal-number {
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.muna-cal-weekend .muna-cal-number {
+    color: rgba(255, 105, 105, 0.85);
+}
+
+.muna-cal-today .muna-cal-number {
+    color: #4d8dff;
+    font-weight: 800;
+}
+
+.muna-cal-today .muna-cal-weekday {
+    color: #4d8dff;
 }
 
 .muna-cal-event-dot {
@@ -163,194 +331,349 @@
     background-color: #f2a93b;
 }
 
-.muna-cal-today .muna-cal-event-dot {
-    background-color: #c4730c;
-}
-
 .muna-cal-agenda {
-    spacing: 1px;
-    margin-top: 3px;
-}
-
-.muna-cal-heading {
-    color: rgba(255, 255, 255, 0.38);
-    font-size: 8px;
-    font-weight: 700;
+    spacing: 2px;
+    margin-top: 4px;
 }
 
 .muna-cal-empty {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 10px;
-}
-
-.muna-cal-event {
     spacing: 6px;
 }
 
-.muna-cal-event-title {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 10px;
-    font-weight: 600;
+.muna-cal-empty-icon {
+    icon-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
 }
 
-.muna-cal-event-time {
+.muna-cal-empty-text {
     color: rgba(255, 255, 255, 0.5);
-    font-size: 10px;
-}
-
-/* Media widget */
-.muna-media-card {
-    spacing: 7px;
-}
-
-.muna-media-source {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.muna-media-top {
-    spacing: 10px;
-}
-
-.muna-media-art {
-    width: 58px;
-    height: 58px;
-    border-radius: 12px;
-    background-color: rgba(255, 255, 255, 0.07);
-}
-
-.muna-media-art-icon {
-    icon-size: 24px;
-    color: rgba(255, 255, 255, 0.4);
-}
-
-.muna-media-texts {
-    spacing: 2px;
-}
-
-.muna-media-title {
-    color: white;
-    font-size: 13px;
-    font-weight: 700;
-}
-
-.muna-media-artist {
-    color: rgba(255, 255, 255, 0.55);
     font-size: 11px;
 }
 
-.muna-media-seek {
-    height: 14px;
+.muna-cal-event {
+    spacing: 8px;
 }
 
-.muna-media-bar {
+.muna-cal-event-time {
+    color: #4d8dff;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-cal-event-title {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* Mirror */
+.muna-mirror {
+    spacing: 0;
+}
+
+.muna-mirror-stage {
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.muna-mirror-stage:hover {
+    background-color: rgba(255, 255, 255, 0.11);
+}
+
+.muna-mirror-face {
+    spacing: 4px;
+}
+
+.muna-mirror-icon {
+    icon-size: 22px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.muna-mirror-message {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.muna-mirror-controls {
+    spacing: 4px;
+    padding-bottom: 8px;
+}
+
+.muna-button.muna-mirror-control {
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background-color: rgba(0, 0, 0, 0.55);
+}
+
+.muna-mirror-control .muna-button-icon {
+    icon-size: 12px;
+}
+
+/* Timer */
+.muna-timer {
+    spacing: 3px;
+}
+
+.muna-timer-display {
+    spacing: 4px;
+}
+
+.muna-timer-time {
+    min-width: 76px;
+    color: white;
+    font-size: 28px;
+    font-weight: 300;
+    text-align: center;
+}
+
+.muna-timer-time:done {
+    color: #f2a93b;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.muna-button.muna-timer-step {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+}
+
+.muna-timer-step .muna-button-icon {
+    icon-size: 11px;
+}
+
+.muna-timer-bar {
     height: 4px;
     border-radius: 2px;
     background-color: rgba(255, 255, 255, 0.14);
+    margin: 4px 0;
 }
 
-.muna-media-fill {
+.muna-timer-fill {
     border-radius: 2px;
     background-color: white;
 }
 
-.muna-media-time {
-    color: rgba(255, 255, 255, 0.4);
+.muna-timer-presets {
+    spacing: 4px;
+}
+
+.muna-button.muna-timer-chip {
+    height: 20px;
+    border-radius: 10px;
+}
+
+.muna-timer-chip .muna-button-label {
     font-size: 10px;
 }
 
-.muna-media-controls {
-    spacing: 10px;
+.muna-timer-actions {
+    spacing: 6px;
+    margin-top: 2px;
 }
 
-.muna-button.muna-media-button {
-    width: 30px;
-    height: 30px;
-    border-radius: 15px;
-    background-color: transparent;
-    color: rgba(255, 255, 255, 0.85);
+.muna-button.muna-timer-action {
+    height: 26px;
+    border-radius: 13px;
 }
 
-.muna-button.muna-media-button:hover {
-    background-color: rgba(255, 255, 255, 0.12);
+.muna-timer-action .muna-button-label {
+    font-size: 11px;
 }
 
-.muna-media-button .muna-button-icon {
-    icon-size: 16px;
-}
-
-.muna-button.muna-media-play {
+.muna-button.muna-timer-primary {
     background-color: white;
     color: black;
 }
 
-.muna-button.muna-media-play:hover {
+.muna-button.muna-timer-primary:hover {
     background-color: rgba(255, 255, 255, 0.85);
 }
 
-/* Drop view */
-.muna-drop-view {
-    spacing: 14px;
+/* To-do */
+.muna-todo {
+    spacing: 3px;
 }
 
-.muna-drop-icon {
-    icon-size: 26px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.muna-drop-view:active .muna-drop-icon {
-    color: white;
-}
-
-.muna-drop-title {
-    color: white;
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.muna-drop-hint {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 11px;
-}
-
-/* Files widget */
-.muna-files {
+.muna-todo-header {
     spacing: 6px;
 }
 
-.muna-files-header {
-    spacing: 6px;
-}
-
-.muna-files-caption {
+.muna-todo-caption {
     color: rgba(255, 255, 255, 0.4);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
 }
 
-.muna-files-clear {
+.muna-todo-clear {
     color: rgba(255, 255, 255, 0.5);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 600;
     padding: 0 6px;
     border-radius: 8px;
 }
 
-.muna-files-clear:hover {
+.muna-todo-clear:hover {
     color: white;
     background-color: rgba(255, 255, 255, 0.1);
 }
 
-.muna-files-grid {
-    spacing: 4px;
+.muna-todo-empty {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 11px;
 }
 
-.muna-files-row {
-    spacing: 4px;
+.muna-todo-list {
+    spacing: 0;
+}
+
+.muna-todo-item {
+    border-radius: 8px;
+}
+
+.muna-todo-item:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.muna-todo-row {
+    spacing: 8px;
+    padding: 2px 4px;
+}
+
+.muna-todo-check {
+    width: 13px;
+    height: 13px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+
+.muna-todo-done .muna-todo-check {
+    background-color: white;
+    border-color: white;
+}
+
+.muna-todo-check-icon {
+    icon-size: 9px;
+    color: black;
+}
+
+.muna-todo-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+}
+
+.muna-todo-done .muna-todo-text {
+    color: rgba(255, 255, 255, 0.35);
+    text-decoration: line-through;
+}
+
+.muna-button.muna-todo-remove {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    margin-right: 3px;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.muna-todo-remove .muna-button-icon {
+    icon-size: 9px;
+}
+
+.muna-todo-entry {
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 11px;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid transparent;
+    color: white;
+    font-size: 11px;
+    caret-color: white;
+    selection-background-color: rgba(255, 255, 255, 0.3);
+}
+
+.muna-todo-entry:focus {
+    background-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.muna-todo-entry StLabel.hint-text {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* ---- Tray ------------------------------------------------------------------- */
+
+.muna-tray {
+    spacing: 6px;
+    padding: 0 18px;
+}
+
+.muna-tray-header {
+    spacing: 6px;
+}
+
+.muna-tray-caption {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.muna-tray-clear {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 9px;
+    font-weight: 600;
+    padding: 0 6px;
+    border-radius: 8px;
+}
+
+.muna-tray-clear:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.muna-tray-row {
+    spacing: 6px;
+}
+
+.muna-tray-target {
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.16);
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+.muna-tray-target:active {
+    border-color: rgba(255, 255, 255, 0.75);
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.muna-tray-target-box {
+    spacing: 14px;
+}
+
+.muna-tray-target-icon {
+    icon-size: 26px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.muna-tray-target:active .muna-tray-target-icon {
+    color: white;
+}
+
+.muna-tray-target-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.muna-tray-target-hint {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
 }
 
 .muna-file-item {
+    width: 80px;
     border-radius: 12px;
 }
 
@@ -365,11 +688,11 @@
 }
 
 .muna-file-icon {
-    icon-size: 40px;
+    icon-size: 42px;
 }
 
 .muna-file-name {
-    width: 84px;
+    width: 72px;
     color: rgba(255, 255, 255, 0.8);
     font-size: 10px;
     text-align: center;
@@ -381,8 +704,8 @@
 }
 
 .muna-button.muna-file-action {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
     border-radius: 9px;
     background-color: rgba(0, 0, 0, 0.7);
 }
@@ -395,7 +718,8 @@
     icon-size: 10px;
 }
 
-/* Buttons */
+/* ---- Buttons ------------------------------------------------------------------ */
+
 .muna-button {
     border-radius: 14px;
     color: rgba(255, 255, 255, 0.9);
@@ -429,242 +753,6 @@
     width: 24px;
     height: 24px;
     border-radius: 12px;
-}
-
-/* Mirror widget */
-.muna-mirror {
-    spacing: 6px;
-}
-
-.muna-mirror-caption {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.muna-mirror-stage {
-    border-radius: 14px;
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.muna-mirror-message {
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 11px;
-    text-align: center;
-    padding: 0 10px;
-}
-
-.muna-mirror-controls {
-    spacing: 4px;
-    padding: 6px;
-}
-
-.muna-button.muna-mirror-control {
-    width: 22px;
-    height: 22px;
-    border-radius: 11px;
-    background-color: rgba(0, 0, 0, 0.55);
-}
-
-.muna-mirror-control .muna-button-icon {
-    icon-size: 12px;
-}
-
-.muna-button.muna-mirror-toggle {
-    height: 28px;
-    border-radius: 14px;
-}
-
-/* To-do widget */
-.muna-todo {
-    spacing: 4px;
-}
-
-.muna-todo-header {
-    spacing: 6px;
-}
-
-.muna-todo-caption {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.muna-todo-clear {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 10px;
-    font-weight: 600;
-    padding: 0 6px;
-    border-radius: 8px;
-}
-
-.muna-todo-clear:hover {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.muna-todo-empty {
-    color: rgba(255, 255, 255, 0.35);
-    font-size: 11px;
-}
-
-.muna-todo-list {
-    spacing: 1px;
-}
-
-.muna-todo-item {
-    border-radius: 8px;
-}
-
-.muna-todo-item:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-}
-
-.muna-todo-row {
-    spacing: 8px;
-    padding: 3px 4px;
-}
-
-.muna-todo-check {
-    width: 14px;
-    height: 14px;
-    border-radius: 7px;
-    border: 1.5px solid rgba(255, 255, 255, 0.4);
-}
-
-.muna-todo-done .muna-todo-check {
-    background-color: white;
-    border-color: white;
-}
-
-.muna-todo-check-icon {
-    icon-size: 10px;
-    color: black;
-}
-
-.muna-todo-text {
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 12px;
-}
-
-.muna-todo-done .muna-todo-text {
-    color: rgba(255, 255, 255, 0.35);
-    text-decoration: line-through;
-}
-
-.muna-button.muna-todo-remove {
-    width: 18px;
-    height: 18px;
-    border-radius: 9px;
-    margin-right: 3px;
-    background-color: rgba(0, 0, 0, 0.7);
-}
-
-.muna-todo-remove .muna-button-icon {
-    icon-size: 10px;
-}
-
-.muna-todo-entry {
-    height: 24px;
-    padding: 0 10px;
-    border-radius: 12px;
-    background-color: rgba(255, 255, 255, 0.08);
-    color: white;
-    font-size: 12px;
-    caret-color: white;
-    selection-background-color: rgba(255, 255, 255, 0.3);
-}
-
-.muna-todo-entry {
-    border: 1px solid transparent;
-}
-
-.muna-todo-entry:focus {
-    background-color: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.35);
-}
-
-.muna-todo-entry StLabel.hint-text {
-    color: rgba(255, 255, 255, 0.4);
-}
-
-/* Timer widget */
-.muna-timer {
-    spacing: 4px;
-}
-
-.muna-timer-caption {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 10px;
-    font-weight: 700;
-}
-
-.muna-timer-display {
-    spacing: 6px;
-}
-
-.muna-timer-time {
-    min-width: 96px;
-    color: white;
-    font-size: 34px;
-    font-weight: 300;
-    text-align: center;
-}
-
-.muna-timer-time:done {
-    color: #f2a93b;
-    font-size: 28px;
-    font-weight: 700;
-}
-
-.muna-button.muna-timer-step {
-    width: 24px;
-    height: 24px;
-    border-radius: 12px;
-}
-
-.muna-timer-bar {
-    height: 4px;
-    border-radius: 2px;
-    background-color: rgba(255, 255, 255, 0.14);
-    margin: 4px 0;
-}
-
-.muna-timer-fill {
-    border-radius: 2px;
-    background-color: white;
-}
-
-.muna-timer-presets {
-    spacing: 4px;
-}
-
-.muna-button.muna-timer-chip {
-    height: 22px;
-    border-radius: 11px;
-}
-
-.muna-timer-chip .muna-button-label {
-    font-size: 11px;
-}
-
-.muna-timer-actions {
-    spacing: 6px;
-    margin-top: 2px;
-}
-
-.muna-button.muna-timer-action {
-    height: 30px;
-    border-radius: 15px;
-}
-
-.muna-button.muna-timer-primary {
-    background-color: white;
-    color: black;
-}
-
-.muna-button.muna-timer-primary:hover {
-    background-color: rgba(255, 255, 255, 0.85);
 }
 
 /* Live activities */

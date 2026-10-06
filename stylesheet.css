@@ -164,28 +164,6 @@
     font-weight: 600;
 }
 
-.muna-quick {
-    spacing: 6px;
-}
-
-.muna-quick-tile {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 6px 8px;
-    spacing: 5px;
-}
-
-.muna-quick-icon {
-    icon-size: 14px;
-    color: rgba(255, 255, 255, 0.35);
-}
-
-.muna-quick-label {
-    color: rgba(255, 255, 255, 0.35);
-    font-size: 11px;
-    font-weight: 600;
-}
-
 .muna-notifications {
     spacing: 6px;
 }

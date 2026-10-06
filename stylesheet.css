@@ -646,6 +646,30 @@
     background-color: rgba(60, 140, 255, 0.10);
 }
 
+.muna-tray-targets {
+    spacing: 10px;
+}
+
+.muna-tray-bluetooth {
+    border-radius: 18px;
+    background-color: rgba(20, 60, 130, 0.55);
+}
+
+.muna-tray-bluetooth:active {
+    background-color: rgba(40, 110, 230, 0.75);
+}
+
+.muna-tray-bluetooth-icon {
+    icon-size: 22px;
+    color: #4a9bff;
+}
+
+.muna-tray-bluetooth-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+}
+
 .muna-tray-target-box {
     spacing: 3px;
     padding: 0 20px;

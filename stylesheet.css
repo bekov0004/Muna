@@ -431,6 +431,119 @@
     border-radius: 12px;
 }
 
+/* To-do widget */
+.muna-todo {
+    spacing: 4px;
+}
+
+.muna-todo-header {
+    spacing: 6px;
+}
+
+.muna-todo-caption {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-todo-clear {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 6px;
+    border-radius: 8px;
+}
+
+.muna-todo-clear:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.muna-todo-empty {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 11px;
+}
+
+.muna-todo-list {
+    spacing: 1px;
+}
+
+.muna-todo-item {
+    border-radius: 8px;
+}
+
+.muna-todo-item:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.muna-todo-row {
+    spacing: 8px;
+    padding: 3px 4px;
+}
+
+.muna-todo-check {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+
+.muna-todo-done .muna-todo-check {
+    background-color: white;
+    border-color: white;
+}
+
+.muna-todo-check-icon {
+    icon-size: 10px;
+    color: black;
+}
+
+.muna-todo-text {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 12px;
+}
+
+.muna-todo-done .muna-todo-text {
+    color: rgba(255, 255, 255, 0.35);
+    text-decoration: line-through;
+}
+
+.muna-button.muna-todo-remove {
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    margin-right: 3px;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.muna-todo-remove .muna-button-icon {
+    icon-size: 10px;
+}
+
+.muna-todo-entry {
+    height: 24px;
+    padding: 0 10px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: white;
+    font-size: 12px;
+    caret-color: white;
+    selection-background-color: rgba(255, 255, 255, 0.3);
+}
+
+.muna-todo-entry {
+    border: 1px solid transparent;
+}
+
+.muna-todo-entry:focus {
+    background-color: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+.muna-todo-entry StLabel.hint-text {
+    color: rgba(255, 255, 255, 0.4);
+}
+
 /* Timer widget */
 .muna-timer {
     spacing: 4px;

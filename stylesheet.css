@@ -26,79 +26,71 @@
     background-color: #f2a93b;
 }
 
-/* Open: LEFT | CENTER | RIGHT */
-.muna-open-view {
-    padding: 16px 18px;
+/* Open: pages of widget columns + footer */
+.muna-panel {
+    padding: 14px 0 8px 0;
 }
 
-.muna-sections {
+.muna-pages {
+    height: 172px;
+}
+
+.muna-page {
     spacing: 0;
 }
 
-.muna-section {
+.muna-column {
+    padding: 0 18px;
+}
+
+.muna-column-separated {
+    border-left-width: 1px;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.muna-widget {
     spacing: 8px;
 }
 
-.muna-divider {
-    width: 1px;
-    margin: 4px 14px;
-    background-color: rgba(255, 255, 255, 0.09);
-}
-
-.muna-media-section,
-.muna-status-section {
-    width: 176px;
-}
-
-.muna-calendar-section {
-    spacing: 10px;
-}
-
-/* Media (placeholder) */
-.muna-media-top {
-    spacing: 10px;
-}
-
-.muna-media-art {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background-color: rgba(255, 255, 255, 0.07);
-}
-
-.muna-media-art-icon {
-    icon-size: 22px;
-    color: rgba(255, 255, 255, 0.45);
-}
-
-.muna-media-texts {
-    spacing: 1px;
-}
-
-.muna-media-title {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.muna-media-subtitle {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 11px;
-}
-
-.muna-media-controls {
-    spacing: 18px;
-}
-
-.muna-media-control {
-    icon-size: 16px;
+.muna-placeholder-icon {
+    icon-size: 28px;
     color: rgba(255, 255, 255, 0.28);
 }
 
-/* Clock and week */
+.muna-placeholder-title {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.muna-footer {
+    padding: 6px 18px 0 18px;
+    height: 24px;
+}
+
+.muna-dots {
+    spacing: 6px;
+}
+
+.muna-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
+.muna-dot-active {
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Calendar widget (until the full calendar lands) */
+.muna-calendar-widget {
+    spacing: 10px;
+}
+
 .muna-clock-time {
     color: white;
-    font-size: 36px;
+    font-size: 34px;
     font-weight: 300;
 }
 
@@ -119,13 +111,13 @@
 
 .muna-week-name {
     color: rgba(255, 255, 255, 0.38);
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
 }
 
 .muna-week-number {
     color: rgba(255, 255, 255, 0.8);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
 }
 
@@ -141,15 +133,11 @@
     color: black;
 }
 
-/* Status */
-.muna-status-header {
-    spacing: 6px;
-}
-
+/* Workspace chip */
 .muna-workspace {
     background-color: rgba(255, 255, 255, 0.07);
     border-radius: 12px;
-    padding: 4px 10px;
+    padding: 3px 10px;
     spacing: 6px;
 }
 
@@ -162,20 +150,6 @@
     color: rgba(255, 255, 255, 0.85);
     font-size: 11px;
     font-weight: 600;
-}
-
-.muna-notifications {
-    spacing: 6px;
-}
-
-.muna-notifications-icon {
-    icon-size: 13px;
-    color: rgba(255, 255, 255, 0.35);
-}
-
-.muna-notifications-label {
-    color: rgba(255, 255, 255, 0.4);
-    font-size: 11px;
 }
 
 /* Buttons */
@@ -211,17 +185,6 @@
 .muna-close-button {
     width: 24px;
     height: 24px;
-    border-radius: 12px;
-}
-
-/* Temporary test-events strip */
-.muna-debug-strip {
-    spacing: 6px;
-    margin-top: 12px;
-}
-
-.muna-debug-button {
-    height: 28px;
     border-radius: 12px;
 }
 

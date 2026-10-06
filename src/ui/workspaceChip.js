@@ -3,9 +3,9 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 /** Chip showing "Workspace <active> / <total>". */
-export class WorkspaceWidget extends St.BoxLayout {
+export class WorkspaceChip extends St.BoxLayout {
     static {
-        GObject.registerClass({GTypeName: 'MunaWorkspaceWidget'}, this);
+        GObject.registerClass({GTypeName: 'MunaWorkspaceChip'}, this);
     }
 
     constructor() {
@@ -23,6 +23,6 @@ export class WorkspaceWidget extends St.BoxLayout {
     }
 
     update({index, total}) {
-        this._value.text = `Workspace ${index} / ${total}`;
+        this._value.text = `${index} / ${total}`;
     }
 }

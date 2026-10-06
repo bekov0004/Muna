@@ -224,6 +224,112 @@
     background-color: rgba(255, 255, 255, 0.85);
 }
 
+/* Drop view */
+.muna-drop-view {
+    spacing: 14px;
+}
+
+.muna-drop-icon {
+    icon-size: 26px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.muna-drop-view:active .muna-drop-icon {
+    color: white;
+}
+
+.muna-drop-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.muna-drop-hint {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+}
+
+/* Files widget */
+.muna-files {
+    spacing: 6px;
+}
+
+.muna-files-header {
+    spacing: 6px;
+}
+
+.muna-files-caption {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-files-clear {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 6px;
+    border-radius: 8px;
+}
+
+.muna-files-clear:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.muna-files-grid {
+    spacing: 4px;
+}
+
+.muna-files-row {
+    spacing: 4px;
+}
+
+.muna-file-item {
+    border-radius: 12px;
+}
+
+.muna-file-main {
+    padding: 6px 2px;
+    border-radius: 12px;
+}
+
+.muna-file-main:hover,
+.muna-file-main:focus {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.muna-file-icon {
+    icon-size: 40px;
+}
+
+.muna-file-name {
+    width: 84px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 10px;
+    text-align: center;
+}
+
+.muna-file-actions {
+    spacing: 3px;
+    padding: 3px;
+}
+
+.muna-button.muna-file-action {
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.muna-button.muna-file-action:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+}
+
+.muna-file-action .muna-button-icon {
+    icon-size: 10px;
+}
+
 /* Workspace chip */
 .muna-workspace {
     background-color: rgba(255, 255, 255, 0.07);

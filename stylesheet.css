@@ -12,19 +12,38 @@
 
 /* Collapsed / hover */
 .muna-closed-view {
-    spacing: 6px;
+    padding: 0 14px;
 }
 
-.muna-closed-time {
+.muna-closed-time,
+.muna-closed-date {
     color: white;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
 }
 
-.muna-activity-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 3px;
+.muna-closed-date {
+    color: rgba(255, 255, 255, 0.78);
+    font-weight: 600;
+}
+
+/* The camera of the "notch": a dark circle with a faint lens. */
+.muna-camera {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    background-color: #08080c;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+}
+
+.muna-camera-lens {
+    width: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(70, 110, 255, 0.55);
+}
+
+.muna-camera-lens-active {
     background-color: #f2a93b;
 }
 

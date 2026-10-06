@@ -431,6 +431,50 @@
     border-radius: 12px;
 }
 
+/* Mirror widget */
+.muna-mirror {
+    spacing: 6px;
+}
+
+.muna-mirror-caption {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-mirror-stage {
+    border-radius: 14px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.muna-mirror-message {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
+    text-align: center;
+    padding: 0 10px;
+}
+
+.muna-mirror-controls {
+    spacing: 4px;
+    padding: 6px;
+}
+
+.muna-button.muna-mirror-control {
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background-color: rgba(0, 0, 0, 0.55);
+}
+
+.muna-mirror-control .muna-button-icon {
+    icon-size: 12px;
+}
+
+.muna-button.muna-mirror-toggle {
+    height: 28px;
+    border-radius: 14px;
+}
+
 /* To-do widget */
 .muna-todo {
     spacing: 4px;

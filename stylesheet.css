@@ -133,6 +133,97 @@
     color: black;
 }
 
+/* Media widget */
+.muna-media-card {
+    spacing: 7px;
+}
+
+.muna-media-source {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-media-top {
+    spacing: 10px;
+}
+
+.muna-media-art {
+    width: 58px;
+    height: 58px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.muna-media-art-icon {
+    icon-size: 24px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.muna-media-texts {
+    spacing: 2px;
+}
+
+.muna-media-title {
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.muna-media-artist {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+}
+
+.muna-media-seek {
+    height: 14px;
+}
+
+.muna-media-bar {
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.14);
+}
+
+.muna-media-fill {
+    border-radius: 2px;
+    background-color: white;
+}
+
+.muna-media-time {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+}
+
+.muna-media-controls {
+    spacing: 10px;
+}
+
+.muna-button.muna-media-button {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.muna-button.muna-media-button:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.muna-media-button .muna-button-icon {
+    icon-size: 16px;
+}
+
+.muna-button.muna-media-play {
+    background-color: white;
+    color: black;
+}
+
+.muna-button.muna-media-play:hover {
+    background-color: rgba(255, 255, 255, 0.85);
+}
+
 /* Workspace chip */
 .muna-workspace {
     background-color: rgba(255, 255, 255, 0.07);

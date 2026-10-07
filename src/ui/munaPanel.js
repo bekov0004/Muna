@@ -5,8 +5,8 @@ import St from 'gi://St';
 import {animDuration} from '../utils/animation.js';
 import {createButton} from './button.js';
 
-export const PanelMode = Object.freeze({MUNA: 'muna', TRAY: 'tray', CLIPBOARD: 'clipboard'});
-const MODE_ORDER = [PanelMode.MUNA, PanelMode.TRAY, PanelMode.CLIPBOARD];
+export const PanelMode = Object.freeze({MUNA: 'muna', TRAY: 'tray', CLIPBOARD: 'clipboard', NOTIFICATIONS: 'notifications'});
+const MODE_ORDER = [PanelMode.MUNA, PanelMode.TRAY, PanelMode.CLIPBOARD, PanelMode.NOTIFICATIONS];
 
 const px = (css, scale) => Math.round(css * scale);
 
@@ -25,8 +25,8 @@ export class MunaPanel extends St.BoxLayout {
         GObject.registerClass({GTypeName: 'MunaPanel'}, this);
     }
 
-    /** @param {{widgets: MunaWidget[], tray: TrayView, clipboard: ClipboardView, onOpenSettings: Function}} params */
-    constructor({widgets, tray, clipboard, onOpenSettings}) {
+    /** @param {{widgets: MunaWidget[], tray: TrayView, clipboard: ClipboardView, notifications: NotificationsView, onOpenSettings: Function}} params */
+    constructor({widgets, tray, clipboard, notifications, onOpenSettings}) {
         super({
             vertical: true,
             style_class: 'muna-panel',
@@ -36,6 +36,7 @@ export class MunaPanel extends St.BoxLayout {
         this._widgets = widgets;
         this._tray = tray;
         this._clipboard = clipboard;
+        this._notifications = notifications;
         this._pages = [];
         this._signature = '';
         this._pageIndex = 0;
@@ -63,7 +64,10 @@ export class MunaPanel extends St.BoxLayout {
         this._clipboard.hide();
         this._body.add_child(this._munaView);
         this._body.add_child(this._tray);
+        this._notifications.opacity = 0;
+        this._notifications.hide();
         this._body.add_child(this._clipboard);
+        this._body.add_child(this._notifications);
         this.add_child(this._body);
     }
 
@@ -91,6 +95,7 @@ export class MunaPanel extends St.BoxLayout {
     remove_tray() {
         this._body.remove_child(this._tray);
         this._body.remove_child(this._clipboard);
+        this._body.remove_child(this._notifications);
     }
 
     _viewFor(mode) {
@@ -99,6 +104,8 @@ export class MunaPanel extends St.BoxLayout {
             return this._tray;
         case PanelMode.CLIPBOARD:
             return this._clipboard;
+        case PanelMode.NOTIFICATIONS:
+            return this._notifications;
         default:
             return this._munaView;
         }
@@ -182,6 +189,8 @@ export class MunaPanel extends St.BoxLayout {
         if (this._mode === PanelMode.CLIPBOARD)
             this._clipboard.stopTyping();
         this._mode = mode;
+        if (mode === PanelMode.NOTIFICATIONS)
+            this._notifications.refresh();
         if (mode === PanelMode.MUNA)
             this.setOpen(true);
         this._updateTabs();
@@ -366,6 +375,7 @@ export class MunaPanel extends St.BoxLayout {
             [PanelMode.MUNA, 'Muna', 'view-grid-symbolic'],
             [PanelMode.TRAY, 'Tray', 'folder-download-symbolic'],
             [PanelMode.CLIPBOARD, 'Clipboard', 'edit-paste-symbolic'],
+            [PanelMode.NOTIFICATIONS, 'Alerts', 'preferences-system-notifications-symbolic'],
         ]) {
             const tab = createButton({
                 label,

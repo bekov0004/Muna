@@ -1126,3 +1126,54 @@
 .muna-clip-entry StLabel.hint-text {
     color: rgba(255, 255, 255, 0.4);
 }
+
+/* ---- Notifications ---------------------------------------------------------- */
+
+.muna-notif-list {
+    spacing: 2px;
+}
+
+.muna-notif {
+    border-radius: 10px;
+}
+
+.muna-notif:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.muna-notif-main {
+    border-radius: 10px;
+    padding: 3px 6px;
+    text-align: left;
+}
+
+.muna-notif-row {
+    spacing: 8px;
+}
+
+.muna-notif-icon {
+    icon-size: 22px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.muna-notif-app {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.muna-notif-title {
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.muna-notif-body {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 10px;
+}
+
+.muna-dnd:checked {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.18);
+}

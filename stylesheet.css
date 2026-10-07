@@ -654,56 +654,62 @@
 }
 
 .muna-tray-target {
-    border-radius: 18px;
-    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 26px;
+    background-color: rgba(255, 255, 255, 0.0);
 }
 
 .muna-tray-target:active {
-    background-color: rgba(60, 140, 255, 0.10);
+    background-color: rgba(60, 140, 255, 0.0);
 }
 
 .muna-tray-targets {
     spacing: 10px;
 }
 
+/* The second drop target: a deep navy tile, no outline. */
 .muna-tray-bluetooth {
-    border-radius: 18px;
-    background-color: rgba(20, 60, 130, 0.55);
+    border-radius: 26px;
+    background-color: #0a2140;
 }
 
 .muna-tray-bluetooth:active {
-    background-color: rgba(40, 110, 230, 0.75);
+    background-color: #0e3263;
 }
 
 .muna-tray-bluetooth-icon {
-    icon-size: 22px;
-    color: #4a9bff;
+    width: 28px;
+    height: 28px;
+    color: #1a7bff;
 }
 
 .muna-tray-bluetooth-title {
-    color: white;
-    font-size: 14px;
-    font-weight: 700;
+    color: rgba(214, 220, 232, 0.8);
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .muna-tray-target-box {
-    spacing: 3px;
-    padding: 0 20px;
+    spacing: 8px;
+    padding: 0 22px;
 }
 
 .muna-tray-target-icon {
-    icon-size: 22px;
+    width: 28px;
+    height: 28px;
+}
+
+.muna-tray-target:active .muna-tray-target-title {
     color: #3d8bff;
 }
 
 .muna-tray-target-title {
-    color: #3d8bff;
-    font-size: 14px;
-    font-weight: 700;
+    color: #1368c9;
+    font-size: 13px;
+    font-weight: 600;
 }
 
 .muna-tray-target-hint {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(61, 139, 255, 0.75);
     font-size: 11px;
 }
 

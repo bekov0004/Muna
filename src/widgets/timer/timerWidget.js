@@ -141,7 +141,8 @@ export class TimerWidget extends MunaWidget {
 
     destroy() {
         this._timer.disconnectObject(this);
-        this._activities.end('timer');
+        if (this._activity)
+            this._activities.end('timer');
         this._activity?.destroy();
         super.destroy();
     }

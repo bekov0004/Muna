@@ -1388,3 +1388,11 @@
 .muna-ls-summary {
     spacing: 6px;
 }
+
+.muna-ls-buttons {
+    spacing: 10px;
+}
+
+.muna-button.muna-ls-accept {
+    background-color: #4d8dff;
+}

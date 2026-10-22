@@ -1040,34 +1040,38 @@
 }
 
 /* Clipboard */
+.muna-clipboard-body {
+    spacing: 10px;
+}
+
+.muna-clip-list {
+    spacing: 1px;
+}
+
 .muna-clip {
-    width: 132px;
-    border-radius: 12px;
+    border-radius: 9px;
+}
+
+.muna-clip:hover {
     background-color: rgba(255, 255, 255, 0.07);
 }
 
-.muna-clip-saved {
-    background-color: rgba(70, 140, 255, 0.16);
-}
-
 .muna-clip-main {
-    padding: 8px 9px 6px 9px;
-    border-radius: 12px;
+    padding: 3px 8px;
+    border-radius: 9px;
 }
 
-.muna-clip-main:hover,
 .muna-clip-main:focus {
     background-color: rgba(255, 255, 255, 0.08);
+}
+
+.muna-clip-row {
+    spacing: 8px;
 }
 
 .muna-clip-text {
     color: white;
     font-size: 11px;
-}
-
-.muna-clip-foot {
-    spacing: 4px;
-    margin-top: 2px;
 }
 
 .muna-clip-when {
@@ -1076,44 +1080,67 @@
     font-weight: 600;
 }
 
+.muna-clip-kind {
+    icon-size: 12px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
 .muna-clip-star {
-    icon-size: 10px;
+    icon-size: 12px;
     color: #4a9bff;
 }
 
 .muna-clip-actions {
-    spacing: 0;
-    padding: 3px;
+    spacing: 2px;
+    padding-right: 4px;
 }
 
 .muna-button.muna-clip-action {
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    background-color: rgba(0, 0, 0, 0.55);
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background-color: rgba(255, 255, 255, 0.1);
     color: white;
 }
 
 .muna-button.muna-clip-action:hover {
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: rgba(255, 255, 255, 0.28);
 }
 
 .muna-clip-action .muna-button-icon {
     icon-size: 11px;
 }
 
-.muna-clip-new {
-    padding: 8px 9px 6px 9px;
-    spacing: 4px;
-    border: 1px dashed rgba(255, 255, 255, 0.25);
-    background-color: transparent;
+.muna-clip-bar {
+    spacing: 6px;
+}
+
+.muna-clip-find {
+    icon-size: 12px;
+    color: rgba(255, 255, 255, 0.45);
+    margin-right: 4px;
+}
+
+.muna-clip-add {
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 0 10px;
+    border-radius: 11px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.muna-clip-add:hover,
+.muna-clip-add:checked {
+    background-color: rgba(120, 170, 255, 0.35);
 }
 
 .muna-clip-entry {
     color: white;
     font-size: 11px;
-    padding: 4px 6px;
-    border-radius: 8px;
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 11px;
     background-color: rgba(255, 255, 255, 0.08);
     border: 1px solid transparent;
     caret-color: white;

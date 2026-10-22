@@ -1350,3 +1350,41 @@
     color: rgba(255, 255, 255, 0.6);
     margin-right: 8px;
 }
+
+.muna-ls-basket {
+    spacing: 4px;
+    margin-bottom: 4px;
+}
+
+.muna-ls-basket-scroll {
+    max-height: 70px;
+}
+
+.muna-ls-file {
+    spacing: 8px;
+    padding: 2px 0;
+}
+
+.muna-ls-file-icon {
+    icon-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.muna-ls-file-name {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 11px;
+}
+
+.muna-button.muna-ls-file-remove {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+}
+
+.muna-ls-file-remove .muna-button-icon {
+    icon-size: 9px;
+}
+
+.muna-ls-summary {
+    spacing: 6px;
+}

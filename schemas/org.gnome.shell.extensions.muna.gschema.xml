@@ -48,6 +48,18 @@
       <description>Show a running timer, music or an upcoming meeting instead of the time while collapsed.</description>
     </key>
 
+    <key name="free-super-v" type="b">
+      <default>false</default>
+      <summary>Free Super+V from GNOME</summary>
+      <description>GNOME opens its notification list on Super+V. While this is on and Muna is enabled, that default binding is taken away so Super+V (or Super+M) can be used for a Muna shortcut; it is given back when Muna is disabled.</description>
+    </key>
+
+    <key name="saved-message-tray-binding" type="as">
+      <default>[]</default>
+      <summary>GNOME's own toggle-message-tray binding, saved while it is freed</summary>
+      <description>Internal: restored when Muna is disabled, or at the next start if the shell stopped without disabling Muna.</description>
+    </key>
+
     <key name="shortcut-muna" type="as">
       <default>[]</default>
       <summary>Shortcut: open the Muna section</summary>

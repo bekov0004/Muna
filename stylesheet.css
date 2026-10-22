@@ -1399,6 +1399,100 @@
 
 /* LocalSend section */
 .muna-lsv {
+    padding: 0 18px 6px 18px;
+    spacing: 3px;
+}
+
+.muna-lsv-caption {
+    spacing: 4px;
+}
+
+.muna-lsv-title {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+.muna-lsv-on {
+    color: #4d8dff;
+}
+
+.muna-lsv-hint {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 11px;
+}
+
+.muna-lsv-chips {
+    spacing: 6px;
+}
+
+.muna-lsv-chip {
+    spacing: 6px;
+    padding: 2px 5px 2px 10px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.muna-lsv-chip-icon {
+    icon-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.muna-lsv-chip-name {
+    max-width: 110px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.muna-lsv-chip-size {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+}
+
+.muna-lsv-tiles {
+    spacing: 8px;
+}
+
+.muna-lsv-tile {
+    padding: 3px 12px 3px 5px;
+    border-radius: 15px;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+.muna-lsv-tile:hover,
+.muna-lsv-tile:focus {
+    background-color: rgba(77, 141, 255, 0.28);
+}
+
+.muna-lsv-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 13px;
+    background-color: rgba(77, 141, 255, 0.22);
+}
+
+.muna-lsv-badge-icon {
+    icon-size: 14px;
+    color: #4d8dff;
+}
+
+.muna-lsv-tile-texts {
+    margin-left: 7px;
+    min-width: 70px;
+}
+
+.muna-ls-buttons {
+    spacing: 10px;
+}
+
+.muna-button.muna-ls-accept {
+    background-color: #4d8dff;
+}
+
+/* LocalSend section */
+.muna-lsv {
     padding: 2px 16px 6px 16px;
     spacing: 14px;
 }

@@ -1263,3 +1263,90 @@
 .muna-cal-big-scroll {
     min-height: 54px;
 }
+
+/* LocalSend card */
+.muna-ls {
+    padding: 12px 14px 12px 14px;
+    spacing: 6px;
+}
+
+.muna-ls-header {
+    spacing: 6px;
+}
+
+.muna-ls-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.muna-ls-list {
+    spacing: 2px;
+}
+
+.muna-ls-device {
+    border-radius: 10px;
+    padding: 7px 8px;
+}
+
+.muna-ls-device:hover {
+    background-color: rgba(255, 255, 255, 0.09);
+}
+
+.muna-ls-device-icon {
+    icon-size: 16px;
+    color: #4d8dff;
+    margin-right: 10px;
+}
+
+.muna-ls-device-name {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.muna-ls-device-model {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+}
+
+.muna-ls-progress {
+    spacing: 8px;
+}
+
+.muna-ls-status {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+}
+
+.muna-ls-bar {
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.muna-ls-bar-fill {
+    height: 6px;
+    border-radius: 3px;
+    background-color: #4d8dff;
+}
+
+.muna-button.muna-ls-cancel {
+    padding: 4px 14px;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.muna-ls-cancel .muna-button-label {
+    font-size: 11px;
+}
+
+.muna-ls-note {
+    spacing: 10px;
+}
+
+.muna-ls-note-icon {
+    icon-size: 16px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-right: 8px;
+}

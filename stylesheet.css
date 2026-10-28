@@ -1558,3 +1558,22 @@
     font-size: 9px;
     font-weight: 600;
 }
+
+/* Focus */
+.muna-focus {
+    spacing: 3px;
+}
+
+.muna-focus-time {
+    font-size: 24px;
+}
+
+.muna-focus-caption {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 10px;
+}
+
+.muna-button.muna-timer-chip:checked {
+    background-color: rgba(77, 141, 255, 0.35);
+    color: white;
+}

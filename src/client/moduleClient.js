@@ -172,6 +172,7 @@ export class MunaBackend {
         this.notes = new ModuleClient('Notes');
         this.timer = new ModuleClient('Timer');
         this.calendar = new ModuleClient('Calendar');
+        this.files = new ModuleClient('Files');
     }
 
     start() {
@@ -181,6 +182,7 @@ export class MunaBackend {
         this.notes.start();
         this.timer.start();
         this.calendar.start();
+        this.files.start();
     }
 
     /** The extension is being disabled: the service has nothing left to do. */
@@ -199,6 +201,7 @@ export class MunaBackend {
         this.notes.destroy();
         this.timer.destroy();
         this.calendar.destroy();
+        this.files.destroy();
         this.service.destroy();
     }
 }

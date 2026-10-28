@@ -1577,3 +1577,44 @@
     background-color: rgba(77, 141, 255, 0.35);
     color: white;
 }
+
+/* System */
+.muna-system {
+    spacing: 6px;
+}
+
+.muna-system-row {
+    spacing: 12px;
+}
+
+.muna-system-cell {
+    spacing: 2px;
+}
+
+.muna-system-label {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-system-value {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.muna-system-bar {
+    height: 4px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.muna-system-fill {
+    height: 4px;
+    border-radius: 2px;
+    background-color: #4d8dff;
+}
+
+.muna-system-fill:warn {
+    background-color: #ff6b6b;
+}

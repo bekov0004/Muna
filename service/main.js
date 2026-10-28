@@ -85,7 +85,26 @@ const MunaService = GObject.registerClass(class MunaService extends Gio.Applicat
         super.vfunc_shutdown();
     }
 
-    vfunc_activate() {}
+    /** Opened from the app grid: the window of the app. */
+    vfunc_activate() {
+        if (this._window) {
+            this._window.present();
+            return;
+        }
+        import('./window.js').then(({createWindow}) => {
+            this._window = createWindow(this, this._modules, {
+                restart: () => {
+                    // The extension starts the service again at its next call.
+                    this.quit();
+                },
+            });
+            this._window.connect('close-request', () => {
+                this._window = null;
+                return false;
+            });
+            this._window.present();
+        }).catch(e => console.warn(`[muna-service] cannot open the window: ${e.message}`));
+    }
 
     /** Remembers who talks to us; when all of them are gone, the service ends after a while. */
     _track(sender) {

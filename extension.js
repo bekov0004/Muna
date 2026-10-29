@@ -13,7 +13,7 @@ export default class MunaExtension extends Extension {
             console.warn(`[muna] settings unavailable, using defaults: ${e.message}`);
         }
         this._settings = new SettingsService(gsettings);
-        this._muna = new MunaHost(this._settings, {openPreferences: () => this.openPreferences()});
+        this._muna = new MunaHost(this._settings, {openPreferences: () => this.openPreferences(), path: this.path});
         this._muna.enable();
     }
 

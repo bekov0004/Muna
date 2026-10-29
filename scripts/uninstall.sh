@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# Removes what scripts/install-dev.sh installed: the extension, the Muna service and its D-Bus file.
-# Your data (~/.local/share/muna: notes, tray, clipboard, ...) is left alone.
+# Removes what scripts/install.sh installed. Your data (~/.local/share/muna: notes, tray, clipboard,
+# ...) and settings are left alone.
 set -euo pipefail
 
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
 gnome-extensions disable muna@bekov0004.github.io 2>/dev/null || true
-# (and the leftovers of the time it was called Nook)
+rm -rf "$DATA/gnome-shell/extensions/muna@bekov0004.github.io" \
+       "$DATA/applications/io.github.bekov0004.Muna.desktop" \
+       "$DATA/muna-service" "$DATA/dbus-1/services/io.github.bekov0004.Muna.service"
+# (and the leftovers of the old name)
 rm -rf "$DATA/gnome-shell/extensions/nook@bekov0004.github.io" "$DATA/nook-service" \
        "$DATA/dbus-1/services/io.github.bekov0004.Nook.service" "$DATA/applications/io.github.bekov0004.Nook.desktop"
-rm -rf "$DATA/gnome-shell/extensions/muna@bekov0004.github.io" \
-       "$DATA/muna-service" \
-       "$DATA/dbus-1/services/io.github.bekov0004.Muna.service" \
-       "$DATA/applications/io.github.bekov0004.Muna.desktop"
 echo "Muna is removed (your data in $DATA/muna is kept)."

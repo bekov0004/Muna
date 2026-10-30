@@ -2,12 +2,12 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
-export const BUS_NAME = 'io.github.bekov0004.Muna';
+export const BUS_NAME = 'dev.muna.Muna';
 const RETRY_S = 5;
 const CONNECT_WAIT_S = 8;
 
 const MODULE_XML = `<node>
-  <interface name="io.github.bekov0004.Muna.Module">
+  <interface name="dev.muna.Muna.Module">
     <method name="Call">
       <arg type="s" direction="in" name="method"/>
       <arg type="s" direction="in" name="args"/>
@@ -52,7 +52,7 @@ export class ModuleClient extends Signals.EventEmitter {
     }
 
     start() {
-        new ModuleProxy(Gio.DBus.session, BUS_NAME, `/io/github/bekov0004/Muna/${this._name}`, (proxy, error) => {
+        new ModuleProxy(Gio.DBus.session, BUS_NAME, `/dev/muna/Muna/${this._name}`, (proxy, error) => {
             if (this._cancellable.is_cancelled())
                 return;
             if (error) {
@@ -137,7 +137,7 @@ export class ModuleClient extends Signals.EventEmitter {
             const [result] = await this._proxy.CallAsync(method, JSON.stringify(args));
             return JSON.parse(result);
         } catch (e) {
-            // A remote error reads "GDBus.Error:io.github...Error: message".
+            // A remote error reads "GDBus.Error:dev.muna.Muna.Error: message".
             throw new Error(String(e.message).replace(/^GDBus\.Error:[^:]+:\s*/, ''));
         }
     }

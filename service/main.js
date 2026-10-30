@@ -24,7 +24,7 @@ import {NotesModule} from './notes/module.js';
 import {TimerModule} from './timer/module.js';
 import {TodoModule} from './todo/module.js';
 
-export const APPLICATION_ID = 'io.github.bekov0004.Muna';
+export const APPLICATION_ID = 'dev.muna.Muna';
 const VERSION = '1';
 const IDLE_QUIT_S = 20; // no client left (the shell went away): the service ends
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds muna@bekov0004.github.io.shell-extension.zip: the extension with its service inside, for
+# Builds muna@muna.dev.shell-extension.zip: the extension with its service inside, for
 # `gnome-extensions install --force <zip>` (or for uploading to extensions.gnome.org).
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -7,4 +7,6 @@ gnome-extensions pack --force \
     --extra-source=src --extra-source=service --extra-source=LICENSE \
     --schema=schemas/org.gnome.shell.extensions.muna.gschema.xml \
     --out-dir=. .
-echo "Built: $(ls -1 *.shell-extension.zip)"
+VERSION="$(grep -oP '"version-name":\s*"\K[^"]+' metadata.json)"
+mv -f muna@muna.dev.shell-extension.zip "Muna-$VERSION.zip"
+echo "Built: Muna-$VERSION.zip"

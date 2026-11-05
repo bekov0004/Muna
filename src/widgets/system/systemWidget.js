@@ -3,6 +3,7 @@ import St from 'gi://St';
 
 import {formatBytes, formatRate} from '../../services/systemService.js';
 import {EventType, Priority} from '../../utils/events.js';
+import {menuCard, menuDivider, menuHeader} from '../../ui/menuKit.js';
 import {MunaWidget} from '../widget.js';
 
 /**
@@ -14,6 +15,7 @@ export class SystemWidget extends MunaWidget {
     static id = 'system';
     static title = 'System';
     static iconName = 'utilities-system-monitor-symbolic';
+    static menuNative = true; // laid out with the menu kit: the menu does not wrap it
 
     constructor(context) {
         super(context);
@@ -43,26 +45,22 @@ export class SystemWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({
-            vertical: true,
-            style_class: 'muna-widget muna-system',
-            x_expand: true,
-            y_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
+        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-system muna-menu-page', x_expand: true});
+        root.add_child(menuHeader('This computer'));
+        const card = menuCard();
+        const rows = [['cpu', 'Processor'], ['mem', 'Memory'], ['temp', 'Temperature'], ['net', 'Network'], ['disk', 'Disk'], ['battery', 'Battery']];
+        rows.forEach(([id, label], index) => {
+            if (index > 0)
+                card.add_child(menuDivider());
+            card.add_child(this._createCell(id, label));
         });
-        const rows = [['cpu', 'CPU'], ['mem', 'RAM'], ['temp', 'Temp'], ['net', 'Network'], ['disk', 'Disk'], ['battery', 'Battery']];
-        for (let i = 0; i < rows.length; i += 2) {
-            const row = new St.BoxLayout({style_class: 'muna-system-row', x_expand: true});
-            for (const [id, label] of rows.slice(i, i + 2))
-                row.add_child(this._createCell(id, label));
-            root.add_child(row);
-        }
+        root.add_child(card);
         this._system.connectObject('changed', () => this._update(), this);
         return root;
     }
 
     _createCell(id, label) {
-        const cell = new St.BoxLayout({vertical: true, style_class: 'muna-system-cell', x_expand: true});
+        const cell = new St.BoxLayout({vertical: true, style_class: 'muna-system-cell muna-card-row', x_expand: true});
         const head = new St.BoxLayout({x_expand: true});
         head.add_child(new St.Label({text: label, style_class: 'muna-system-label', x_expand: true}));
         const value = new St.Label({text: '–', style_class: 'muna-system-value'});

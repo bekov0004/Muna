@@ -2044,3 +2044,26 @@
 .muna-menu .toggle-switch:checked {
     background-color: #3584e4;
 }
+
+.muna-menu-bigtime {
+    font-size: 34pt;
+    font-weight: 300;
+    padding: 6px 0 0 0;
+}
+
+.muna-chip-primary {
+    background-color: rgba(53, 132, 228, 0.85);
+    color: white;
+}
+
+.muna-chip-primary:hover {
+    background-color: rgba(53, 132, 228, 1);
+}
+
+.muna-menu .muna-sound-row {
+    spacing: 10px;
+}
+
+.muna-menu .muna-sound-app {
+    spacing: 10px;
+}

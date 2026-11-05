@@ -2,6 +2,7 @@ import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 
 import {EventType, Priority} from '../../utils/events.js';
+import {menuCard, menuHeader} from '../../ui/menuKit.js';
 import {MunaWidget} from '../widget.js';
 
 const compact = n => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
@@ -15,6 +16,7 @@ export class AgentsWidget extends MunaWidget {
     static id = 'agents';
     static title = 'AI Agents';
     static iconName = 'system-run-symbolic';
+    static menuNative = true;
 
     constructor(context) {
         super(context);
@@ -42,15 +44,9 @@ export class AgentsWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({
-            vertical: true,
-            style_class: 'muna-widget muna-agents',
-            x_expand: true,
-            y_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        root.add_child(new St.Label({text: 'AI AGENTS', style_class: 'muna-todo-caption'}));
-        this._list = new St.BoxLayout({vertical: true, x_expand: true});
+        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-agents muna-menu-page', x_expand: true});
+        root.add_child(menuHeader('AI agents'));
+        this._list = new St.BoxLayout({vertical: true, style_class: 'muna-menu-page', x_expand: true});
         root.add_child(this._list);
         this._agents.connectObject('changed', () => this._rebuild(), this);
         return root;
@@ -66,11 +62,14 @@ export class AgentsWidget extends MunaWidget {
         this._list.destroy_all_children();
         const agents = this._agents.agents.filter(a => a.installed);
         if (agents.length === 0) {
-            this._list.add_child(new St.Label({text: 'No agents found (Claude Code, Codex)', style_class: 'muna-todo-empty'}));
+            const card = menuCard();
+            card.add_child(new St.Label({text: 'No agents found (Claude Code, Codex)', style_class: 'muna-card-hint', style: 'padding-top: 14px;'}));
+            this._list.add_child(card);
             return;
         }
         for (const agent of agents) {
-            const row = new St.BoxLayout({style_class: 'muna-agent', x_expand: true});
+            const card = menuCard();
+            const row = new St.BoxLayout({style_class: 'muna-agent muna-card-row', x_expand: true});
             const dot = new St.Widget({style_class: `muna-agent-dot${agent.working.length > 0 ? ' working' : ''}`, y_align: Clutter.ActorAlign.CENTER});
             row.add_child(dot);
             const texts = new St.BoxLayout({vertical: true, x_expand: true});
@@ -84,7 +83,8 @@ export class AgentsWidget extends MunaWidget {
             usage.add_child(new St.Label({text: `5 h  ${compact(agent.tokens5h)}`, style_class: 'muna-agent-usage'}));
             usage.add_child(new St.Label({text: `7 d  ${compact(agent.tokens7d)}`, style_class: 'muna-agent-usage'}));
             row.add_child(usage);
-            this._list.add_child(row);
+            card.add_child(row);
+            this._list.add_child(card);
         }
     }
 

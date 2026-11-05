@@ -1,4 +1,4 @@
-import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -95,7 +95,7 @@ export class ToolsMenu {
         }
 
         const footer = new St.BoxLayout({style_class: 'muna-menu-footer', x_expand: true});
-        const app = Gio.DesktopAppInfo.new('dev.muna.Muna.desktop');
+        const app = GioUnix.DesktopAppInfo.new('dev.muna.Muna.desktop');
         if (app) {
             footer.add_child(createButton({
                 iconName: 'view-app-grid-symbolic', label: 'Muna app', styleClass: 'muna-menu-action', expand: true,

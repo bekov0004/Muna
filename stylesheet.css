@@ -2067,3 +2067,7 @@
 .muna-menu .muna-sound-app {
     spacing: 10px;
 }
+
+.muna-card-row:checked {
+    background-color: rgba(53, 132, 228, 0.16);
+}

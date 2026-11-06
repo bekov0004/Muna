@@ -1858,7 +1858,7 @@
 /* The window of the top-bar button (the utility widgets as pages) */
 .muna-menu .popup-menu-content {
     padding: 0;
-    border-radius: 24px;
+    border-radius: 26px;
     background-color: rgba(34, 34, 40, 0.97);
     border: 1px solid rgba(255, 255, 255, 0.10);
 }
@@ -1900,15 +1900,20 @@
     color: #62a0ea;
 }
 
+.muna-menu-logo {
+    padding: 2px 0 0 0;
+}
+
 .muna-menu-title {
-    font-size: 10pt;
+    font-size: 8.5pt;
     font-weight: bold;
+    letter-spacing: 1px;
     color: rgba(255, 255, 255, 0.55);
-    padding: 0 4px;
+    padding: 2px 6px 0 6px;
 }
 
 .muna-menu-scroll {
-    max-height: 520px;
+    max-height: 640px;
 }
 
 .muna-menu-footer {
@@ -2085,3 +2090,49 @@
 .muna-pill-bad { background-color: rgba(255, 69, 58, 0.2); color: #ff453a; }
 .muna-monitor-note { color: rgba(255, 255, 255, 0.45); font-size: 11px; padding: 6px 14px 10px 14px; }
 .muna-disk-bar { margin: 0 14px 10px 14px; }
+
+/* Monitoring pages as in the reference: one card, sections divided by thin lines */
+.muna-bigcard { padding: 4px 0; }
+.muna-section-label { color: rgba(255, 255, 255, 0.55); font-size: 9.5pt; padding: 8px 14px 2px 14px; }
+.muna-value-row { padding: 2px 14px; spacing: 6px; }
+.muna-value-label { color: rgba(255, 255, 255, 0.78); font-size: 10pt; }
+.muna-value-text { color: rgba(255, 255, 255, 0.78); font-size: 10pt; }
+.muna-value-strong { color: white; font-weight: 600; }
+.muna-value-muted { color: rgba(255, 255, 255, 0.45); font-size: 9.5pt; }
+.muna-value-indent { padding-left: 22px; color: rgba(255, 255, 255, 0.62); }
+.muna-tile-row { padding: 2px 14px 8px 14px; spacing: 10px; }
+.muna-big-tile { background-color: rgba(255, 255, 255, 0.06); border-radius: 14px; padding: 8px 10px 10px 10px; spacing: 2px; }
+.muna-big-tile-head { color: rgba(255, 255, 255, 0.62); font-size: 9.5pt; spacing: 5px; }
+.muna-big-tile-icon { icon-size: 13px; }
+.muna-big-tile-value { color: white; font-size: 15pt; font-weight: 500; }
+.muna-meter-row { padding: 4px 14px 0 14px; spacing: 10px; }
+.muna-meter-lead { min-width: 64px; padding: 0; }
+.muna-meter-label { color: rgba(255, 255, 255, 0.72); font-size: 10pt; }
+.muna-meter-chevron { icon-size: 12px; color: rgba(255, 255, 255, 0.5); margin-right: 4px; }
+.muna-meter-icon { icon-size: 15px; color: rgba(255, 255, 255, 0.6); margin-right: 8px; }
+.muna-meter-percent { color: white; font-size: 10pt; min-width: 38px; text-align: right; }
+.muna-meter-detail { padding: 2px 0 4px 0; }
+.muna-graph { margin: 0 14px 6px 14px; }
+.muna-graph-scale { color: rgba(255, 255, 255, 0.55); font-size: 8pt; background-color: rgba(0, 0, 0, 0.35); border-radius: 5px; padding: 0 5px; margin: 1px 0 0 0; }
+.muna-icon-link { padding: 2px 4px; border-radius: 6px; color: rgba(255, 255, 255, 0.55); }
+.muna-icon-link:hover { background-color: rgba(255, 255, 255, 0.1); }
+.muna-speed-row { padding: 10px 14px 4px 14px; spacing: 12px; }
+.muna-speed { spacing: 8px; }
+.muna-speed-icon { font-size: 16pt; font-weight: 500; }
+.muna-blue { color: #3b8ef5; }
+.muna-green { color: #30d158; }
+.muna-red { color: #ff4560; }
+.muna-speed-value { color: white; font-size: 13pt; font-weight: 500; }
+.muna-speed-label { color: rgba(255, 255, 255, 0.5); font-size: 9.5pt; }
+.muna-vline { width: 1px; background-color: rgba(255, 255, 255, 0.1); }
+.muna-pillbtn { border-radius: 99px; background-color: rgba(255, 255, 255, 0.1); padding: 4px 12px; color: rgba(255, 255, 255, 0.88); font-size: 9.5pt; }
+.muna-pillbtn:hover { background-color: rgba(255, 255, 255, 0.18); }
+.muna-pillbtn-icon { icon-size: 13px; margin-right: 6px; }
+.muna-pill-row { padding: 4px 14px; spacing: 8px; }
+.muna-disk-tiles { padding: 2px 14px 8px 14px; spacing: 8px; }
+.muna-disk-tile { background-color: rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 8px 10px; }
+.muna-disk-tile:hover { background-color: rgba(255, 255, 255, 0.11); }
+.muna-disk-tile:checked { background-color: rgba(53, 132, 228, 0.32); }
+.muna-badge { background-color: rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1px 8px; margin-left: 4px; font-size: 8.5pt; color: rgba(255, 255, 255, 0.7); }
+.muna-icon-row { padding: 6px 14px; spacing: 0; }
+.muna-meter-green .muna-system-fill { background-color: #30d158; }

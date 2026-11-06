@@ -2136,3 +2136,60 @@
 .muna-badge { background-color: rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1px 8px; margin-left: 4px; font-size: 8.5pt; color: rgba(255, 255, 255, 0.7); }
 .muna-icon-row { padding: 6px 14px; spacing: 0; }
 .muna-meter-green .muna-system-fill { background-color: #30d158; }
+
+/* Pieces for the pages that copy the reference: folds, check boxes, icon lines, pickers */
+.muna-collapse-head { padding: 8px 14px; border-radius: 10px; }
+.muna-collapse-head:hover { background-color: rgba(255, 255, 255, 0.05); }
+.muna-collapse-title { color: rgba(255, 255, 255, 0.78); font-size: 10.5pt; }
+.muna-collapse-count { color: #4a9bff; font-size: 9pt; font-weight: 600; }
+.muna-check-row { padding: 6px 14px 6px 22px; border-radius: 8px; }
+.muna-check-row:hover { background-color: rgba(255, 255, 255, 0.04); }
+.muna-check-texts { padding-left: 10px; spacing: 1px; }
+.muna-checkbox { border-radius: 5px; border: 1px solid rgba(255, 255, 255, 0.35); background-color: rgba(255, 255, 255, 0.05); }
+.muna-checkbox:checked { background-color: #3584e4; border-color: #3584e4; }
+.muna-checkbox-tick { icon-size: 12px; color: white; }
+.muna-icon-line { padding: 8px 14px; }
+.muna-icon-line:hover { background-color: rgba(255, 255, 255, 0.05); }
+.muna-icon-square { width: 28px; height: 28px; margin-right: 12px; }
+.muna-icon-square-icon { icon-size: 18px; color: #3b8ef5; }
+.muna-dropdown { background-color: rgba(255, 255, 255, 0.09); border-radius: 12px; padding: 4px 10px; min-height: 22px; }
+.muna-dropdown:hover { background-color: rgba(255, 255, 255, 0.15); }
+.muna-dropdown-label { color: rgba(255, 255, 255, 0.9); font-size: 9.5pt; }
+.muna-dropdown-arrow { icon-size: 12px; color: rgba(255, 255, 255, 0.6); }
+.muna-dropdown-list { background-color: rgba(20, 20, 24, 0.96); border-radius: 12px; padding: 4px; margin-top: 3px; }
+.muna-dropdown-item { padding: 5px 10px; border-radius: 8px; color: rgba(255, 255, 255, 0.85); font-size: 9.5pt; }
+.muna-dropdown-item:hover { background-color: rgba(255, 255, 255, 0.1); }
+.muna-dropdown-item:checked { background-color: rgba(53, 132, 228, 0.35); }
+.muna-dots { spacing: 8px; padding: 2px 14px 8px 14px; }
+.muna-dot { height: 26px; border-radius: 9px; border: 1px solid transparent; background-color: rgba(255, 255, 255, 0.06); }
+.muna-dot:checked { border-color: #3584e4; }
+.muna-dot-none { icon-size: 14px; color: rgba(255, 255, 255, 0.5); }
+.muna-icon-choice { height: 34px; border-radius: 9px; background-color: rgba(255, 255, 255, 0.07); border: 1px solid transparent; }
+.muna-icon-choice:hover { background-color: rgba(255, 255, 255, 0.13); }
+.muna-icon-choice:checked { border-color: #3584e4; }
+.muna-icon-choice-icon { icon-size: 18px; color: #ff9500; }
+.muna-slider-row { padding: 4px 14px 2px 14px; spacing: 8px; }
+.muna-subcard { background-color: rgba(255, 255, 255, 0.04); border-radius: 12px; margin: 4px 14px 6px 14px; padding: 4px 0; }
+.muna-hint { color: rgba(255, 255, 255, 0.35); font-size: 9pt; padding: 2px 14px 6px 14px; }
+.muna-custom-line { padding: 0 6px 0 4px; }
+.muna-custom-handle { padding: 8px 6px; color: rgba(255, 255, 255, 0.4); border-radius: 8px; }
+.muna-custom-handle:hover { color: white; background-color: rgba(255, 255, 255, 0.08); }
+.muna-custom-eye { padding: 6px 8px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.6); }
+.muna-custom-eye:hover { background-color: rgba(255, 255, 255, 0.16); }
+.muna-menu-customize { padding: 4px 6px; border-radius: 8px; color: rgba(255, 255, 255, 0.55); }
+.muna-menu-customize:hover { background-color: rgba(255, 255, 255, 0.1); }
+.muna-menu-ok { padding: 4px 14px; border-radius: 10px; background-color: #0a84ff; color: white; font-weight: 600; }
+.muna-menu-reset { padding: 4px 8px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
+.muna-option-line { padding: 6px 14px 6px 22px; }
+.muna-labelled { padding: 6px 14px 2px 14px; spacing: 8px; }
+.muna-app-line { padding: 8px 14px; spacing: 12px; }
+.muna-app-icon { icon-size: 30px; background-color: rgba(255, 255, 255, 0.08); border-radius: 9px; padding: 3px; }
+.muna-app-body { spacing: 4px; }
+.muna-app-slider { spacing: 6px; }
+.muna-app-reset { padding: 3px 5px; border-radius: 8px; color: rgba(255, 255, 255, 0.55); }
+.muna-app-reset:hover { background-color: rgba(255, 255, 255, 0.1); }
+
+/* The cards of the top-bar window are not the notification cards above: no gap between rows */
+.muna-menu .muna-card { spacing: 0; width: auto; }
+.muna-group-head { padding: 6px 8px; border-radius: 8px; }
+.muna-group-title { color: rgba(255, 255, 255, 0.55); font-size: 8.5pt; font-weight: bold; letter-spacing: 1px; }

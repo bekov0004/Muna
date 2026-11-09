@@ -2218,24 +2218,23 @@
 .muna-phone-step { color: rgba(255, 255, 255, 0.55); font-size: 9pt; padding: 1px 14px; }
 .muna-phone-actions { spacing: 8px; padding-top: 6px; }
 
-/* The Phone section of the capsule */
-.muna-phone-view { padding: 6px 0 10px 0; }
-.muna-phone-center { spacing: 12px; padding: 18px 40px; }
+/* The Phone tile and the enlarged phone card */
+.muna-phonecard-icon { icon-size: 30px; color: rgba(255, 255, 255, 0.75); }
+.muna-phonecard-title { color: white; font-size: 10.5pt; font-weight: 600; padding-top: 6px; }
+.muna-phonecard-subtitle { color: rgba(255, 255, 255, 0.5); font-size: 8.5pt; }
+.muna-phone-frame { border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.16); }
+.muna-phone-status { color: rgba(255, 255, 255, 0.6); font-size: 9.5pt; padding: 0 22px; }
+.muna-phone-controls { spacing: 6px; margin: 10px; }
+.muna-button.muna-phone-control { width: 34px; height: 34px; border-radius: 17px; background-color: rgba(20, 20, 24, 0.62); color: white; }
+.muna-button.muna-phone-control:hover { background-color: rgba(60, 60, 68, 0.8); }
+.muna-phone-control .muna-button-icon { icon-size: 15px; }
+.muna-phone-center { spacing: 12px; padding: 14px 6px; }
 .muna-phone-bigicon { icon-size: 44px; color: rgba(255, 255, 255, 0.55); }
-.muna-phone-title { color: white; font-size: 11.5pt; font-weight: 600; text-align: center; }
-.muna-phone-note { color: rgba(255, 255, 255, 0.55); font-size: 9.5pt; text-align: center; max-width: 360px; }
+.muna-phone-title { color: white; font-size: 11pt; font-weight: 600; text-align: center; }
+.muna-phone-note { color: rgba(255, 255, 255, 0.55); font-size: 9.5pt; text-align: center; }
 .muna-phone-code { font-family: monospace; color: rgba(255, 255, 255, 0.85); background-color: rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 6px 12px; }
 .muna-phone-row { spacing: 8px; }
 .muna-phone-pill { border-radius: 99px; background-color: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.9); padding: 6px 18px; font-size: 10pt; }
 .muna-phone-pill:hover { background-color: rgba(255, 255, 255, 0.18); }
 .muna-phone-pill-primary { background-color: #0a84ff; color: white; }
 .muna-phone-pill-primary:hover { background-color: #3a9bff; }
-.muna-phone-stage { spacing: 14px; }
-.muna-phone-frame { border-radius: 32px; background-color: #000; border: 3px solid rgba(255, 255, 255, 0.14); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
-.muna-phone-screen { }
-.muna-phone-status { color: rgba(255, 255, 255, 0.6); font-size: 9.5pt; padding: 0 22px; }
-.muna-phone-tools { spacing: 8px; }
-.muna-phone-tool { width: 38px; height: 38px; border-radius: 99px; background-color: rgba(255, 255, 255, 0.07); }
-.muna-phone-tool:hover { background-color: rgba(255, 255, 255, 0.16); }
-.muna-phone-tool-icon { icon-size: 17px; color: rgba(255, 255, 255, 0.85); }
-.muna-phone-tools-gap { height: 14px; }

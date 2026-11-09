@@ -7,12 +7,12 @@ import {QrCode} from '../../ui/qrCode.js';
 import {MunaWidget} from '../widget.js';
 
 const LEASE_RENEW_S = 5;
-const INSTALL_COMMAND = 'sudo apt install adb scrcpy';
+const INSTALL_COMMAND = 'sudo apt install adb';
 
 /**
  * Phone: see the screen of an Android phone on the computer and control it. A QR code on this page is
  * scanned in the phone's Developer options (Wireless debugging > Pair device with QR code); Muna pairs
- * with it and opens the screen with scrcpy. The work is done by the Muna service (service/phone).
+ * with it and opens the screen in a window of its own. The work is done by the Muna service (service/phone).
  */
 export class PhoneWidget extends MunaWidget {
     static id = 'phone';
@@ -85,10 +85,9 @@ export class PhoneWidget extends MunaWidget {
         const state = this._phone?.state ?? {};
         const body = this._body;
 
-        if (!state.adb || !state.scrcpy) {
-            const what = !state.adb ? 'adb and scrcpy are' : 'scrcpy is';
-            const {row} = iconRow({icon: 'dialog-information-symbolic', title: `Install the tools first`,
-                subtitle: `${what} not installed. One command installs them:`});
+        if (!state.adb) {
+            const {row} = iconRow({icon: 'dialog-information-symbolic', title: 'Install adb first',
+                subtitle: 'adb is the standard Android tool that talks to the phone. One command installs it:'});
             body.add_child(row);
             const command = new St.Label({text: INSTALL_COMMAND, style_class: 'muna-code', x_expand: true});
             body.add_child(command);
@@ -108,7 +107,7 @@ export class PhoneWidget extends MunaWidget {
             const title = device.model || device.serial;
             const subtitle = device.state !== 'device' ? device.state : showing ? 'Showing on this screen' : 'Connected';
             const controls = new St.BoxLayout({style_class: 'muna-phone-actions'});
-            if (device.state === 'device' && state.scrcpy) {
+            if (device.state === 'device') {
                 controls.add_child(pillButton({label: showing ? 'Stop' : 'Show screen', icon: showing ? 'media-playback-stop-symbolic' : 'video-display-symbolic',
                     onClick: () => this._call(showing ? 'stopMirror' : 'mirror', {serial: device.serial})}));
             }

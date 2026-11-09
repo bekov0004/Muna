@@ -242,6 +242,7 @@ export class PhoneCardActivity extends LiveActivity {
 
         const bottom = new St.BoxLayout({style_class: 'muna-phone-controls', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.END, x_expand: true, y_expand: true});
         // Keeps the phone's own screen dark (the phone stays awake) while it is used from here.
+        let shownError = '';
         const dark = createButton({iconName: 'weather-clear-night-symbolic', styleClass: 'muna-phone-control', onClick: () => {
             const c = control();
             if (c)
@@ -249,6 +250,11 @@ export class PhoneCardActivity extends LiveActivity {
             syncDark();
         }});
         const syncDark = () => {
+            const error = control()?.darkError ?? '';
+            if (error && error !== shownError) {
+                shownError = error;
+                Main.notify('Phone', error);
+            }
             const on = !!control()?.wantDark;
             dark.set_style_class_name(`muna-button muna-phone-control${on ? ' muna-phone-control-on' : ''}`);
         };

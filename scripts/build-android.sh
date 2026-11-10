@@ -17,7 +17,7 @@ case "${1:-build}" in
         mkdir -p ../dist
         cp app/build/outputs/apk/debug/app-debug.apk ../dist/muna-phone.apk
         echo "Built dist/muna-phone.apk"
-        if [[ "$1" == "install" ]]; then
+        if [[ "${1:-}" == "install" ]]; then
             adb install -r ../dist/muna-phone.apk
         fi
         ;;

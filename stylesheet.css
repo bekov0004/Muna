@@ -2273,6 +2273,7 @@
 .muna-winmap-tab { border-radius: 8px; padding: 5px 6px; font-size: 9pt; color: rgba(255, 255, 255, 0.75); background-color: rgba(255, 255, 255, 0.05); }
 .muna-winmap-tab:hover { background-color: rgba(255, 255, 255, 0.12); }
 .muna-winmap-tab:checked { background-color: rgba(53, 132, 228, 0.55); color: white; }
+.muna-winmap-tab-dot { width: 6px; height: 6px; border-radius: 3px; background-color: #5aa9ff; margin-right: 6px; }
 .muna-winmap-tab-count { color: rgba(255, 255, 255, 0.5); font-size: 8pt; }
 .muna-drop-target { border: 1px dashed rgba(120, 175, 245, 0.95); }
 .muna-winmap-row { spacing: 6px; padding: 0 8px; }

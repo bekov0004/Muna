@@ -2203,7 +2203,8 @@
 .muna-menu .muna-card { spacing: 0; width: auto; }
 .muna-group-head { padding: 6px 8px; border-radius: 8px; }
 .muna-group-title { color: rgba(255, 255, 255, 0.55); font-size: 8.5pt; font-weight: bold; letter-spacing: 1px; }
-.muna-bar-readings { font-size: 9pt; padding-left: 6px; }
+.muna-bar-readings { font-size: 9pt; }
+.muna-bar-readings-button { -natural-hpadding: 8px; -minimum-hpadding: 6px; }
 
 /* The small option lines under "Options" of Keep awake: grey icon, small text */
 .muna-option-line .muna-icon-square-icon { icon-size: 14px; color: rgba(255, 255, 255, 0.72); }

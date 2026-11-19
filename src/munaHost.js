@@ -37,6 +37,7 @@ import {latinAccel, restoreFreedBindings, syncFreedBindings} from './utils/freed
 import {targetMonitors} from './utils/monitors.js';
 import {SignalTracker} from './utils/signals.js';
 import {MonitorDesktops} from './windows/monitorDesktops.js';
+import {DisplayService} from './displays/displayService.js';
 
 const SHORTCUTS = [
     ['shortcut-muna', 'muna'],
@@ -118,6 +119,7 @@ export class MunaHost {
             notes: new NotesService(this._backend.notes),
             notifications: new NotificationsService(),
             desktops: new MonitorDesktops({gsettings: this._settings.gsettings ?? null}),
+            displays: new DisplayService({gsettings: this._settings.gsettings ?? null}),
             camera: new CameraService(),
             localSend: new LocalSendService(this._backend.localSend),
             clipboard: new ClipboardService(this._backend.clipboard, {
@@ -202,6 +204,7 @@ export class MunaHost {
             services.notes.destroy();
             services.camera.destroy();
             services.desktops.destroy();
+            services.displays.destroy();
             services.localSend.destroy();
             this._backend.shutdown();
             this._backend = null;

@@ -1872,8 +1872,15 @@
     spacing: 12px;
 }
 
-.muna-menu-tabs {
+.muna-menu-tabs-row {
     spacing: 2px;
+}
+
+.muna-menu-tabs-scroll {
+    -st-hfade-offset: 22px;
+}
+
+.muna-menu-tabs {
     padding: 5px;
     border-radius: 18px;
     background-color: rgba(255, 255, 255, 0.04);
@@ -1882,6 +1889,7 @@
 
 .muna-button.muna-menu-tab {
     height: 40px;
+    min-width: 40px;
     border-radius: 13px;
     padding: 0;
     background-color: transparent;

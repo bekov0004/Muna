@@ -8,4 +8,6 @@ CFLAGS="-O2 -Wall -Wextra -Werror"
 gcc $CFLAGS -o build/test_awdl test_awdl.c awdl.c
 ./build/test_awdl
 gcc $CFLAGS -o build/muna-awdl muna-awdl.c awdl.c
-echo "built airdrop/build/muna-awdl"
+gcc $CFLAGS -o build/muna-awdld muna-awdld.c awdl.c
+python3 test_airdrop.py | tail -1
+echo "built airdrop/build/muna-awdl and muna-awdld"

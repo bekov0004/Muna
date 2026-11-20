@@ -11,6 +11,16 @@ export function logoFile() {
     return Gio.File.new_for_path(`${dir}/icons/dev.muna.Muna.svg`);
 }
 
+/** The butterfly of the logo as a one-colour icon, the default of the top-bar button. */
+export const BUTTERFLY_ICON = 'muna-butterfly-symbolic';
+
+/** A Gio.Icon for an icon name: the theme's, or Muna's own butterfly (icons/ of the extension). */
+export function iconFor(name) {
+    if (name === BUTTERFLY_ICON)
+        return new Gio.FileIcon({file: logoFile().get_parent().get_child(`${BUTTERFLY_ICON}.svg`)});
+    return new Gio.ThemedIcon({name});
+}
+
 /** The Muna mark, shown at the top of the quick panel. */
 export const Logo = GObject.registerClass(class Logo extends St.Icon {
     _init({size = 40} = {}) {

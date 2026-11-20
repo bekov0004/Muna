@@ -2321,3 +2321,18 @@
 .muna-reading-graph { padding: 4px 14px 6px 14px; }
 .muna-reading-more { border-radius: 12px; padding: 8px; font-size: 9.5pt; font-weight: 600; color: rgba(255, 255, 255, 0.85); background-color: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.10); }
 .muna-reading-more:hover { background-color: rgba(255, 255, 255, 0.13); color: white; }
+
+/* AI agents: tasks, questions, limits */
+.muna-agent-dot { margin-top: 4px; }
+.muna-agent-dot.waiting { background-color: #fbbf24; }
+.muna-agent-dot.failed { background-color: #f87171; }
+.muna-agent-dot.idle, .muna-agent-dot.done { background-color: rgba(74, 222, 128, 0.55); }
+.muna-agent-current { color: rgba(255, 255, 255, 0.72); font-size: 10.5px; padding-top: 2px; }
+.muna-agent-entry { margin: 2px 0; }
+.muna-agent-window { min-width: 58px; }
+.muna-agent-reset { padding: 0 14px 6px 78px; font-size: 9pt; }
+.muna-agent-ask { spacing: 6px; padding-top: 6px; padding-bottom: 6px; }
+.muna-agent-ask-text { color: #fcd34d; font-size: 11px; font-weight: 600; }
+.muna-agent-actions { spacing: 6px; padding-top: 4px; padding-bottom: 6px; }
+.muna-agent-card-icon { icon-size: 16px; color: #fbbf24; padding-right: 8px; }
+.muna-agent-card-detail { font-family: monospace; font-size: 10.5px; color: rgba(255, 255, 255, 0.8); background-color: rgba(255, 255, 255, 0.07); border-radius: 8px; padding: 5px 8px; margin-top: 4px; }

@@ -55,19 +55,20 @@ rm -rf "$DATA/gnome-shell/extensions/muna@bekov0004.github.io" "$DATA/applicatio
 # --- install ----------------------------------------------------------------------------------
 rm -rf "$DEST"
 mkdir -p "$DEST"
-cp -r "$SRC/extension.js" "$SRC/prefs.js" "$SRC/prefsUtilities.js" "$SRC/prefsGestures.js" "$SRC/metadata.json" "$SRC/stylesheet.css" \
+cp -r "$SRC/extension.js" "$SRC/prefs.js" "$SRC/prefsWindow.js" "$SRC/prefsText.js" "$SRC/prefsUtilities.js" "$SRC/prefsGestures.js" "$SRC/metadata.json" "$SRC/stylesheet.css" \
       "$SRC/src" "$SRC/service" "$SRC/phone-helper" "$SRC/schemas" "$DEST/"
 glib-compile-schemas "$DEST/schemas"
 echo "Installed to $DEST"
 
-# A launcher for the Muna app window (status, Scratchpad). It also works with the extension off.
+# A launcher for the Muna app: its settings (and the service status, the Scratchpad, the agents). It also works with the extension off.
 mkdir -p "$DATA/applications"
 cat > "$DATA/applications/dev.muna.Muna.desktop" <<UNIT
 [Desktop Entry]
 Type=Application
 Name=Muna
-Comment=Status of the Muna service and the Scratchpad (the capsule is a GNOME Shell extension)
+Comment=Settings of Muna, the Dynamic Island for GNOME
 Icon=view-grid-symbolic
+StartupWMClass=dev.muna.Muna
 Exec=$(command -v gjs) -m $DEST/service/main.js
 Categories=Utility;
 UNIT

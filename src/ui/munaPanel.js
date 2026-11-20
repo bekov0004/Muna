@@ -4,6 +4,7 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {animDuration} from '../utils/animation.js';
+import {BUTTERFLY_ICON, iconFor} from './logo.js';
 import {createButton} from './button.js';
 
 export const PanelMode = Object.freeze({MUNA: 'muna', TRAY: 'tray', LOCALSEND: 'localsend', CLIPBOARD: 'clipboard', NOTIFICATIONS: 'notifications', COMMAND: 'command'});
@@ -456,7 +457,7 @@ export class MunaPanel extends St.BoxLayout {
         });
         this._tabButtons = new Map();
         for (const [mode, label, icon] of [
-            [PanelMode.MUNA, 'Muna', 'view-grid-symbolic'],
+            [PanelMode.MUNA, 'Muna', BUTTERFLY_ICON],
             [PanelMode.TRAY, 'Tray', 'folder-download-symbolic'],
             [PanelMode.LOCALSEND, 'LocalSend', 'network-wireless-symbolic'],
             [PanelMode.CLIPBOARD, 'Clipboard', 'edit-paste-symbolic'],
@@ -464,7 +465,7 @@ export class MunaPanel extends St.BoxLayout {
         ]) {
             const tab = createButton({
                 label,
-                iconName: icon,
+                ...(icon === BUTTERFLY_ICON ? {gicon: iconFor(icon)} : {iconName: icon}),
                 styleClass: 'muna-tab',
                 onClick: () => this.setMode(mode),
             });

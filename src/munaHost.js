@@ -15,6 +15,7 @@ import {ToolsMenu} from './ui/toolsMenu.js';
 import {WIDGET_CLASSES} from './widgets/registry.js';
 import {MunaBackend} from './client/moduleClient.js';
 import {BarHider} from './ui/barHider.js';
+import {MunaBar} from './ui/munaBar.js';
 import {AgentsService} from './services/agentsService.js';
 import {DownloadsService} from './services/downloadsService.js';
 import {FocusService} from './services/focusService.js';
@@ -235,6 +236,9 @@ export class MunaHost {
         for (const bar of this._bars?.values() ?? [])
             bar.destroy();
         this._bars?.clear();
+        for (const bar of this._munaBars?.values() ?? [])
+            bar.destroy();
+        this._munaBars?.clear();
         this._panel?.destroy();
         this._panel = null;
     }
@@ -444,6 +448,8 @@ export class MunaHost {
             this._syncMonitor();
         else if (key === 'action-request')
             this._runAction(this._settings.get('action-request').split(':')[0]);
+        else if (key === 'muna-bar')
+            this._syncCapsules();
         else if (key === 'topbar-hide' || key === 'muna-bar-hide')
             this._bars?.forEach(bar => bar.syncStruts());
         else if (key === 'bar-icon')
@@ -456,8 +462,10 @@ export class MunaHost {
             this._server?.setFolder(this._settings.get('localsend-folder') ?? '');
         else if (key === 'localsend-receive')
             this._syncReceiving();
-        else if (key === 'panel-color' || key === 'panel-opacity')
+        else if (key === 'panel-color' || key === 'panel-opacity') {
             this._applyBarLook();
+            this._munaBars?.forEach(bar => bar.setLook({color: this._settings.get('panel-color'), opacity: this._settings.get('panel-opacity')}));
+        }
     }
 
     /**
@@ -566,6 +574,7 @@ export class MunaHost {
             this._leaderIndex = wanted[0];
 
             this._syncBar(wanted);
+            this._syncMunaBars({rebuild});
             this._syncBars(wanted, {rebuild});
             for (const index of wanted) {
                 if (this._capsules.has(index))
@@ -580,7 +589,11 @@ export class MunaHost {
                 muna.enable();
                 muna.setBar(this._barFor(index));
             }
-            this._capsules.forEach(muna => muna._relayout());
+            this._capsules.forEach((muna, index) => {
+                muna.setBar(this._barFor(index));
+                muna._relayout();
+            });
+            this._munaBars?.forEach(bar => bar.syncCapsule());
         } finally {
             this._syncing = false;
         }
@@ -606,25 +619,58 @@ export class MunaHost {
     _syncBars(wanted, {rebuild = false} = {}) {
         this._bars ??= new Map();
         const primary = Main.layoutManager.primaryIndex;
-        const needed = new Set([primary, ...wanted]);
+        const needed = new Set([primary, ...wanted, ...(this._munaBars?.keys() ?? [])]);
+        const boxFor = index => (index === primary ? Main.layoutManager.panelBox : this._munaBars?.get(index) ?? null);
         for (const [index, bar] of [...this._bars]) {
-            if (rebuild || !needed.has(index)) {
+            if (rebuild || !needed.has(index) || bar.box !== boxFor(index)) {
                 bar.destroy();
                 this._bars.delete(index);
             }
         }
+        // a menu of GNOME's bar keeps the bar it was opened from out (the Muna bar opens the same menus)
+        const menuFrom = actor => {
+            const source = Main.panel.menuManager?.activeMenu?.sourceActor;
+            return !!source && !!actor && (actor === source || actor.contains(source));
+        };
         for (const index of needed) {
             if (this._bars.has(index))
                 continue;
             const onPrimary = index === primary;
             const capsule = () => this._capsules.get(index);
+            const box = boxFor(index);
             this._bars.set(index, new BarHider({
                 monitorIndex: index,
-                box: onPrimary ? Main.layoutManager.panelBox : null,
+                box,
                 mode: () => this._settings.get(onPrimary ? 'topbar-hide' : 'muna-bar-hide'),
-                isBusy: () => !!capsule()?.busy || (onPrimary && !!Main.panel.menuManager?.activeMenu),
+                isBusy: () => !!capsule()?.busy || menuFrom(onPrimary ? Main.panel : box),
                 hoverActors: () => [capsule()?._actor].filter(Boolean),
             }));
+        }
+    }
+
+    /** The Muna bar on every monitor without GNOME's top bar (Settings → General → Top bar). */
+    _syncMunaBars({rebuild = false} = {}) {
+        this._munaBars ??= new Map();
+        const primary = Main.layoutManager.primaryIndex;
+        const wanted = this._settings.get('muna-bar')
+            ? Main.layoutManager.monitors.map(m => m.index).filter(i => i !== primary) : [];
+        for (const [index, bar] of [...this._munaBars]) {
+            if (rebuild || !wanted.includes(index)) {
+                this._bars?.get(index)?.destroy();
+                this._bars?.delete(index);
+                bar.destroy();
+                this._munaBars.delete(index);
+            }
+        }
+        for (const index of wanted) {
+            if (this._munaBars.has(index))
+                continue;
+            const bar = new MunaBar({monitorIndex: index, desktops: this._services.desktops, hasCapsule: () => this._capsules.has(index)});
+            Main.layoutManager.addChrome(bar, {affectsStruts: true, trackFullscreen: true});
+            // under the capsules, like GNOME's bar
+            bar.get_parent()?.set_child_below_sibling(bar, Main.layoutManager.panelBox);
+            bar.setLook({color: this._settings.get('panel-color'), opacity: this._settings.get('panel-opacity')});
+            this._munaBars.set(index, bar);
         }
     }
 

@@ -365,6 +365,12 @@
       <description>never: always shown (hidden only for full-screen applications); intellihide: hidden while a window touches it; always: hidden until the pointer pushes against the top edge.</description>
     </key>
 
+    <key name="muna-bar" type="b">
+      <default>true</default>
+      <summary>Muna bar on the other monitors</summary>
+      <description>A top bar of Muna on every monitor without GNOME's: the desktops of that monitor, the capsule (or the clock), and the items of GNOME's top bar, whose menus open there.</description>
+    </key>
+
     <key name="muna-bar-hide" type="s">
       <choices>
         <choice value="never"/>

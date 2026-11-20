@@ -1824,11 +1824,9 @@ export class MunaPreferences {
         body.valign = Gtk.Align.START;
         body.margin_top = 60;
         body.spacing = 8;
-        const logo = this._icon('view-grid-symbolic');
-        logo.set_size_request(72, 72);
-        logo.halign = Gtk.Align.CENTER;
-        logo.valign = Gtk.Align.START;
-        logo.vexpand = false;
+        // the Muna mark: icons/dev.muna.Muna.svg next to this file
+        const markFile = Gio.File.new_for_uri(import.meta.url).get_parent().get_child('icons').get_child('dev.muna.Muna.svg');
+        const logo = new Gtk.Image({gicon: new Gio.FileIcon({file: markFile}), pixel_size: 112, halign: Gtk.Align.CENTER, valign: Gtk.Align.START});
         body.append(logo);
         body.append(new Gtk.Label({label: _('Muna'), css_classes: ['muna-page-title']}));
         const version = this._dim(_('Version %s').format(this.metadata['version-name'] ?? ''));

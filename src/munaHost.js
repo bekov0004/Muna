@@ -15,6 +15,7 @@ import {ToolsMenu} from './ui/toolsMenu.js';
 import {WIDGET_CLASSES} from './widgets/registry.js';
 import {MunaBackend} from './client/moduleClient.js';
 import {BarHider} from './ui/barHider.js';
+import {ReminderService} from './services/reminderService.js';
 import {MunaBar} from './ui/munaBar.js';
 import {AgentsService} from './services/agentsService.js';
 import {DownloadsService} from './services/downloadsService.js';
@@ -142,6 +143,14 @@ export class MunaHost {
                 maxItems: () => this._settings.get('clipboard-max-items'),
             }),
         };
+        // the butterfly's reminders: one after the other, from the capsule where the pointer is
+        this._services.reminders = new ReminderService(this._settings);
+        this._reminderQueue = [];
+        this._services.reminders.connectObject('due', (_r, reminder) => {
+            this._reminderQueue.push(reminder);
+            if (!this._showingReminder)
+                this._nextReminder();
+        }, this);
         // a background agent task asks: the card shows on the screen with the pointer
         this._services.agents.connectObject('permission', (_a, request) =>
             this._capsuleAtPointer()?.showAgentQuestion(request), this);
@@ -217,6 +226,8 @@ export class MunaHost {
             services.downloads.destroy();
             services.agents.disconnectObject(this);
             services.agents.destroy();
+            services.reminders?.disconnectObject(this);
+            services.reminders?.destroy();
             services.lyrics.destroy();
             services.todo.destroy();
             services.notes.destroy();
@@ -271,6 +282,15 @@ export class MunaHost {
                 changed = true;
             }
             gsettings.set_boolean('phonecard-offered', true);
+        }
+        // the butterfly's reminders, after Keep awake
+        if (!this._settings.get('reminders-offered')) {
+            if (!list.includes('reminders')) {
+                const at = list.indexOf('awake');
+                list.splice(at >= 0 ? at + 1 : list.length, 0, 'reminders');
+                changed = true;
+            }
+            gsettings.set_boolean('reminders-offered', true);
         }
         if (changed)
             gsettings.set_strv('enabled-widgets', list);
@@ -448,7 +468,15 @@ export class MunaHost {
             this._syncMonitor();
         else if (key === 'action-request')
             this._runAction(this._settings.get('action-request').split(':')[0]);
-        else if (key === 'muna-bar')
+        else if (key === 'reminder-preview') {
+            try {
+                const preview = JSON.parse(this._settings.get('reminder-preview') || 'null');
+                if (preview && Date.now() - (preview.at ?? 0) < 15000)
+                    this._services.reminders?.preview(preview);
+            } catch (e) {
+                // not a reminder
+            }
+        } else if (key === 'muna-bar')
             this._syncCapsules();
         else if (key === 'topbar-hide' || key === 'muna-bar-hide')
             this._bars?.forEach(bar => bar.syncStruts());
@@ -580,7 +608,7 @@ export class MunaHost {
                 if (this._capsules.has(index))
                     continue;
                 const muna = new Muna(this._settings, {
-                    shared: {events: this._events, services: this._services, panel: this._panel},
+                    shared: {events: this._events, services: this._services, panel: this._panel, openMenuPage: id => this._runAction(`page-${id}`)},
                     monitorIndex: () => index,
                     leader: index === wanted[0],
                     openPreferences: this._openPreferences,
@@ -646,6 +674,20 @@ export class MunaHost {
                 hoverActors: () => [capsule()?._actor].filter(Boolean),
             }));
         }
+    }
+
+    _nextReminder() {
+        const reminder = this._reminderQueue.shift();
+        const capsule = this._capsuleAtPointer() ?? this.capsules[0];
+        if (!reminder || !capsule) {
+            this._showingReminder = false;
+            return;
+        }
+        this._showingReminder = true;
+        capsule.showReminder(reminder, {
+            onSnooze: () => this._services.reminders.snooze(reminder.id),
+            onFinished: () => this._nextReminder(),
+        });
     }
 
     /** The Muna bar on every monitor without GNOME's top bar (Settings → General → Top bar). */

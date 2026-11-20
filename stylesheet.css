@@ -2389,3 +2389,26 @@
 .muna-bar-dot:hover { background-color: rgba(255, 255, 255, 0.8); }
 .muna-bar-clock { color: white; font-weight: 700; font-size: 10.5pt; }
 .muna-bar-item { border-radius: 99px; }
+
+/* The butterfly's reminders */
+.muna-rem-row { spacing: 6px; }
+.muna-rem-time { width: 74px; font-feature-settings: "tnum"; font-weight: 700; }
+.muna-rem-item { spacing: 10px; padding-top: 6px; padding-bottom: 6px; }
+.muna-rem-item-time { font-size: 15pt; font-weight: 800; color: white; min-width: 62px; font-feature-settings: "tnum"; }
+.muna-rem-item-time.off { color: rgba(255, 255, 255, 0.35); }
+.muna-rem-remove { border-radius: 99px; padding: 6px; color: rgba(255, 255, 255, 0.6); }
+.muna-rem-remove:hover { background-color: rgba(255, 255, 255, 0.10); color: white; }
+.muna-bfr-card {
+    background-color: rgba(10, 10, 16, 0.94); border-radius: 26px; padding: 16px 22px 14px 22px; spacing: 6px;
+    border: 1px solid rgba(160, 140, 255, 0.28); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+.muna-bfr-time { color: #b9a6ff; font-size: 10pt; font-weight: 700; }
+.muna-bfr-text { color: white; font-size: 16pt; font-weight: 700; }
+.muna-bfr-buttons { spacing: 10px; padding-top: 8px; }
+.muna-bfr-button {
+    border-radius: 99px; padding: 7px 18px; font-weight: 700; font-size: 10.5pt; color: white;
+    background-color: rgba(255, 255, 255, 0.10);
+}
+.muna-bfr-button:hover { background-color: rgba(255, 255, 255, 0.18); }
+.muna-bfr-done { background-color: #6f7bff; }
+.muna-bfr-done:hover { background-color: #8590ff; }

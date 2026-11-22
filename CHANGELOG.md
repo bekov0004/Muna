@@ -8,6 +8,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Every gesture chooses from the same whole list of actions (about sixty, with a search, plus "Windows of an app…" and "Press keys…"): three and four fingers, one finger along an edge (now each direction on its own: left edge up and down, top edge to the right and to the left ...), a double tap, a hold, and touching the fingerprint reader. Along an edge, actions that can be repeated (brightness, volume, workspaces, tabs, zoom, tracks, windows of an app, keys) run at every step, the others once a swipe. The actions that follow three or four fingers (switching apps, the overview, the workspaces) are left out for one finger; their once-only versions are there. New actions: dark style, night light, cleaning mode, record the screen. The earlier edge choices are carried over.
+
 - "Windows of an app…" for any touchpad gesture (three and four fingers, along an edge, a double tap, a hold): choose the action, then the app (or "The app in front"); each time, the next window of that app comes to the front (along an edge: forwards and backwards). An app that is not running starts.
 
 - A double tap or a finger held still (half a second) on the touchpad: at the left or right edge, or in the middle of the top or bottom edge, each with its own action (play or pause, next or previous track, mute, the quick panel, the capsule, the Command Bar, the clipboard, the overview, a screenshot, lock, dark style, keep awake). By default a double tap or a hold in the middle of the top edge plays or pauses the music. With tap to click on, a double tap also double-clicks where the pointer is; holding a finger does not click.

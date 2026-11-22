@@ -79,6 +79,10 @@ export const ACTIONS = [
     {id: 'muna:mic', group: 'Muna', title: 'Microphone on or off', kind: 'once'},
     {id: 'muna:awake', group: 'Muna', title: 'Keep awake', kind: 'once'},
     {id: 'muna:output', group: 'Muna', title: 'Next sound output', kind: 'once'},
+    {id: 'muna:dark', group: 'Muna', title: 'Dark style on or off', kind: 'once'},
+    {id: 'muna:night', group: 'Muna', title: 'Night light on or off', kind: 'once'},
+    {id: 'muna:cleaning', group: 'Muna', title: 'Cleaning mode', kind: 'once'},
+    {id: 'muna:recording', group: 'Muna', title: 'Record the screen', kind: 'once'},
 
     {id: 'app-windows', group: 'Apps and windows', title: 'Windows of an app…', kind: 'once'},
     {id: 'keys', group: 'Other', title: 'Press keys…', kind: 'once'},
@@ -89,6 +93,25 @@ export const DEFAULT_GESTURES = {
     'swipe3-left': 'app-switcher', 'swipe3-right': 'app-switcher', 'swipe3-up': 'overview', 'swipe3-down': 'overview',
     'swipe4-left': 'workspaces', 'swipe4-right': 'workspaces', 'swipe4-up': 'overview', 'swipe4-down': 'overview',
 };
+
+/** Actions that follow three or four fingers: a single finger, a tap or a touch cannot run them. */
+export const LIVE = new Set(ACTIONS.filter(a => a.kind === 'live').map(a => a.id));
+
+/** Along an edge each step runs these again (one more step brighter, the next tab ...); the others once a swipe. */
+export const REPEATS = new Set(['volume-up', 'volume-down', 'brightness-up', 'brightness-down', 'workspace-left', 'workspace-right',
+    'tab-next', 'tab-prev', 'zoom-in', 'zoom-out', 'back', 'forward', 'next', 'prev', 'undo', 'app-windows', 'keys']);
+
+/**
+ * The values the edge taps, holds and the fingerprint reader had before they could choose from this whole list
+ * ('quickpanel', 'mic' ...), as the ids here.
+ */
+const OLD = {
+    quickpanel: 'muna:quickpanel', muna: 'muna:muna', command: 'muna:command', clipboard: 'muna:clipboard', mic: 'muna:mic',
+    screenshot: 'muna:screenshot', dark: 'muna:dark', awake: 'muna:awake', overview: 'overview-toggle', '': 'none',
+};
+export function singleValue(value) {
+    return OLD[value ?? ''] ?? value;
+}
 
 /** "keys:<Control>w" is an action of its own: these keys are pressed. */
 export function actionOf(value) {

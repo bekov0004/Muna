@@ -18,6 +18,7 @@ import {BarHider} from './ui/barHider.js';
 import {ReminderService} from './services/reminderService.js';
 import {FingerprintService} from './services/fingerprintService.js';
 import {EdgeGestures} from './gestures/edgeGestures.js';
+import {singleValue} from './gestures/catalog.js';
 import {APP_WINDOWS, cycleAppWindows} from './windows/appWindows.js';
 import {MunaBar} from './ui/munaBar.js';
 import {AgentsService} from './services/agentsService.js';
@@ -150,12 +151,16 @@ export class MunaHost {
         this._services.fingerprint = new FingerprintService();
         this._services.fingerprint.connectObject('touch', () => {
             const action = this._settings.get('fingerprint-touch');
-            if (!action)
+            if (!action || action === 'none')
                 return;
             this.capsules.forEach(muna => muna._closedView?.flap());
-            this._runAction(action);
+            // any action of the gestures catalog (the first values were Muna's own names: singleValue maps them)
+            if (this._gestures)
+                this._gestures.runValue(singleValue(action));
+            else
+                this._runAction(action);
         }, this);
-        this._services.fingerprint.setTouchAction(!!this._settings.get('fingerprint-touch'));
+        this._services.fingerprint.setTouchAction(this._fingerprintTouchOn());
         this._services.fingerprint.privateEnabled = this._settings.get('fingerprint-private');
         // the butterfly's reminders: one after the other, from the capsule where the pointer is
         this._services.reminders = new ReminderService(this._settings);
@@ -188,7 +193,6 @@ export class MunaHost {
         // one finger along the touchpad's edges (service/edges reads the touchpad)
         this._edges = new EdgeGestures({
             module: this._backend.edges, settings: this._settings, gestures: this._gestures ?? null,
-            run: id => this._runAction(id),
             onAction: () => this.capsules.forEach(muna => muna._closedView?.flap()),
         });
         this._watchInputSource();
@@ -500,7 +504,7 @@ export class MunaHost {
             this._services.fingerprint.privateEnabled = this._settings.get('fingerprint-private');
             this._services.fingerprint.emit('changed');
         } else if (key === 'fingerprint-touch')
-            this._services.fingerprint?.setTouchAction(!!this._settings.get('fingerprint-touch'));
+            this._services.fingerprint?.setTouchAction(this._fingerprintTouchOn());
         else if (key === 'reminder-preview') {
             try {
                 const preview = JSON.parse(this._settings.get('reminder-preview') || 'null');
@@ -707,6 +711,11 @@ export class MunaHost {
                 hoverActors: () => [capsule()?._actor].filter(Boolean),
             }));
         }
+    }
+
+    _fingerprintTouchOn() {
+        const action = this._settings.get('fingerprint-touch');
+        return !!action && action !== 'none';
     }
 
     _nextReminder() {

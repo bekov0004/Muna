@@ -1576,12 +1576,8 @@ export class MunaPreferences {
         form.append(this._dim(status));
         this._rule(form);
 
-        const ACTIONS = [['', _('Nothing')], ['lock', _('Lock the screen')], ['quickpanel', _('Open the quick panel')],
-            ['muna', _('Open the capsule')], ['command', _('Command Bar')], ['clipboard', _('Clipboard')],
-            ['play-pause', _('Play or pause music')], ['mic', _('Mute the microphone')], ['screenshot', _('Screenshot')],
-            ['dark', _('Dark style on or off')], ['awake', _('Keep awake on or off')]];
         form.append(new Gtk.Label({label: _('Touch'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
-        this._row(form, _('Touching the reader'), this._dropdown(settings, 'fingerprint-touch', ACTIONS),
+        this._row(form, _('Touching the reader'), this._settingChooser(settings, 'fingerprint-touch'),
             _('A finger on the reader does this. While it is on, the reader is busy for other programs: sudo and password dialogs ask for the password instead (the lock screen still unlocks with a finger).'));
         this._rule(form);
         this._toggleRow(form, settings, 'fingerprint-agents', _('Confirm'), _('Allow Claude\'s questions with a finger'),

@@ -201,9 +201,27 @@ export class GestureService {
 
     /** Runs one action of the catalog by its id ('brightness-up', 'workspace-left' ...): the touchpad's edges. */
     runOnce(actionId) {
-        const action = ACTIONS.find(a => a.id === actionId);
-        if (action)
-            this._once(actionId, action, global.get_current_time());
+        this.runValue(actionId);
+    }
+
+    /**
+     * Runs a gesture's value without the fingers (one finger along an edge, a tap, a hold, the fingerprint reader):
+     * an id of the catalog, "keys:…" or "app-windows:…"; dir: the direction of a step (-1 goes back where that means
+     * something: the windows of an app, the workspaces).
+     */
+    runValue(value, dir = 1) {
+        const action = actionOf(value);
+        if (!action || action.id === 'none')
+            return;
+        if (action.id === 'app-windows') {
+            cycleAppWindows(action.app ?? '', dir < 0 ? -1 : 1);
+            return;
+        }
+        // what follows the fingers, done at once
+        const instead = {overview: 'overview-toggle', workspaces: dir < 0 ? 'workspace-left' : 'workspace-right',
+            'app-switcher': 'previous-app', 'window-switcher': 'previous-app'}[action.id];
+        const run = instead ? ACTIONS.find(a => a.id === instead) : action;
+        this._once(`single-${dir < 0 ? 'left' : 'right'}`, run, global.get_current_time());
     }
 
     _once(id, action, time) {

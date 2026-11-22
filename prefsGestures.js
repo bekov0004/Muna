@@ -4,7 +4,7 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
 
-import {ACTIONS, DEFAULT_GESTURES, gestureMap} from './src/gestures/catalog.js';
+import {ACTIONS, DEFAULT_GESTURES, LIVE, gestureMap, singleValue} from './src/gestures/catalog.js';
 import {focusLeftWindow, grabSystemKeys, shortcutFor} from './prefsUtilities.js';
 
 // (gettext works only once the settings are open: the names are made when they are needed)
@@ -196,58 +196,128 @@ function pickApp(near, onPick) {
 
 export const gestureMethods = {
     /**
-     * A drop-down of actions for a string setting, plus "Windows of an app…" (then an app is chosen; a button beside
-     * shows which and changes it): the setting becomes "app-windows:<app id>".
+     * The action of a gesture, from the whole catalog (with a search), "Windows of an app…" (then an app) and "Press
+     * keys…" (then the keys). live: also the actions that follow three or four fingers.
+     * @param {{get: () => string, set: (value: string) => void, watch: (cb) => number, unwatch: (id) => void, live?: boolean}} options
      */
-    _actionChooser(settings, key, items) {
-        const titles = [...items.map(i => i[1]), _('Windows of an app…')];
-        const drop = new Gtk.DropDown({model: Gtk.StringList.new(titles), css_classes: ['muna-drop']});
-        const app = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
+    _gestureChooser({get, set, watch, unwatch, live = false}) {
+        const actions = ACTIONS.filter(a => a.id !== 'keys' && a.id !== 'app-windows' && (live || !LIVE.has(a.id)));
+        const titles = actions.map(a => (a.group && a.id !== 'none' ? `${_(a.title)}` : _(a.title)));
+        titles.push(_('Windows of an app…'));
+        titles.push(_('Press keys…'));
+        const APP_INDEX = titles.length - 2;
+        const KEYS_INDEX = titles.length - 1;
+        const drop = new Gtk.DropDown({
+            model: Gtk.StringList.new(titles),
+            enable_search: true,
+            expression: Gtk.PropertyExpression.new(Gtk.StringObject, null, 'string'),
+            css_classes: ['muna-drop'],
+        });
+        const keys = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
+        const appButton = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
         const box = new Gtk.Box({spacing: 8, valign: Gtk.Align.CENTER, halign: Gtk.Align.END});
         box._inline = true;
-        box.append(app);
+        box.append(appButton);
+        box.append(keys);
         box.append(drop);
         let syncing = false;
+        let recording = false;
         const sync = () => {
-            const value = settings.get_string(key);
+            const value = get() || 'none';
             syncing = true;
-            drop.selected = value.startsWith(APP_WINDOWS) ? titles.length - 1 : Math.max(0, items.findIndex(i => i[0] === value));
+            drop.selected = value.startsWith('keys:') ? KEYS_INDEX
+                : value.startsWith(APP_WINDOWS) ? APP_INDEX : Math.max(0, actions.findIndex(a => a.id === value));
             syncing = false;
-            app.visible = value.startsWith(APP_WINDOWS);
-            app.label = app.visible ? appName(value.slice(APP_WINDOWS.length)) : '';
+            keys.visible = value.startsWith('keys:');
+            appButton.visible = value.startsWith(APP_WINDOWS);
+            appButton.label = appButton.visible ? appName(value.slice(APP_WINDOWS.length)) : '';
+            if (!recording)
+                keys.label = value.startsWith('keys:') && value.length > 5 ? Gtk.accelerator_get_label(...Gtk.accelerator_parse(value.slice(5)).slice(1)) : _('Set keys');
         };
-        const choose = () => pickApp(box, id => settings.set_string(key, APP_WINDOWS + id));
+        const record = () => {
+            recording = true;
+            keys.label = _('Press keys…');
+            keys.visible = true;
+            grabSystemKeys(keys, true);
+            keys.grab_focus();
+        };
+        const stop = () => {
+            if (!recording)
+                return;
+            recording = false;
+            grabSystemKeys(keys, false);
+            sync();
+        };
         drop.connect('notify::selected', () => {
             if (syncing)
                 return;
-            if (drop.selected === titles.length - 1) {
-                if (!settings.get_string(key).startsWith(APP_WINDOWS))
-                    settings.set_string(key, APP_WINDOWS);
-                choose();
+            if (drop.selected === KEYS_INDEX) {
+                if (!get().startsWith('keys:'))
+                    set('keys:');
+                record();
+            } else if (drop.selected === APP_INDEX) {
+                if (!get().startsWith(APP_WINDOWS))
+                    set(APP_WINDOWS);
+                pickApp(box, app => set(APP_WINDOWS + app));
             } else {
-                settings.set_string(key, items[drop.selected][0]);
+                set(actions[drop.selected]?.id ?? 'none');
             }
         });
-        app.connect('clicked', choose);
-        settings.connect(`changed::${key}`, sync);
+        keys.connect('clicked', record);
+        appButton.connect('clicked', () => pickApp(box, app => set(APP_WINDOWS + app)));
+        const controller = new Gtk.EventControllerKey();
+        controller.connect('key-pressed', (_c, keyval, keycode, state) => {
+            if (!recording)
+                return false;
+            if (keyval === Gdk.KEY_Escape && (state & Gtk.accelerator_get_default_mod_mask()) === 0) {
+                stop();
+                return true;
+            }
+            const result = shortcutFor(keys, keyval, keycode, state);
+            if (result.wait)
+                return true;
+            if (result.error && !/^(Left|Right|Up|Down|Page_Up|Page_Down|Home|End|Delete|Return|space|Tab)$/.test(Gdk.keyval_name(keyval) ?? '')) {
+                keys.label = result.error;
+                return true;
+            }
+            // for a gesture a lone key is fine too (an arrow, Page Down, Enter ...)
+            const accel = result.accel ?? Gtk.accelerator_name(Gdk.keyval_to_lower(keyval), state & Gtk.accelerator_get_default_mod_mask());
+            set(`keys:${accel}`);
+            stop();
+            return true;
+        });
+        keys.add_controller(controller);
+        const focus = new Gtk.EventControllerFocus();
+        focus.connect('leave', () => !focusLeftWindow(keys) && stop());
+        keys.add_controller(focus);
+        const handler = watch(sync);
+        box.connect('destroy', () => unwatch(handler));
         sync();
         return box;
     },
+
+    /** The chooser for a string setting (edges, taps, holds, the fingerprint reader): any action but the live ones. */
+    _settingChooser(settings, key) {
+        return this._gestureChooser({
+            get: () => singleValue(settings.get_string(key)),
+            set: value => settings.set_string(key, value),
+            watch: callback => settings.connect(`changed::${key}`, callback),
+            unwatch: handler => settings.disconnect(handler),
+        });
+    },
+
 
     /** One finger along an edge of the touchpad (service/edges/muna-edges.py reads the touchpad). */
     _edgesGroup(form, settings) {
         this._toggleRow(form, settings, 'edge-gestures', _('One finger along an edge'), _('Edge swipes'),
             _('Start at an edge of the touchpad and slide along it: up or down on the left and right edges, sideways on the top and bottom edges. A move that starts anywhere else stays an ordinary pointer move.'));
-        const CHOICES = [['brightness', _('Brightness')], ['volume', _('Volume')], ['desktops', _('Desktops')], ['none', _('Nothing')]];
-        for (const [edge, title] of [['left', _('Left edge, up and down')], ['right', _('Right edge, up and down')],
-            ['top', _('Top edge, left and right')], ['bottom', _('Bottom edge, left and right')]])
-            this._row(form, title, this._actionChooser(settings, `edge-${edge}`, CHOICES));
+        for (const [edge, plus, minus] of [['left', _('Left edge, up'), _('Left edge, down')], ['right', _('Right edge, up'), _('Right edge, down')],
+            ['top', _('Top edge, to the right'), _('Top edge, to the left')], ['bottom', _('Bottom edge, to the right'), _('Bottom edge, to the left')]]) {
+            this._row(form, plus, this._settingChooser(settings, `edge-${edge}-plus`));
+            this._row(form, minus, this._settingChooser(settings, `edge-${edge}-minus`));
+        }
 
         // a double tap, a finger held still: in four zones
-        const TAPS = [['none', _('Nothing')], ['play-pause', _('Play or pause')], ['next', _('Next track')], ['prev', _('Previous track')],
-            ['volume-mute', _('Mute the sound')], ['mic', _('Mute the microphone')], ['quickpanel', _('Quick panel')], ['muna', _('Open the capsule')],
-            ['command', _('Command Bar')], ['clipboard', _('Clipboard')], ['overview', _('Overview')], ['screenshot', _('Screenshot')],
-            ['lock', _('Lock the screen')], ['dark', _('Dark style on or off')], ['awake', _('Keep awake on or off')]];
         const ZONES = [['top', _('Top, in the middle')], ['bottom', _('Bottom, in the middle')], ['left', _('Left edge')], ['right', _('Right edge')]];
         form.append(new Gtk.Label({label: _('Double tap'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         let tapToClick = true;
@@ -257,11 +327,11 @@ export const gestureMethods = {
             // no such schema
         }
         for (const [zone, title] of ZONES)
-            this._row(form, title, this._actionChooser(settings, `edge-tap-${zone}`, TAPS),
+            this._row(form, title, this._settingChooser(settings, `edge-tap-${zone}`),
                 zone === 'top' && tapToClick ? _('Tap to click is on: a double tap is also a double click where the pointer is. Holding a finger does not click.') : '');
         form.append(new Gtk.Label({label: _('Hold a finger still (half a second)'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         for (const [zone, title] of ZONES)
-            this._row(form, title, this._actionChooser(settings, `edge-hold-${zone}`, TAPS));
+            this._row(form, title, this._settingChooser(settings, `edge-hold-${zone}`));
 
         // can Muna read the touchpad? (GNOME lets nobody see where one finger is, so it reads it itself)
         const device = touchpadDevice();
@@ -306,11 +376,6 @@ export const gestureMethods = {
         this._edgesGroup(form, settings);
         this._rule(form);
 
-        const actions = ACTIONS.filter(a => a.id !== 'keys' && a.id !== 'app-windows');
-        const titles = actions.map(a => _(a.title));
-        titles.push(_('Windows of an app…'));
-        titles.push(_('Press keys…'));
-        const APP_INDEX = titles.length - 2;
         const saved = () => settings.get_value('gesture-actions').deepUnpack();
         const setOne = (id, value) => {
             const all = {...saved(), [id]: value};
@@ -322,93 +387,13 @@ export const gestureMethods = {
         for (const [title, ids] of groups()) {
             form.append(new Gtk.Label({label: title, css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
             for (const id of ids) {
-                const drop = new Gtk.DropDown({
-                    model: Gtk.StringList.new(titles),
-                    enable_search: true,
-                    expression: Gtk.PropertyExpression.new(Gtk.StringObject, null, 'string'),
-                    css_classes: ['muna-drop'],
+                const box = this._gestureChooser({
+                    get: () => gestureMap(saved())[id],
+                    set: value => setOne(id, value),
+                    watch: callback => settings.connect('changed::gesture-actions', callback),
+                    unwatch: handler => settings.disconnect(handler),
+                    live: true,
                 });
-                const keys = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
-                const appButton = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
-                const box = new Gtk.Box({spacing: 8, valign: Gtk.Align.CENTER});
-                box._inline = true;
-                box.append(appButton);
-                box.append(keys);
-                box.append(drop);
-                let syncing = false;
-                let recording = false;
-                const sync = () => {
-                    const value = gestureMap(saved())[id];
-                    syncing = true;
-                    drop.selected = value.startsWith('keys:') ? titles.length - 1
-                        : value.startsWith(APP_WINDOWS) ? APP_INDEX : Math.max(0, actions.findIndex(a => a.id === value));
-                    syncing = false;
-                    keys.visible = value.startsWith('keys:');
-                    appButton.visible = value.startsWith(APP_WINDOWS);
-                    appButton.label = appButton.visible ? appName(value.slice(APP_WINDOWS.length)) : '';
-                    if (!recording)
-                        keys.label = value.startsWith('keys:') && value.length > 5 ? Gtk.accelerator_get_label(...Gtk.accelerator_parse(value.slice(5)).slice(1)) : _('Set keys');
-                };
-                const record = () => {
-                    recording = true;
-                    keys.label = _('Press keys…');
-                    keys.visible = true;
-                    grabSystemKeys(keys, true);
-                    keys.grab_focus();
-                };
-                const stop = () => {
-                    if (!recording)
-                        return;
-                    recording = false;
-                    grabSystemKeys(keys, false);
-                    sync();
-                };
-                drop.connect('notify::selected', () => {
-                    if (syncing)
-                        return;
-                    if (drop.selected === titles.length - 1) {
-                        const now = gestureMap(saved())[id];
-                        if (!now.startsWith('keys:'))
-                            setOne(id, 'keys:');
-                        record();
-                    } else if (drop.selected === APP_INDEX) {
-                        if (!gestureMap(saved())[id].startsWith(APP_WINDOWS))
-                            setOne(id, APP_WINDOWS);
-                        pickApp(box, app => setOne(id, APP_WINDOWS + app));
-                    } else {
-                        setOne(id, actions[drop.selected]?.id ?? 'none');
-                    }
-                });
-                keys.connect('clicked', record);
-                appButton.connect('clicked', () => pickApp(box, app => setOne(id, APP_WINDOWS + app)));
-                const controller = new Gtk.EventControllerKey();
-                controller.connect('key-pressed', (_c, keyval, keycode, state) => {
-                    if (!recording)
-                        return false;
-                    if (keyval === Gdk.KEY_Escape && (state & Gtk.accelerator_get_default_mod_mask()) === 0) {
-                        stop();
-                        return true;
-                    }
-                    const result = shortcutFor(keys, keyval, keycode, state);
-                    if (result.wait)
-                        return true;
-                    if (result.error && !/^(Left|Right|Up|Down|Page_Up|Page_Down|Home|End|Delete|Return|space|Tab)$/.test(Gdk.keyval_name(keyval) ?? '')) {
-                        keys.label = result.error;
-                        return true;
-                    }
-                    // for a gesture a lone key is fine too (an arrow, Page Down, Enter ...)
-                    const accel = result.accel ?? Gtk.accelerator_name(Gdk.keyval_to_lower(keyval), state & Gtk.accelerator_get_default_mod_mask());
-                    setOne(id, `keys:${accel}`);
-                    stop();
-                    return true;
-                });
-                keys.add_controller(controller);
-                const focus = new Gtk.EventControllerFocus();
-                focus.connect('leave', () => !focusLeftWindow(keys) && stop());
-                keys.add_controller(focus);
-                const changed = settings.connect('changed::gesture-actions', sync);
-                box.connect('destroy', () => settings.disconnect(changed));
-                sync();
 
                 const card = this._cardOf(form);
                 if (card._rows > 0)

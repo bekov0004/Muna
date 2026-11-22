@@ -460,6 +460,54 @@
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
+    <key name="edge-left-plus" type="s">
+      <default>'brightness-up'</default>
+      <summary>One finger along the left edge, up</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-left-minus" type="s">
+      <default>'brightness-down'</default>
+      <summary>One finger along the left edge, down</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-right-plus" type="s">
+      <default>'volume-up'</default>
+      <summary>One finger along the right edge, up</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-right-minus" type="s">
+      <default>'volume-down'</default>
+      <summary>One finger along the right edge, down</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-top-plus" type="s">
+      <default>'brightness-up'</default>
+      <summary>One finger along the top edge, to the right</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-top-minus" type="s">
+      <default>'brightness-down'</default>
+      <summary>One finger along the top edge, to the left</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-bottom-plus" type="s">
+      <default>'volume-up'</default>
+      <summary>One finger along the bottom edge, to the right</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
+    <key name="edge-bottom-minus" type="s">
+      <default>'volume-down'</default>
+      <summary>One finger along the bottom edge, to the left</summary>
+      <description>An action of the gestures catalog (or keys:…, app-windows:…), run at every step for repeatable actions, once a swipe for the others.</description>
+    </key>
+
     <key name="fingerprint-touch" type="s">
       <default>''</default>
       <summary>Touch the fingerprint reader to</summary>

@@ -46,4 +46,28 @@ ok(run(touch_path(line(0.03, 0.5, 0.6, 0.55))) == [], 'leaving the edge is the p
 two = ev(3, 0x2f, 1) + ev(3, 0x39, 7) + ev(3, 0x35, 1500) + ev(3, 0x36, 1000)
 ok(run(touch_path(line(0.03, 0.2, 0.03, 0.8), extra=two)) == [], 'two fingers are not ours')
 ok(run(touch_path(line(0.03, 0.5, 0.031, 0.51))) == [], 'a tap at the edge does nothing')
+
+# taps and holds: events with times
+def tev(t, typ, code, v): return EV.pack(int(t), int((t % 1) * 1e6), typ, code, v)
+def tap(t0, x, y, length=0.08, tid=1):
+    out = tev(t0, 3, 0x2f, 0) + tev(t0, 3, 0x39, tid) + tev(t0, 3, 0x35, int(x * W)) + tev(t0, 3, 0x36, int(y * H)) + tev(t0, 0, 0, 0)
+    t = t0
+    while t + 0.05 < t0 + length:
+        t += 0.05
+        out += tev(t, 3, 0x35, int(x * W) + 1) + tev(t, 0, 0, 0)
+    end = t0 + length
+    return out + tev(end, 3, 0x2f, 0) + tev(end, 3, 0x39, -1) + tev(end, 0, 0, 0)
+m = run(tap(10.0, 0.5, 0.03) + tap(10.25, 0.5, 0.03, tid=2))
+ok(m == [{'type': 'doubletap', 'zone': 'top'}], f'double tap top middle: {m}')
+ok(run(tap(10.0, 0.5, 0.03)) == [], 'one tap is nothing')
+ok(run(tap(10.0, 0.5, 0.03) + tap(11.0, 0.5, 0.03, tid=2)) == [], 'two taps far apart are nothing')
+ok(run(tap(10.0, 0.5, 0.03) + tap(10.25, 0.03, 0.5, tid=2)) == [], 'taps in two zones are nothing')
+m = run(tap(10.0, 0.02, 0.5) + tap(10.2, 0.02, 0.52, tid=2))
+ok(m == [{'type': 'doubletap', 'zone': 'left'}], f'double tap left edge: {m}')
+ok(run(tap(10.0, 0.15, 0.03) + tap(10.2, 0.15, 0.03, tid=2)) == [], 'top but not the middle: nothing')
+m = run(tap(10.0, 0.98, 0.5, length=0.8))
+ok(m == [{'type': 'hold', 'zone': 'right'}], f'hold right edge: {m}')
+m = run(tap(10.0, 0.5, 0.97, length=1.5))
+ok(m == [{'type': 'hold', 'zone': 'bottom'}], f'one hold only: {m}')
+ok(run(tap(10.0, 0.5, 0.5, length=0.8)) == [], 'resting in the middle is nothing')
 print('edges ok')

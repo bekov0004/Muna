@@ -155,6 +155,26 @@ export const gestureMethods = {
             ['top', _('Top edge, left and right')], ['bottom', _('Bottom edge, left and right')]])
             this._row(form, title, this._dropdown(settings, `edge-${edge}`, CHOICES));
 
+        // a double tap, a finger held still: in four zones
+        const TAPS = [['none', _('Nothing')], ['play-pause', _('Play or pause')], ['next', _('Next track')], ['prev', _('Previous track')],
+            ['volume-mute', _('Mute the sound')], ['mic', _('Mute the microphone')], ['quickpanel', _('Quick panel')], ['muna', _('Open the capsule')],
+            ['command', _('Command Bar')], ['clipboard', _('Clipboard')], ['overview', _('Overview')], ['screenshot', _('Screenshot')],
+            ['lock', _('Lock the screen')], ['dark', _('Dark style on or off')], ['awake', _('Keep awake on or off')]];
+        const ZONES = [['top', _('Top, in the middle')], ['bottom', _('Bottom, in the middle')], ['left', _('Left edge')], ['right', _('Right edge')]];
+        form.append(new Gtk.Label({label: _('Double tap'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        let tapToClick = true;
+        try {
+            tapToClick = new Gio.Settings({schema_id: 'org.gnome.desktop.peripherals.touchpad'}).get_boolean('tap-to-click');
+        } catch (e) {
+            // no such schema
+        }
+        for (const [zone, title] of ZONES)
+            this._row(form, title, this._dropdown(settings, `edge-tap-${zone}`, TAPS),
+                zone === 'top' && tapToClick ? _('Tap to click is on: a double tap is also a double click where the pointer is. Holding a finger does not click.') : '');
+        form.append(new Gtk.Label({label: _('Hold a finger still (half a second)'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        for (const [zone, title] of ZONES)
+            this._row(form, title, this._dropdown(settings, `edge-hold-${zone}`, TAPS));
+
         // can Muna read the touchpad? (GNOME lets nobody see where one finger is, so it reads it itself)
         const device = touchpadDevice();
         const script = `${GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0])}/service/edges/touchpad-access.sh`;

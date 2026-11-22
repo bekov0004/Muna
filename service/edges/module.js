@@ -11,6 +11,7 @@ const RETRY_S = 20;     // no access yet (scripts/touchpad-access.sh not run), t
  * does not let anyone see) and hands its steps to the shell.
  * state: {enabled, running, device, problem, code}   code: '' | 'access' | 'none' | 'read' | 'python'
  * events: edge {type: begin|step|end, edge: left|right|top|bottom, dir?: 1|-1}
+ *         tap {type: doubletap|hold, zone: left|right|top|bottom}
  */
 export class EdgesModule extends Module {
     constructor() {
@@ -102,6 +103,10 @@ export class EdgesModule extends Module {
         case 'step':
         case 'end':
             this.emitEvent('edge', {type: message.type, edge: message.edge, dir: message.dir ?? 0});
+            break;
+        case 'doubletap':
+        case 'hold':
+            this.emitEvent('tap', {type: message.type, zone: message.zone});
             break;
         }
     }

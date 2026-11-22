@@ -185,7 +185,11 @@ export class MunaHost {
             }
         }
         // one finger along the touchpad's edges (service/edges reads the touchpad)
-        this._edges = new EdgeGestures({module: this._backend.edges, settings: this._settings, gestures: this._gestures ?? null});
+        this._edges = new EdgeGestures({
+            module: this._backend.edges, settings: this._settings, gestures: this._gestures ?? null,
+            run: id => this._runAction(id),
+            onAction: () => this.capsules.forEach(muna => muna._closedView?.flap()),
+        });
         this._watchInputSource();
         if (this._settings.get('awake-on-start'))
             GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {

@@ -2413,3 +2413,4 @@
 .muna-bfr-done { background-color: #6f7bff; }
 .muna-bfr-done:hover { background-color: #8590ff; }
 .muna-agent-card-finger { spacing: 6px; color: #b9a6ff; font-size: 10px; font-weight: 600; padding-top: 4px; }
+.muna-private { color: #b9a6ff; font-style: italic; }

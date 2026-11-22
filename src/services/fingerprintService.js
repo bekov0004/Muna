@@ -31,6 +31,7 @@ const ManagerProxy = Gio.DBusProxy.makeProxyWrapper(MANAGER_IFACE);
 const DeviceProxy = Gio.DBusProxy.makeProxyWrapper(DEVICE_IFACE);
 
 const CONFIRM_TIMEOUT_S = 30;
+const UNLOCK_MS = 5 * 60000;
 const RETRY_MS = 600;
 
 const call = (proxy, method, ...args) => new Promise((resolve, reject) => {
@@ -50,7 +51,14 @@ export class FingerprintService extends Signals.EventEmitter {
         this._confirm = null;       // {resolve, timer, reason}
         this._restart = 0;
         this._busy = Promise.resolve();
-        this._sessionId = Main.sessionMode.connect('updated', () => this._syncListening());
+        this.privateEnabled = false;    // private notes and clipboard items are hidden (Settings → Fingerprint)
+        this._unlockedUntil = 0;
+        this._relock = 0;
+        this._sessionId = Main.sessionMode.connect('updated', () => {
+            if (this._locked())
+                this.lockPrivate();
+            this._syncListening();
+        });
         this._init().catch(e => console.log(`[muna] fingerprint: ${e.message}`));
     }
 
@@ -129,6 +137,47 @@ export class FingerprintService extends Signals.EventEmitter {
             this.emit('state', {waiting: true, reason});
             this._queue(() => this._listen(true));
         });
+    }
+
+    // --- private notes and clipboard items ----------------------------------------------------------------------
+
+    /** Private items are hidden now (on, with a reader and a finger, and not opened in the last minutes). */
+    hides(item) {
+        return !!item?.private && this.privateEnabled && this.ready && Date.now() >= this._unlockedUntil;
+    }
+
+    /** Whether marking items private makes sense (a reader with a finger, the setting on). */
+    get privacyOn() {
+        return this.privateEnabled && this.ready;
+    }
+
+    /** A finger opens the private items for 5 minutes. @returns {Promise<boolean>} */
+    async unlockPrivate() {
+        if (Date.now() < this._unlockedUntil)
+            return true;
+        const ok = await this.confirm('Open private items');
+        if (!ok)
+            return false;
+        this._unlockedUntil = Date.now() + UNLOCK_MS;
+        if (this._relock)
+            GLib.source_remove(this._relock);
+        this._relock = GLib.timeout_add(GLib.PRIORITY_DEFAULT, UNLOCK_MS + 500, () => {
+            this._relock = 0;
+            this.lockPrivate();
+            return GLib.SOURCE_REMOVE;
+        });
+        this.emit('changed');
+        return true;
+    }
+
+    lockPrivate() {
+        if (!this._unlockedUntil)
+            return;
+        this._unlockedUntil = 0;
+        if (this._relock)
+            GLib.source_remove(this._relock);
+        this._relock = 0;
+        this.emit('changed');
     }
 
     /** Stops waiting for confirm(). */
@@ -220,6 +269,9 @@ export class FingerprintService extends Signals.EventEmitter {
         if (this._restart)
             GLib.source_remove(this._restart);
         this._restart = 0;
+        if (this._relock)
+            GLib.source_remove(this._relock);
+        this._relock = 0;
         this._finishConfirm(false);
         this._touchOn = false;
         this._queue(() => this._listen(false));

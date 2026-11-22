@@ -46,9 +46,10 @@ export class CommandView extends St.BoxLayout {
      * @param {{clipboard: ClipboardService, ui: {beginTextInput, endTextInput}, onDone: () => void,
      *          onPaste: (item) => void}} params
      */
-    constructor({clipboard, ui, onDone, onPaste, onPasteText = null, processes = null, service = null, snippets = null, cleaner = null}) {
+    constructor({clipboard, ui, onDone, onPaste, onPasteText = null, processes = null, service = null, snippets = null, cleaner = null, fingerprint = null}) {
         super({vertical: true, style_class: 'muna-cmd', x_expand: true, y_expand: true});
         this._clipboardService = clipboard;
+        this._fingerprint = fingerprint;
         this._ui = ui;
         this._onDone = onDone;
         this._onPaste = onPaste;
@@ -400,7 +401,7 @@ export class CommandView extends St.BoxLayout {
         if (q.length < 2)
             return [];
         return this._clipboardService.items
-            .filter(item => item.text.toLowerCase().includes(q))
+            .filter(item => !this._fingerprint?.hides(item) && item.text.toLowerCase().includes(q))
             .slice(0, MAX_CLIPS)
             .map(item => ({
                 group: 'Clipboard',

@@ -27,7 +27,7 @@ export class NotesService extends EventEmitter {
         if (Array.isArray(data?.notes)) {
             this._notes = data.notes
                 .filter(note => note && typeof note.text === 'string')
-                .map(note => ({id: Number(note.id) || 0, text: note.text.slice(0, MAX_LENGTH), at: Number(note.at) || 0}))
+                .map(note => ({id: Number(note.id) || 0, text: note.text.slice(0, MAX_LENGTH), at: Number(note.at) || 0, private: note.private === true}))
                 .slice(0, MAX_NOTES);
             this._nextId = 1 + Math.max(0, ...this._notes.map(note => note.id));
             const seen = new Set();
@@ -56,6 +56,15 @@ export class NotesService extends EventEmitter {
         if (index < 0)
             return;
         this._notes.splice(index, 1);
+        this._changed();
+    }
+
+    /** Private: hidden in Muna until a finger touches the reader. */
+    setPrivate(id, on) {
+        const note = this._notes.find(n => n.id === id);
+        if (!note)
+            return;
+        note.private = !!on;
         this._changed();
     }
 

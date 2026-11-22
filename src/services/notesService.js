@@ -31,6 +31,10 @@ export class NotesService extends Signals.EventEmitter {
         return true;
     }
 
+    setPrivate(id, on) {
+        this._module.call('setPrivate', {id, private: on}).catch(e => console.warn(`[muna] notes: ${e.message}`));
+    }
+
     remove(id) {
         this._module.call('remove', {id}).catch(e => console.warn(`[muna] notes: ${e.message}`));
     }

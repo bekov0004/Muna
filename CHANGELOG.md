@@ -8,6 +8,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Private notes and clipboard items: the lock button of a note or a clipboard item makes it private; it shows as "Private · touch the fingerprint reader" (and the Command Bar does not find it) until your finger touches the reader, then private items stay open for 5 minutes or until the screen locks.
 - Fingerprint reader (Settings → Fingerprint): touching it can run an action (lock the screen, open the quick panel or the capsule, the Command Bar, play or pause, mute the microphone, a screenshot, dark style, keep awake), and while Claude Code asks for a permission your finger on it allows it (a wrong finger does nothing). It works through fprintd and only reports whether a finger was put on it; while the touch action is on, sudo and password dialogs ask for the password instead, and the reader is given up while the screen is locked so it still unlocks with a finger.
 
 - Reminders brought by the butterfly: at the time you choose it flies out of the capsule, beating its wings and growing as it comes down, hovers at the top of the screen (also over an app in full screen) and shows your text, with "In 10 min" and "Done"; then it flies back into the capsule. Once, every day or on weekdays; a short sound (can be turned off); one missed while the computer slept still comes up to 3 hours late. Set them in the new Reminders tab of the quick panel, or in Settings → Dynamic Island → Appearance → Reminders; "Try it" shows one at once.

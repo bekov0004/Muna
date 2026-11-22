@@ -154,6 +154,7 @@ export class MunaHost {
             this._runAction(action);
         }, this);
         this._services.fingerprint.setTouchAction(!!this._settings.get('fingerprint-touch'));
+        this._services.fingerprint.privateEnabled = this._settings.get('fingerprint-private');
         // the butterfly's reminders: one after the other, from the capsule where the pointer is
         this._services.reminders = new ReminderService(this._settings);
         this._reminderQueue = [];
@@ -481,7 +482,10 @@ export class MunaHost {
             this._syncMonitor();
         else if (key === 'action-request')
             this._runAction(this._settings.get('action-request').split(':')[0]);
-        else if (key === 'fingerprint-touch')
+        else if (key === 'fingerprint-private') {
+            this._services.fingerprint.privateEnabled = this._settings.get('fingerprint-private');
+            this._services.fingerprint.emit('changed');
+        } else if (key === 'fingerprint-touch')
             this._services.fingerprint?.setTouchAction(!!this._settings.get('fingerprint-touch'));
         else if (key === 'reminder-preview') {
             try {

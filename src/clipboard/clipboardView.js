@@ -28,7 +28,7 @@ class ClipRow extends St.Widget {
         GObject.registerClass({GTypeName: 'MunaClipRow'}, this);
     }
 
-    constructor({item, onPaste, onCopy, onPin, onRemove, drag = null}) {
+    constructor({item, onPaste, onCopy, onPin, onRemove, drag = null, hidden = false, privacy = false, onPrivate = null}) {
         super({
             style_class: 'muna-clip',
             layout_manager: new Clutter.BinLayout(),
@@ -53,8 +53,14 @@ class ClipRow extends St.Widget {
                 fileIcon = null;
             }
         }
+        if (hidden) {
+            flat = 'Private · touch the fingerprint reader';
+            fileIcon = null;
+        }
         let iconName = 'text-x-generic-symbolic';
-        if (item.saved)
+        if (hidden)
+            iconName = 'auth-fingerprint-symbolic';
+        else if (item.saved)
             iconName = 'starred-symbolic';
         else if (isLink(item.text))
             iconName = 'insert-link-symbolic';
@@ -95,8 +101,8 @@ class ClipRow extends St.Widget {
             visible: false,
         });
         for (const [name, handler] of [
-            ['edit-copy-symbolic', onCopy],
-            [item.saved ? 'non-starred-symbolic' : 'starred-symbolic', onPin],
+            ...(hidden ? [] : [['edit-copy-symbolic', onCopy], [item.saved ? 'non-starred-symbolic' : 'starred-symbolic', onPin]]),
+            ...(privacy ? [[item.private ? 'changes-allow-symbolic' : 'changes-prevent-symbolic', onPrivate]] : []),
             ['window-close-symbolic', onRemove],
         ]) {
             this._actions.add_child(createButton({
@@ -107,7 +113,7 @@ class ClipRow extends St.Widget {
         }
         this.add_child(this._actions);
         // A text or a file of the history can be dragged out into other applications.
-        if (drag) {
+        if (drag && !hidden) {
             makeDraggable(this, {
                 payload: item.files?.length ? item.files : textPayload(item.text),
                 drag,
@@ -140,7 +146,7 @@ export class ClipboardView extends St.BoxLayout {
      * @param {{service: ClipboardService, ui: {beginTextInput, endTextInput},
      *          onPaste: (item) => void}} params
      */
-    constructor({service, ui, onPaste, drag = null}) {
+    constructor({service, ui, onPaste, drag = null, fingerprint = null}) {
         super({
             vertical: true,
             style_class: 'muna-tray muna-clipboard',
@@ -148,6 +154,7 @@ export class ClipboardView extends St.BoxLayout {
             y_expand: true,
         });
         this._service = service;
+        this._fingerprint = fingerprint;
         this._ui = ui;
         this._drag = drag;
         this._onPaste = onPaste;
@@ -181,11 +188,13 @@ export class ClipboardView extends St.BoxLayout {
         this.add_child(body);
 
         this._service.connectObject('changed', () => this._rebuild(), this);
+        this._fingerprint?.connectObject('changed', () => this._rebuild(), this);
         this._rebuild();
     }
 
     destroy() {
         this._service.disconnectObject(this);
+        this._fingerprint?.disconnectObject(this);
         this.stopTyping();
         super.destroy();
     }
@@ -276,8 +285,9 @@ export class ClipboardView extends St.BoxLayout {
     _rebuildNow() {
         const all = this._service.items;
         const query = this._noteMode ? '' : this._entry.text.trim().toLowerCase();
+        const fingerprint = this._fingerprint;
         const items = all
-            .filter(item => !query || item.text.toLowerCase().includes(query))
+            .filter(item => !query || (!fingerprint?.hides(item) && item.text.toLowerCase().includes(query)))
             .sort((a, b) => Number(!!b.saved) - Number(!!a.saved));
         if (!this._noteMode)
             this._entry.hint_text = all.length === 0 ? 'Search…' : `Search ${all.length} items…`;
@@ -287,9 +297,14 @@ export class ClipboardView extends St.BoxLayout {
         this._scroll.visible = items.length > 0;
         this._list.destroy_all_children();
         for (const item of items) {
+            const hidden = !!fingerprint?.hides(item);
             this._list.add_child(new ClipRow({
                 item,
-                onPaste: i => this._onPaste(i),
+                hidden,
+                privacy: !!fingerprint?.privacyOn,
+                onPrivate: i => this._service.togglePrivate(i.id),
+                // a private item asks for the finger first
+                onPaste: i => (hidden ? fingerprint.unlockPrivate() : this._onPaste(i)),
                 drag: this._drag,
                 onCopy: i => this._service.copy(i.id),
                 onPin: i => this._service.togglePin(i.id),

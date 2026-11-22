@@ -1,7 +1,7 @@
 import {Module} from '../module.js';
 import {NotesService} from './notesService.js';
 
-/** The quick notes. state: {notes: [{id, text, at}]} newest first */
+/** The quick notes. state: {notes: [{id, text, at, private}]} newest first */
 export class NotesModule extends Module {
     constructor() {
         super('Notes');
@@ -23,5 +23,9 @@ export class NotesModule extends Module {
 
     async rpc_remove({id}) {
         this._notes.remove(id);
+    }
+
+    async rpc_setPrivate({id, private: on}) {
+        this._notes.setPrivate(id, on);
     }
 }

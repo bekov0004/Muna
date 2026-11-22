@@ -158,6 +158,7 @@ export class Muna {
         });
         this._clipboardView = new ClipboardView({
             service: this._services.clipboard,
+            fingerprint: this._services.fingerprint ?? null,
             ui: {
                 beginTextInput: onEnd => this._beginTextInput(onEnd),
                 endTextInput: () => this._endTextInput(),
@@ -175,6 +176,7 @@ export class Muna {
         this._notificationsView = new NotificationsView({service: this._services.notifications});
         this._commandView = new CommandView({
             clipboard: this._services.clipboard,
+            fingerprint: this._services.fingerprint ?? null,
             ui: {
                 beginTextInput: onEnd => this._beginTextInput(onEnd),
                 endTextInput: () => this._endTextInput(),

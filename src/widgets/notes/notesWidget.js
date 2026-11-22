@@ -12,7 +12,7 @@ class NoteItem extends St.Widget {
         GObject.registerClass({GTypeName: 'MunaNoteItem'}, this);
     }
 
-    constructor({note, onCopy, onRemove}) {
+    constructor({note, onCopy, onRemove, hidden = false, privacy = false, onPrivate = null, onUnlock = null}) {
         super({
             style_class: 'muna-todo-item',
             layout_manager: new Clutter.BinLayout(),
@@ -21,13 +21,20 @@ class NoteItem extends St.Widget {
             x_expand: true,
         });
         const label = new St.Label({
-            text: note.text.replace(/\s+/g, ' '),
-            style_class: 'muna-todo-text muna-note-text',
+            text: hidden ? 'Private note · touch the fingerprint reader' : note.text.replace(/\s+/g, ' '),
+            style_class: `muna-todo-text muna-note-text${hidden ? ' muna-private' : ''}`,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
         label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        this.add_child(label);
+        if (hidden) {
+            // a click asks for the finger
+            const open = new St.Button({x_expand: true, reactive: true, can_focus: true, child: label});
+            open.connect('clicked', () => onUnlock?.());
+            this.add_child(open);
+        } else {
+            this.add_child(label);
+        }
 
         this._actions = new St.BoxLayout({
             x_expand: true,
@@ -36,10 +43,12 @@ class NoteItem extends St.Widget {
             y_align: Clutter.ActorAlign.CENTER,
             opacity: 0,
         });
-        for (const [iconName, handler] of [
-            ['edit-copy-symbolic', onCopy],
+        const actions = [
+            ...(hidden ? [] : [['edit-copy-symbolic', onCopy]]),
+            ...(privacy ? [[note.private ? 'changes-allow-symbolic' : 'changes-prevent-symbolic', () => onPrivate?.(note)]] : []),
             ['window-close-symbolic', onRemove],
-        ]) {
+        ];
+        for (const [iconName, handler] of actions) {
             this._actions.add_child(createButton({
                 iconName,
                 styleClass: 'muna-todo-remove',
@@ -64,6 +73,7 @@ export class NotesWidget extends MunaWidget {
     constructor(context) {
         super(context);
         this._notes = context.services.notes;
+        this._fingerprint = context.services.fingerprint ?? null;
         this._ui = context.ui;
         this._typing = false;
     }
@@ -122,6 +132,7 @@ export class NotesWidget extends MunaWidget {
         root.add_child(this._entry);
 
         this._notes.connectObject('changed', () => this._rebuild(), this);
+        this._fingerprint?.connectObject('changed', () => this._rebuild(), this);
         return root;
     }
 
@@ -135,6 +146,7 @@ export class NotesWidget extends MunaWidget {
 
     destroy() {
         this._notes.disconnectObject(this);
+        this._fingerprint?.disconnectObject(this);
         this._stopTyping();
         super.destroy();
     }
@@ -166,6 +178,10 @@ export class NotesWidget extends MunaWidget {
         for (const note of notes) {
             this._list.add_child(new NoteItem({
                 note,
+                hidden: !!this._fingerprint?.hides(note),
+                privacy: !!this._fingerprint?.privacyOn,
+                onPrivate: n => this._notes.setPrivate(n.id, !n.private),
+                onUnlock: () => this._fingerprint?.unlockPrivate(),
                 onCopy: n => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, n.text),
                 onRemove: n => this._notes.remove(n.id),
             }));

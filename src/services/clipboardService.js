@@ -93,6 +93,7 @@ export class ClipboardService extends Signals.EventEmitter {
                 files: Array.isArray(item.files) && item.files.every(u => typeof u === 'string') ? item.files : null,
                 saved: item.saved === true,
                 note: item.note === true,
+                private: item.private === true,
                 at: Number(item.at) || 0,
             }))
             // what was copied while they were loading is newer and already in the list
@@ -197,6 +198,17 @@ export class ClipboardService extends Signals.EventEmitter {
         this._changed();
     }
 
+    /** Private: hidden until a finger touches the reader (and kept, like a pinned one). */
+    togglePrivate(id) {
+        const item = this._items.find(i => i.id === id);
+        if (!item)
+            return;
+        item.private = !item.private;
+        if (item.private)
+            item.saved = true;
+        this._changed();
+    }
+
     /** Removes everything that is not pinned. */
     clear() {
         this._items = this._items.filter(item => item.saved);
@@ -288,7 +300,7 @@ export class ClipboardService extends Signals.EventEmitter {
         const keep = this._keepHistory();
         const items = this._items
             .filter(item => keep || item.saved)
-            .map(({text, files, saved, note, at}) => ({text, files, saved, note, at}));
+            .map(({text, files, saved, note, private: isPrivate, at}) => ({text, files, saved, note, private: !!isPrivate, at}));
         this._module.call('save', {items}).catch(e => console.warn(`[muna] saving the clipboard items failed: ${e.message}`));
     }
 }

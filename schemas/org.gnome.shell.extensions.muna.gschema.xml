@@ -382,6 +382,24 @@
       <description>Like topbar-hide, for the Muna bar (and the capsule) on the monitors without GNOME's top bar.</description>
     </key>
 
+    <key name="fingerprint-touch" type="s">
+      <default>''</default>
+      <summary>Touch the fingerprint reader to</summary>
+      <description>An action run when an enrolled finger touches the reader (lock, quickpanel, play-pause, screenshot, command, muna, clipboard, mic, dark ...); empty: off. While on, the reader is busy for other programs (sudo asks for the password); it is given up while the screen is locked.</description>
+    </key>
+
+    <key name="fingerprint-agents" type="b">
+      <default>true</default>
+      <summary>Allow Claude's questions with a finger</summary>
+      <description>While a permission card of a Claude Code task is shown, touching the fingerprint reader allows it.</description>
+    </key>
+
+    <key name="fingerprint-private" type="b">
+      <default>true</default>
+      <summary>Private notes and clipboard items</summary>
+      <description>Notes and clipboard items marked private are hidden until a finger touches the reader.</description>
+    </key>
+
     <key name="reminders" type="s">
       <default>'[]'</default>
       <summary>The butterfly's reminders</summary>

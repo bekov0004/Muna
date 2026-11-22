@@ -319,6 +319,7 @@ export class MunaPreferences {
                 ['general', _('General'), 'preferences-system-symbolic', P('general')],
                 ['tools', _('Menu bar'), 'window-new-symbolic', P('tools')],
                 ['touchpad', _('Touchpad gestures'), 'input-touchpad-symbolic', this._touchpadGesturesPage(settings)],
+                ['fingerprint', _('Fingerprint'), 'auth-fingerprint-symbolic', this._fingerprintPage(settings)],
                 ['features', _('Features'), 'view-app-grid-symbolic', featuresPage],
                 ['monitor', _('Monitor'), 'utilities-system-monitor-symbolic', P('monitor')],
             ]],
@@ -370,6 +371,7 @@ export class MunaPreferences {
             muna: _('Choose the widgets of the capsule (the island), their order and their width.'),
             appearance: _('The look of the capsule and the top bar.'),
             gestures: _('How the capsule opens, closes and reacts to the pointer and the touchpad.'),
+            fingerprint: _('The fingerprint reader of the laptop: touch it to run an action, allow Claude\'s questions, open private notes and clipboard items.'),
             touchpad: _('Three and four fingers on the touchpad do what you choose here, anywhere: switch apps like Alt+Tab, workspaces, the overview, windows, sound, tabs, Muna, or any keys.'),
             activities: _('What the capsule shows while something is going on, and for how long.'),
             tray: _('The file shelf: drag files to the top of the screen to keep them there.'),
@@ -1545,6 +1547,49 @@ export class MunaPreferences {
     }
 
 
+
+    /** The fingerprint reader (fprintd): what touching it does. */
+    _fingerprintPage(settings) {
+        const body = this._body();
+        const form = this._form();
+        body.append(form);
+        // what is there: a reader, an enrolled finger
+        let status = _('No fingerprint reader was found.');
+        try {
+            const bus = Gio.DBus.system;
+            const [path] = bus.call_sync('net.reactivated.Fprint', '/net/reactivated/Fprint/Manager', 'net.reactivated.Fprint.Manager',
+                'GetDefaultDevice', null, null, Gio.DBusCallFlags.NONE, 2000, null).deepUnpack();
+            let fingers = [];
+            try {
+                [fingers] = bus.call_sync('net.reactivated.Fprint', path, 'net.reactivated.Fprint.Device', 'ListEnrolledFingers',
+                    new GLib.Variant('(s)', ['']), null, Gio.DBusCallFlags.NONE, 2000, null).deepUnpack();
+            } catch (e) {
+                fingers = [];
+            }
+            status = fingers.length
+                ? _('Reader found, %d finger enrolled.').format(fingers.length)
+                : _('Reader found, but no finger is enrolled: add one in GNOME Settings → System → Users → Fingerprint Login.');
+        } catch (e) {
+            // no fprintd or no reader
+        }
+        form.append(new Gtk.Label({label: _('Reader'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        form.append(this._dim(status));
+        this._rule(form);
+
+        const ACTIONS = [['', _('Nothing')], ['lock', _('Lock the screen')], ['quickpanel', _('Open the quick panel')],
+            ['muna', _('Open the capsule')], ['command', _('Command Bar')], ['clipboard', _('Clipboard')],
+            ['play-pause', _('Play or pause music')], ['mic', _('Mute the microphone')], ['screenshot', _('Screenshot')],
+            ['dark', _('Dark style on or off')], ['awake', _('Keep awake on or off')]];
+        form.append(new Gtk.Label({label: _('Touch'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        this._row(form, _('Touching the reader'), this._dropdown(settings, 'fingerprint-touch', ACTIONS),
+            _('A finger on the reader does this. While it is on, the reader is busy for other programs: sudo and password dialogs ask for the password instead (the lock screen still unlocks with a finger).'));
+        this._rule(form);
+        this._toggleRow(form, settings, 'fingerprint-agents', _('Confirm'), _('Allow Claude\'s questions with a finger'),
+            _('While Claude Code asks to edit a file or run a command, your finger on the reader allows it.'));
+        this._toggleRow(form, settings, 'fingerprint-private', '', _('Private notes and clipboard items'),
+            _('Notes and clipboard items you mark private stay hidden until your finger touches the reader.'));
+        return body;
+    }
 
     /** The butterfly's reminders: a new one (time, text, how often), the list (on/off, remove), a sound. */
     _remindersEditor(form, settings) {

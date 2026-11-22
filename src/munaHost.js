@@ -16,6 +16,7 @@ import {WIDGET_CLASSES} from './widgets/registry.js';
 import {MunaBackend} from './client/moduleClient.js';
 import {BarHider} from './ui/barHider.js';
 import {ReminderService} from './services/reminderService.js';
+import {FingerprintService} from './services/fingerprintService.js';
 import {MunaBar} from './ui/munaBar.js';
 import {AgentsService} from './services/agentsService.js';
 import {DownloadsService} from './services/downloadsService.js';
@@ -143,6 +144,16 @@ export class MunaHost {
                 maxItems: () => this._settings.get('clipboard-max-items'),
             }),
         };
+        // the fingerprint reader: the touch action (Settings → Fingerprint), confirmations
+        this._services.fingerprint = new FingerprintService();
+        this._services.fingerprint.connectObject('touch', () => {
+            const action = this._settings.get('fingerprint-touch');
+            if (!action)
+                return;
+            this.capsules.forEach(muna => muna._closedView?.flap());
+            this._runAction(action);
+        }, this);
+        this._services.fingerprint.setTouchAction(!!this._settings.get('fingerprint-touch'));
         // the butterfly's reminders: one after the other, from the capsule where the pointer is
         this._services.reminders = new ReminderService(this._settings);
         this._reminderQueue = [];
@@ -226,6 +237,8 @@ export class MunaHost {
             services.downloads.destroy();
             services.agents.disconnectObject(this);
             services.agents.destroy();
+            services.fingerprint?.disconnectObject(this);
+            services.fingerprint?.destroy();
             services.reminders?.disconnectObject(this);
             services.reminders?.destroy();
             services.lyrics.destroy();
@@ -468,6 +481,8 @@ export class MunaHost {
             this._syncMonitor();
         else if (key === 'action-request')
             this._runAction(this._settings.get('action-request').split(':')[0]);
+        else if (key === 'fingerprint-touch')
+            this._services.fingerprint?.setTouchAction(!!this._settings.get('fingerprint-touch'));
         else if (key === 'reminder-preview') {
             try {
                 const preview = JSON.parse(this._settings.get('reminder-preview') || 'null');

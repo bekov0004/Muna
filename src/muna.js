@@ -882,6 +882,7 @@ export class Muna {
         const activity = new AgentPermissionActivity({
             request,
             agents: this._services.agents,
+            fingerprint: this._settings.get('fingerprint-agents') ? this._services.fingerprint : null,
             onDismiss: () => this._cards.hide(`activity:${activity.id}`),
         });
         this._services.activities.peek(activity, {persistent: true, priority: Priority.CRITICAL, force: true, target: this});

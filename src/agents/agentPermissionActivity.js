@@ -12,15 +12,22 @@ import {LiveActivity} from '../ui/liveActivity.js';
  */
 export class AgentPermissionActivity extends LiveActivity {
     /** @param {{request: object, agents: AgentsService, onDismiss: () => void}} params */
-    constructor({request, agents, onDismiss}) {
+    constructor({request, agents, onDismiss, fingerprint = null}) {
         super({id: `agent-ask-${request.requestId}`, widgetId: 'agents'});
         this._request = request;
         this._agents = agents;
+        // a finger on the reader allows it (Settings → Fingerprint)
+        this._fingerprint = fingerprint?.ready ? fingerprint : null;
+        this._fingerprint?.confirm(`Allow Claude: ${request.verb} ${request.detail}`).then(ok => {
+            if (ok && !this._dismissed)
+                this._answer('allow');
+        });
         this._dismissed = false;
         this._onDismiss = () => {
             if (this._dismissed)
                 return;
             this._dismissed = true;
+            this._fingerprint?.cancel();
             onDismiss();
         };
         // answered somewhere else (or the task stopped): the card is not needed any more. The event comes before the
@@ -41,7 +48,7 @@ export class AgentPermissionActivity extends LiveActivity {
     }
 
     get peekSize() {
-        return {width: 360, height: 150};
+        return {width: 360, height: this._fingerprint ? 172 : 150};
     }
 
     createCompactParts() {
@@ -75,6 +82,12 @@ export class AgentPermissionActivity extends LiveActivity {
             const detail = new St.Label({text: r.detail, style_class: 'muna-agent-card-detail'});
             detail.clutter_text.ellipsize = Pango.EllipsizeMode.MIDDLE;
             body.add_child(detail);
+        }
+        if (this._fingerprint) {
+            const hint = new St.BoxLayout({style_class: 'muna-agent-card-finger'});
+            hint.add_child(new St.Icon({icon_name: 'auth-fingerprint-symbolic', icon_size: 14}));
+            hint.add_child(new St.Label({text: 'Touch the fingerprint reader to allow', y_align: Clutter.ActorAlign.CENTER}));
+            body.add_child(hint);
         }
         const buttons = new St.BoxLayout({style_class: 'muna-ls-buttons', x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.END});
         buttons.add_child(createButton({label: 'Deny', styleClass: 'muna-ls-cancel', onClick: () => this._answer('deny')}));

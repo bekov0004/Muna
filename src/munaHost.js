@@ -608,7 +608,7 @@ export class MunaHost {
                 if (this._capsules.has(index))
                     continue;
                 const muna = new Muna(this._settings, {
-                    shared: {events: this._events, services: this._services, panel: this._panel, openMenuPage: id => this._runAction(`page-${id}`)},
+                    shared: {events: this._events, services: this._services, panel: this._panel},
                     monitorIndex: () => index,
                     leader: index === wanted[0],
                     openPreferences: this._openPreferences,

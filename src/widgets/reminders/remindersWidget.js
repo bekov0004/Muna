@@ -87,7 +87,6 @@ export class RemindersWidget extends MunaWidget {
 
     onPageShown() {
         this._rebuild();
-        // opened from the capsule's butterfly: straight to writing
         if (!this._time.text)
             this._time.text = inMinutes(15);
         this._text.grab_key_focus();

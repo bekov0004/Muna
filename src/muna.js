@@ -722,16 +722,6 @@ export class Muna {
 
         this._closedView = new ClosedView();
         this._closedView.setButterfly(this._settings.get('capsule-butterfly'));
-        // a click on the butterfly: a new reminder (the Reminders page of the quick panel)
-        this._closedView.onButterfly = () => {
-            // the capsule itself stays closed under the pointer until it leaves (it would close the menu)
-            this._timers.clear('hover');
-            this._timers.clear('dwell');
-            this._quietUntilLeave = true;
-            if (this._state === State.HOVER)
-                this._setState(State.CLOSED);
-            this._shared.openMenuPage?.('reminders');
-        };
         this._syncFlapping();
         // Cards sit below the band of the top bar.
         this._cardLayer = new St.Widget({
@@ -1035,11 +1025,6 @@ export class Muna {
         if (this._draggingOut || (this._barHidden && this._state === State.CLOSED))
             return;
         const hovered = this._hovered();
-        if (this._quietUntilLeave) {
-            if (!hovered)
-                this._quietUntilLeave = false;
-            return;
-        }
         this._timers.clear('hover');
 
         switch (this._state) {

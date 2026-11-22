@@ -1550,7 +1550,7 @@ export class MunaPreferences {
     _remindersEditor(form, settings) {
         this._rule(form);
         this._toggleRow(form, settings, 'reminder-sound', _('Reminders'), _('A sound with a reminder'),
-            _('At the time you choose the butterfly flies out of the capsule, grows and shows your text. Also in the quick panel (Reminders), or click the butterfly.'));
+            _('At the time you choose the butterfly flies out of the capsule, grows and shows your text. Also in the quick panel (Reminders).'));
 
         const add = new Gtk.Box({spacing: 8, margin_top: 6, margin_bottom: 6, margin_start: 12, margin_end: 12});
         const time = new Gtk.Entry({placeholder_text: '18:30', width_chars: 6, max_width_chars: 6});

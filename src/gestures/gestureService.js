@@ -6,7 +6,7 @@ import Shell from 'gi://Shell';
 import * as AltTab from 'resource:///org/gnome/shell/ui/altTab.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {actionOf, gestureMap} from './catalog.js';
+import {ACTIONS, actionOf, gestureMap} from './catalog.js';
 import {GestureRecognizer} from './recognizer.js';
 
 const SWITCH_STEP = 70;                 // the fingers move this much (unaccelerated) from one app to the next
@@ -197,6 +197,13 @@ export class GestureService {
     }
 
     // --- once ------------------------------------------------------------------------------------------
+
+    /** Runs one action of the catalog by its id ('brightness-up', 'workspace-left' ...): the touchpad's edges. */
+    runOnce(actionId) {
+        const action = ACTIONS.find(a => a.id === actionId);
+        if (action)
+            this._once(actionId, action, global.get_current_time());
+    }
 
     _once(id, action, time) {
         try {

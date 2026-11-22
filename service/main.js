@@ -24,6 +24,7 @@ import {NotesModule} from './notes/module.js';
 import {TimerModule} from './timer/module.js';
 import {TodoModule} from './todo/module.js';
 import {PhoneModule} from './phone/module.js';
+import {EdgesModule} from './edges/module.js';
 
 export const APPLICATION_ID = 'dev.muna.Muna';
 const VERSION = '1';
@@ -74,7 +75,7 @@ const MunaService = GObject.registerClass(class MunaService extends Gio.Applicat
         super({application_id: APPLICATION_ID, flags: Gio.ApplicationFlags.DEFAULT_FLAGS});
         // Started by the extension (MUNA_SERVICE=1): no window at the first activation.
         this._quiet = GLib.getenv('MUNA_SERVICE') === '1';
-        this._modules = [new ServiceModule(this), new LocalSendModule(), new TodoModule(), new NotesModule(), new TimerModule(), new CalendarModule(), new FilesModule(), new ArtworkModule(), new ClipboardModule(), new PowerModule(), new ToolsModule(), new FocusModule(), new SystemModule(), new DownloadsModule(), new LyricsModule(), new ProcessesModule(), new AgentsModule(this), new SnippetsModule(), new CleanerModule(), new PhoneModule()];
+        this._modules = [new ServiceModule(this), new LocalSendModule(), new TodoModule(), new NotesModule(), new TimerModule(), new CalendarModule(), new FilesModule(), new ArtworkModule(), new ClipboardModule(), new PowerModule(), new ToolsModule(), new FocusModule(), new SystemModule(), new DownloadsModule(), new LyricsModule(), new ProcessesModule(), new AgentsModule(this), new SnippetsModule(), new CleanerModule(), new PhoneModule(), new EdgesModule()];
         this._clients = new Map(); // unique bus name -> watch id
         this._idleId = 0;
     }

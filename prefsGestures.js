@@ -1,4 +1,5 @@
 import Gdk from 'gi://Gdk';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
@@ -103,7 +104,85 @@ function gesturePicture(id) {
     return area;
 }
 
+/** The touchpad's device node (udev marks it ID_INPUT_TOUCHPAD), or null. */
+function touchpadDevice() {
+    try {
+        const dir = Gio.File.new_for_path('/run/udev/data');
+        const children = dir.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE, null);
+        let info;
+        while ((info = children.next_file(null))) {
+            const name = info.get_name();
+            if (!name.startsWith('c13:'))
+                continue;
+            const [, bytes] = GLib.file_get_contents(`/run/udev/data/${name}`);
+            if (!new TextDecoder().decode(bytes).includes('E:ID_INPUT_TOUCHPAD=1'))
+                continue;
+            const minor = name.split(':')[1];
+            for (const node of Gio.File.new_for_path('/sys/class/input').enumerate_children('standard::name', 0, null)) {
+                const event = node.get_name();
+                if (!event.startsWith('event'))
+                    continue;
+                try {
+                    const [, dev] = GLib.file_get_contents(`/sys/class/input/${event}/dev`);
+                    if (new TextDecoder().decode(dev).trim() === `13:${minor}`)
+                        return `/dev/input/${event}`;
+                } catch (e) {
+                    // gone
+                }
+            }
+        }
+    } catch (e) {
+        // no udev data
+    }
+    return null;
+}
+
+function canRead(path) {
+    try {
+        return Gio.File.new_for_path(path).query_info('access::can-read', Gio.FileQueryInfoFlags.NONE, null).get_attribute_boolean('access::can-read');
+    } catch (e) {
+        return false;
+    }
+}
+
 export const gestureMethods = {
+    /** One finger along an edge of the touchpad (service/edges/muna-edges.py reads the touchpad). */
+    _edgesGroup(form, settings) {
+        this._toggleRow(form, settings, 'edge-gestures', _('One finger along an edge'), _('Edge swipes'),
+            _('Start at an edge of the touchpad and slide along it: up or down on the left and right edges, sideways on the top and bottom edges. A move that starts anywhere else stays an ordinary pointer move.'));
+        const CHOICES = [['brightness', _('Brightness')], ['volume', _('Volume')], ['desktops', _('Desktops')], ['none', _('Nothing')]];
+        for (const [edge, title] of [['left', _('Left edge, up and down')], ['right', _('Right edge, up and down')],
+            ['top', _('Top edge, left and right')], ['bottom', _('Bottom edge, left and right')]])
+            this._row(form, title, this._dropdown(settings, `edge-${edge}`, CHOICES));
+
+        // can Muna read the touchpad? (GNOME lets nobody see where one finger is, so it reads it itself)
+        const device = touchpadDevice();
+        const script = `${GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0])}/service/edges/touchpad-access.sh`;
+        const command = `sudo bash ${script}`;
+        let status;
+        if (!device)
+            status = _('No touchpad was found.');
+        else if (canRead(device))
+            status = _('The touchpad can be read: edge swipes work.');
+        else
+            status = _('Muna may not read the touchpad yet. Run this once in a terminal (it gives you access to touchpads only, not to the keyboard); no need to log out:');
+        const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 6, margin_start: 12, margin_end: 12, margin_top: 6, margin_bottom: 8});
+        const text = this._dim(status);
+        text.wrap = true;
+        text.xalign = 0;
+        box.append(text);
+        if (device && !canRead(device)) {
+            const line = new Gtk.Box({spacing: 8});
+            const entry = new Gtk.Entry({text: command, editable: false, hexpand: true, css_classes: ['monospace']});
+            const copy = new Gtk.Button({icon_name: 'edit-copy-symbolic', tooltip_text: _('Copy')});
+            copy.connect('clicked', () => copy.get_clipboard().set(command));
+            line.append(entry);
+            line.append(copy);
+            box.append(line);
+        }
+        form.attach(box);
+    },
+
     /** Touchpad gestures everywhere: each gesture with a picture and what it does. */
     _touchpadGesturesPage(settings) {
         const body = this._body();
@@ -114,6 +193,9 @@ export const gestureMethods = {
             _('Three and four fingers on the touchpad, anywhere on the desktop. Two fingers stay with the apps (scrolling, zoom). In the overview, GNOME\'s own gestures work as usual.'));
         this._row(form, _('Sensitivity'), this._slider(settings, 'gesture-sensitivity', [50, 200, 5]),
             _('More: a shorter move of the fingers is enough.'));
+        this._rule(form);
+
+        this._edgesGroup(form, settings);
         this._rule(form);
 
         const actions = ACTIONS.filter(a => a.id !== 'keys');

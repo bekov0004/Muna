@@ -382,6 +382,40 @@
       <description>Like topbar-hide, for the Muna bar (and the capsule) on the monitors without GNOME's top bar.</description>
     </key>
 
+    <key name="edge-gestures" type="b">
+      <default>true</default>
+      <summary>One-finger swipes along the touchpad's edges</summary>
+      <description>A swipe that starts at an edge of the touchpad and goes along it changes the brightness, the volume or the desktop. Needs read access to the touchpad (service/edges/touchpad-access.sh, once with sudo).</description>
+    </key>
+
+    <key name="edge-left" type="s">
+      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
+      <default>'brightness'</default>
+      <summary>One finger along the left edge</summary>
+      <description>What a one-finger swipe along the left edge of the touchpad does.</description>
+    </key>
+
+    <key name="edge-right" type="s">
+      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
+      <default>'volume'</default>
+      <summary>One finger along the right edge</summary>
+      <description>What a one-finger swipe along the right edge of the touchpad does.</description>
+    </key>
+
+    <key name="edge-top" type="s">
+      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
+      <default>'brightness'</default>
+      <summary>One finger along the top edge</summary>
+      <description>What a one-finger swipe along the top edge of the touchpad does.</description>
+    </key>
+
+    <key name="edge-bottom" type="s">
+      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
+      <default>'volume'</default>
+      <summary>One finger along the bottom edge</summary>
+      <description>What a one-finger swipe along the bottom edge of the touchpad does.</description>
+    </key>
+
     <key name="fingerprint-touch" type="s">
       <default>''</default>
       <summary>Touch the fingerprint reader to</summary>

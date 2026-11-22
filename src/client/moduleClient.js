@@ -201,6 +201,7 @@ export class MunaBackend {
         this.snippets = new ModuleClient('Snippets', ensure);
         this.cleaner = new ModuleClient('Cleaner', ensure);
         this.phone = new ModuleClient('Phone', ensure);
+        this.edges = new ModuleClient('Edges', ensure);
     }
 
     /** Makes sure the service runs (starts it from the extension's folder if nobody has), once at a time. */
@@ -294,6 +295,7 @@ export class MunaBackend {
         this.snippets.start();
         this.cleaner.start();
         this.phone.start();
+        this.edges.start();
     }
 
     /** The extension is being disabled: the service has nothing left to do. */
@@ -327,6 +329,7 @@ export class MunaBackend {
         this.snippets.destroy();
         this.cleaner.destroy();
         this.phone.destroy();
+        this.edges.destroy();
         this.service.destroy();
     }
 }

@@ -17,6 +17,7 @@ import {MunaBackend} from './client/moduleClient.js';
 import {BarHider} from './ui/barHider.js';
 import {ReminderService} from './services/reminderService.js';
 import {FingerprintService} from './services/fingerprintService.js';
+import {EdgeGestures} from './gestures/edgeGestures.js';
 import {MunaBar} from './ui/munaBar.js';
 import {AgentsService} from './services/agentsService.js';
 import {DownloadsService} from './services/downloadsService.js';
@@ -183,6 +184,8 @@ export class MunaHost {
                 console.warn(`[muna] touchpad gestures: ${e.message}`);
             }
         }
+        // one finger along the touchpad's edges (service/edges reads the touchpad)
+        this._edges = new EdgeGestures({module: this._backend.edges, settings: this._settings, gestures: this._gestures ?? null});
         this._watchInputSource();
         if (this._settings.get('awake-on-start'))
             GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
@@ -205,6 +208,8 @@ export class MunaHost {
     destroy() {
         this._settings?.disconnectObject(this);
         this._removeShortcuts();
+        this._edges?.destroy();
+        this._edges = null;
         this._gestures?.destroy();
         this._gestures = null;
         this._actions?.destroy();
@@ -482,6 +487,8 @@ export class MunaHost {
             this._syncMonitor();
         else if (key === 'action-request')
             this._runAction(this._settings.get('action-request').split(':')[0]);
+        else if (key === 'edge-gestures')
+            this._edges?.sync();
         else if (key === 'fingerprint-private') {
             this._services.fingerprint.privateEnabled = this._settings.get('fingerprint-private');
             this._services.fingerprint.emit('changed');

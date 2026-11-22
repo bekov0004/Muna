@@ -8,6 +8,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- One finger along an edge of the touchpad (Settings → Touchpad gestures → One finger along an edge): start at the left or right edge and slide up or down, or at the top or bottom edge and slide sideways, to change the brightness, the volume or the desktop (each edge chosen on its own; brightness on the left and top, volume on the right and bottom by default). A move that starts anywhere else stays an ordinary pointer move, and the pointer is put back where it was after the swipe. GNOME lets nobody see where one finger is, so Muna reads the touchpad itself: run the command shown there once (`sudo bash …/service/edges/touchpad-access.sh`), which gives the person at the computer access to touchpads only, not to the keyboard.
+
 - Private notes and clipboard items: the lock button of a note or a clipboard item makes it private; it shows as "Private · touch the fingerprint reader" (and the Command Bar does not find it) until your finger touches the reader, then private items stay open for 5 minutes or until the screen locks.
 - Fingerprint reader (Settings → Fingerprint): touching it can run an action (lock the screen, open the quick panel or the capsule, the Command Bar, play or pause, mute the microphone, a screenshot, dark style, keep awake), and while Claude Code asks for a permission your finger on it allows it (a wrong finger does nothing). It works through fprintd and only reports whether a finger was put on it; while the touch action is on, sudo and password dialogs ask for the password instead, and the reader is given up while the screen is locked so it still unlocks with a finger.
 

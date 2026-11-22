@@ -80,6 +80,7 @@ export const ACTIONS = [
     {id: 'muna:awake', group: 'Muna', title: 'Keep awake', kind: 'once'},
     {id: 'muna:output', group: 'Muna', title: 'Next sound output', kind: 'once'},
 
+    {id: 'app-windows', group: 'Apps and windows', title: 'Windows of an app…', kind: 'once'},
     {id: 'keys', group: 'Other', title: 'Press keys…', kind: 'once'},
 ];
 
@@ -93,6 +94,9 @@ export const DEFAULT_GESTURES = {
 export function actionOf(value) {
     if (value?.startsWith('keys:'))
         return {...ACTIONS.find(a => a.id === 'keys'), keys: value.slice(5)};
+    // "app-windows:firefox_firefox.desktop": the windows of that app one after the other ("app-windows:": the app in front)
+    if (value?.startsWith('app-windows:'))
+        return {...ACTIONS.find(a => a.id === 'app-windows'), app: value.slice(12)};
     return ACTIONS.find(a => a.id === value) ?? ACTIONS[0];
 }
 

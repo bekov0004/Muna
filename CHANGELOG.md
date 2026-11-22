@@ -8,6 +8,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- "Windows of an app…" for any touchpad gesture (three and four fingers, along an edge, a double tap, a hold): choose the action, then the app (or "The app in front"); each time, the next window of that app comes to the front (along an edge: forwards and backwards). An app that is not running starts.
+
 - A double tap or a finger held still (half a second) on the touchpad: at the left or right edge, or in the middle of the top or bottom edge, each with its own action (play or pause, next or previous track, mute, the quick panel, the capsule, the Command Bar, the clipboard, the overview, a screenshot, lock, dark style, keep awake). By default a double tap or a hold in the middle of the top edge plays or pauses the music. With tap to click on, a double tap also double-clicks where the pointer is; holding a finger does not click.
 - One finger along an edge of the touchpad (Settings → Touchpad gestures → One finger along an edge): start at the left or right edge and slide up or down, or at the top or bottom edge and slide sideways, to change the brightness, the volume or the desktop (each edge chosen on its own; brightness on the left and top, volume on the right and bottom by default). A move that starts anywhere else stays an ordinary pointer move, and the pointer is put back where it was after the swipe. GNOME lets nobody see where one finger is, so Muna reads the touchpad itself: run the command shown there once (`sudo bash …/service/edges/touchpad-access.sh`), which gives the person at the computer access to touchpads only, not to the keyboard.
 

@@ -7,6 +7,7 @@ import * as AltTab from 'resource:///org/gnome/shell/ui/altTab.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {ACTIONS, actionOf, gestureMap} from './catalog.js';
+import {cycleAppWindows} from '../windows/appWindows.js';
 import {GestureRecognizer} from './recognizer.js';
 
 const SWITCH_STEP = 70;                 // the fingers move this much (unaccelerated) from one app to the next
@@ -222,6 +223,9 @@ export class GestureService {
         const workspace = global.workspace_manager.get_active_workspace();
         const window = global.display.focus_window;
         switch (action.id) {
+        case 'app-windows':
+            cycleAppWindows(action.app ?? '', 1);
+            break;
         case 'app-switcher':
         case 'window-switcher':
         case 'previous-app': {

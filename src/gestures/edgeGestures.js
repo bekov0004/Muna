@@ -1,6 +1,8 @@
 import Clutter from 'gi://Clutter';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {APP_WINDOWS, cycleAppWindows} from '../windows/appWindows.js';
+
 /** What a zone does: the action of a step up / to the right, and of a step down / to the left (gestures catalog). */
 export const EDGE_ACTIONS = {
     brightness: ['brightness-up', 'brightness-down'],
@@ -60,7 +62,14 @@ export class EdgeGestures {
             this._pointer = null;
             return;
         }
-        const pair = EDGE_ACTIONS[this._settings.get(`edge-${edge}`)] ?? null;
+        const value = this._settings.get(`edge-${edge}`);
+        if (value?.startsWith(APP_WINDOWS)) {
+            // along the edge: the windows of that app forwards and backwards
+            if (dir)
+                cycleAppWindows(value.slice(APP_WINDOWS.length), dir > 0 ? 1 : -1);
+            return;
+        }
+        const pair = EDGE_ACTIONS[value] ?? null;
         if (!pair || !dir)
             return;
         this._gestures?.runOnce(dir > 0 ? pair[0] : pair[1]);

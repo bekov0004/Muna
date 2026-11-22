@@ -18,6 +18,7 @@ import {BarHider} from './ui/barHider.js';
 import {ReminderService} from './services/reminderService.js';
 import {FingerprintService} from './services/fingerprintService.js';
 import {EdgeGestures} from './gestures/edgeGestures.js';
+import {APP_WINDOWS, cycleAppWindows} from './windows/appWindows.js';
 import {MunaBar} from './ui/munaBar.js';
 import {AgentsService} from './services/agentsService.js';
 import {DownloadsService} from './services/downloadsService.js';
@@ -342,6 +343,8 @@ export class MunaHost {
             case 'night': a.toggleNight(); break;
             case 'lock': a.lock(); break;
             }
+        } else if (name.startsWith(APP_WINDOWS)) {
+            cycleAppWindows(name.slice(APP_WINDOWS.length), 1);
         } else if (name === 'quickpanel') {
             this._menu?.menu?.toggle();
         } else if (name.startsWith('page-')) {

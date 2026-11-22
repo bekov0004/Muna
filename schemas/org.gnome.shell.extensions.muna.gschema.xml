@@ -389,84 +389,72 @@
     </key>
 
     <key name="edge-left" type="s">
-      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
       <default>'brightness'</default>
       <summary>One finger along the left edge</summary>
       <description>What a one-finger swipe along the left edge of the touchpad does.</description>
     </key>
 
     <key name="edge-right" type="s">
-      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
       <default>'volume'</default>
       <summary>One finger along the right edge</summary>
       <description>What a one-finger swipe along the right edge of the touchpad does.</description>
     </key>
 
     <key name="edge-top" type="s">
-      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
       <default>'brightness'</default>
       <summary>One finger along the top edge</summary>
       <description>What a one-finger swipe along the top edge of the touchpad does.</description>
     </key>
 
     <key name="edge-bottom" type="s">
-      <choices><choice value="brightness"/><choice value="volume"/><choice value="desktops"/><choice value="none"/></choices>
       <default>'volume'</default>
       <summary>One finger along the bottom edge</summary>
       <description>What a one-finger swipe along the bottom edge of the touchpad does.</description>
     </key>
 
     <key name="edge-tap-left" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'none'</default>
       <summary>A double tap at the left edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-tap-right" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'none'</default>
       <summary>A double tap at the right edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-tap-top" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'play-pause'</default>
       <summary>A double tap in the middle of the top edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-tap-bottom" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'none'</default>
       <summary>A double tap in the middle of the bottom edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-hold-left" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'none'</default>
       <summary>Holding a finger still at the left edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-hold-right" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'none'</default>
       <summary>Holding a finger still at the right edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-hold-top" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'play-pause'</default>
       <summary>Holding a finger still in the middle of the top edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>
     </key>
 
     <key name="edge-hold-bottom" type="s">
-      <choices><choice value="none"/><choice value="play-pause"/><choice value="next"/><choice value="prev"/><choice value="volume-mute"/><choice value="mic"/><choice value="quickpanel"/><choice value="muna"/><choice value="command"/><choice value="clipboard"/><choice value="overview"/><choice value="screenshot"/><choice value="lock"/><choice value="dark"/><choice value="awake"/></choices>
       <default>'none'</default>
       <summary>Holding a finger still in the middle of the bottom edge of the touchpad</summary>
       <description>What it does (play-pause, next, quickpanel, lock ...; none: nothing).</description>

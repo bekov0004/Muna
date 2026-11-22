@@ -145,7 +145,95 @@ function canRead(path) {
     }
 }
 
+const APP_WINDOWS = 'app-windows:';
+
+/** The name of an app by its id ('' : the app in front). */
+function appName(id) {
+    if (!id)
+        return _('The app in front');
+    return Gio.AppInfo.get_all().find(a => a.get_id() === id)?.get_display_name() ?? id;
+}
+
+/**
+ * A window to choose an app: a search field and the apps (first "The app in front": whatever app you are in).
+ * @param {Gtk.Widget} near a widget of the settings window
+ * @param {(id: string) => void} onPick
+ */
+function pickApp(near, onPick) {
+    const dialog = new Gtk.Window({title: _('Which app\'s windows?'), modal: true, transient_for: near.get_root(), default_width: 420, default_height: 540});
+    const box = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8, margin_top: 12, margin_bottom: 12, margin_start: 12, margin_end: 12});
+    const search = new Gtk.SearchEntry({placeholder_text: _('Search apps')});
+    box.append(search);
+    const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE, css_classes: ['boxed-list']});
+    const apps = Gio.AppInfo.get_all().filter(a => a.should_show()).sort((a, b) => a.get_display_name().localeCompare(b.get_display_name()));
+    const entries = [{id: '', name: _('The app in front'), icon: Gio.ThemedIcon.new('focus-windows-symbolic'), note: _('Whatever app you are in')},
+        ...apps.map(a => ({id: a.get_id(), name: a.get_display_name(), icon: a.get_icon()}))];
+    for (const entry of entries) {
+        const row = new Gtk.ListBoxRow();
+        row._entry = entry;
+        const line = new Gtk.Box({spacing: 12, margin_top: 8, margin_bottom: 8, margin_start: 10, margin_end: 10});
+        line.append(new Gtk.Image({gicon: entry.icon ?? Gio.ThemedIcon.new('application-x-executable'), pixel_size: 28}));
+        const texts = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.CENTER});
+        texts.append(new Gtk.Label({label: entry.name, xalign: 0}));
+        if (entry.note)
+            texts.append(new Gtk.Label({label: entry.note, xalign: 0, css_classes: ['dim-label', 'caption']}));
+        line.append(texts);
+        row.child = line;
+        list.append(row);
+    }
+    list.set_filter_func(row => !search.text || row._entry.name.toLowerCase().includes(search.text.toLowerCase()));
+    search.connect('search-changed', () => list.invalidate_filter());
+    list.connect('row-activated', (_l, row) => {
+        onPick(row._entry.id);
+        dialog.close();
+    });
+    list.set_activate_on_single_click(true);
+    box.append(new Gtk.ScrolledWindow({child: list, vexpand: true, hscrollbar_policy: Gtk.PolicyType.NEVER}));
+    dialog.child = box;
+    dialog.present();
+    search.grab_focus();
+}
+
 export const gestureMethods = {
+    /**
+     * A drop-down of actions for a string setting, plus "Windows of an app…" (then an app is chosen; a button beside
+     * shows which and changes it): the setting becomes "app-windows:<app id>".
+     */
+    _actionChooser(settings, key, items) {
+        const titles = [...items.map(i => i[1]), _('Windows of an app…')];
+        const drop = new Gtk.DropDown({model: Gtk.StringList.new(titles), css_classes: ['muna-drop']});
+        const app = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
+        const box = new Gtk.Box({spacing: 8, valign: Gtk.Align.CENTER, halign: Gtk.Align.END});
+        box._inline = true;
+        box.append(app);
+        box.append(drop);
+        let syncing = false;
+        const sync = () => {
+            const value = settings.get_string(key);
+            syncing = true;
+            drop.selected = value.startsWith(APP_WINDOWS) ? titles.length - 1 : Math.max(0, items.findIndex(i => i[0] === value));
+            syncing = false;
+            app.visible = value.startsWith(APP_WINDOWS);
+            app.label = app.visible ? appName(value.slice(APP_WINDOWS.length)) : '';
+        };
+        const choose = () => pickApp(box, id => settings.set_string(key, APP_WINDOWS + id));
+        drop.connect('notify::selected', () => {
+            if (syncing)
+                return;
+            if (drop.selected === titles.length - 1) {
+                if (!settings.get_string(key).startsWith(APP_WINDOWS))
+                    settings.set_string(key, APP_WINDOWS);
+                choose();
+            } else {
+                settings.set_string(key, items[drop.selected][0]);
+            }
+        });
+        app.connect('clicked', choose);
+        settings.connect(`changed::${key}`, sync);
+        sync();
+        return box;
+    },
+
     /** One finger along an edge of the touchpad (service/edges/muna-edges.py reads the touchpad). */
     _edgesGroup(form, settings) {
         this._toggleRow(form, settings, 'edge-gestures', _('One finger along an edge'), _('Edge swipes'),
@@ -153,7 +241,7 @@ export const gestureMethods = {
         const CHOICES = [['brightness', _('Brightness')], ['volume', _('Volume')], ['desktops', _('Desktops')], ['none', _('Nothing')]];
         for (const [edge, title] of [['left', _('Left edge, up and down')], ['right', _('Right edge, up and down')],
             ['top', _('Top edge, left and right')], ['bottom', _('Bottom edge, left and right')]])
-            this._row(form, title, this._dropdown(settings, `edge-${edge}`, CHOICES));
+            this._row(form, title, this._actionChooser(settings, `edge-${edge}`, CHOICES));
 
         // a double tap, a finger held still: in four zones
         const TAPS = [['none', _('Nothing')], ['play-pause', _('Play or pause')], ['next', _('Next track')], ['prev', _('Previous track')],
@@ -169,11 +257,11 @@ export const gestureMethods = {
             // no such schema
         }
         for (const [zone, title] of ZONES)
-            this._row(form, title, this._dropdown(settings, `edge-tap-${zone}`, TAPS),
+            this._row(form, title, this._actionChooser(settings, `edge-tap-${zone}`, TAPS),
                 zone === 'top' && tapToClick ? _('Tap to click is on: a double tap is also a double click where the pointer is. Holding a finger does not click.') : '');
         form.append(new Gtk.Label({label: _('Hold a finger still (half a second)'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         for (const [zone, title] of ZONES)
-            this._row(form, title, this._dropdown(settings, `edge-hold-${zone}`, TAPS));
+            this._row(form, title, this._actionChooser(settings, `edge-hold-${zone}`, TAPS));
 
         // can Muna read the touchpad? (GNOME lets nobody see where one finger is, so it reads it itself)
         const device = touchpadDevice();
@@ -218,9 +306,11 @@ export const gestureMethods = {
         this._edgesGroup(form, settings);
         this._rule(form);
 
-        const actions = ACTIONS.filter(a => a.id !== 'keys');
+        const actions = ACTIONS.filter(a => a.id !== 'keys' && a.id !== 'app-windows');
         const titles = actions.map(a => _(a.title));
+        titles.push(_('Windows of an app…'));
         titles.push(_('Press keys…'));
+        const APP_INDEX = titles.length - 2;
         const saved = () => settings.get_value('gesture-actions').deepUnpack();
         const setOne = (id, value) => {
             const all = {...saved(), [id]: value};
@@ -239,8 +329,10 @@ export const gestureMethods = {
                     css_classes: ['muna-drop'],
                 });
                 const keys = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
+                const appButton = new Gtk.Button({css_classes: ['muna-btn'], visible: false});
                 const box = new Gtk.Box({spacing: 8, valign: Gtk.Align.CENTER});
                 box._inline = true;
+                box.append(appButton);
                 box.append(keys);
                 box.append(drop);
                 let syncing = false;
@@ -248,9 +340,12 @@ export const gestureMethods = {
                 const sync = () => {
                     const value = gestureMap(saved())[id];
                     syncing = true;
-                    drop.selected = value.startsWith('keys:') ? titles.length - 1 : Math.max(0, actions.findIndex(a => a.id === value));
+                    drop.selected = value.startsWith('keys:') ? titles.length - 1
+                        : value.startsWith(APP_WINDOWS) ? APP_INDEX : Math.max(0, actions.findIndex(a => a.id === value));
                     syncing = false;
                     keys.visible = value.startsWith('keys:');
+                    appButton.visible = value.startsWith(APP_WINDOWS);
+                    appButton.label = appButton.visible ? appName(value.slice(APP_WINDOWS.length)) : '';
                     if (!recording)
                         keys.label = value.startsWith('keys:') && value.length > 5 ? Gtk.accelerator_get_label(...Gtk.accelerator_parse(value.slice(5)).slice(1)) : _('Set keys');
                 };
@@ -276,11 +371,16 @@ export const gestureMethods = {
                         if (!now.startsWith('keys:'))
                             setOne(id, 'keys:');
                         record();
+                    } else if (drop.selected === APP_INDEX) {
+                        if (!gestureMap(saved())[id].startsWith(APP_WINDOWS))
+                            setOne(id, APP_WINDOWS);
+                        pickApp(box, app => setOne(id, APP_WINDOWS + app));
                     } else {
                         setOne(id, actions[drop.selected]?.id ?? 'none');
                     }
                 });
                 keys.connect('clicked', record);
+                appButton.connect('clicked', () => pickApp(box, app => setOne(id, APP_WINDOWS + app)));
                 const controller = new Gtk.EventControllerKey();
                 controller.connect('key-pressed', (_c, keyval, keycode, state) => {
                     if (!recording)

@@ -145,6 +145,93 @@ function canRead(path) {
     }
 }
 
+/**
+ * A small picture of a one-finger gesture: along an edge (where: left, right, top, bottom; dir: plus = up or to the
+ * right), a double tap or a hold in a zone (left, right edge; top, bottom middle).
+ */
+function onePicture(kind, where, dir = 'plus') {
+    const area = new Gtk.DrawingArea({content_width: 44, content_height: 44, valign: Gtk.Align.CENTER, css_classes: ['muna-gesture-pic']});
+    area.set_draw_func((widget, cr, w, h) => {
+        const color = widget.get_color?.() ?? new Gdk.RGBA({red: 1, green: 1, blue: 1, alpha: 1});
+        const ink = alpha => cr.setSourceRGBA(color.red, color.green, color.blue, color.alpha * alpha);
+        const [x0, y0, x1, y1] = [2, 6, w - 2, h - 6];       // the touchpad, a little wider than tall
+        const r = 6;
+        ink(0.18);
+        cr.newSubPath();
+        cr.arc(x1 - r, y0 + r, r, -Math.PI / 2, 0);
+        cr.arc(x1 - r, y1 - r, r, 0, Math.PI / 2);
+        cr.arc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI);
+        cr.arc(x0 + r, y0 + r, r, Math.PI, 1.5 * Math.PI);
+        cr.closePath();
+        cr.setLineWidth(1.5);
+        cr.stroke();
+        const inset = 5;
+        const spot = {
+            left: [x0 + inset, (y0 + y1) / 2], right: [x1 - inset, (y0 + y1) / 2],
+            top: [w / 2, y0 + inset], bottom: [w / 2, y1 - inset],
+        }[where];
+        // the edge, lit: all of it for swipes, its middle for taps and holds
+        ink(0.55);
+        cr.setLineWidth(2.5);
+        const lit = kind === 'edge' ? 1 : 0.34;
+        if (where === 'left' || where === 'right') {
+            const x = where === 'left' ? x0 : x1;
+            const half = (y1 - y0 - 2 * r) * lit / 2;
+            cr.moveTo(x, (y0 + y1) / 2 - half);
+            cr.lineTo(x, (y0 + y1) / 2 + half);
+        } else {
+            const y = where === 'top' ? y0 : y1;
+            const half = (x1 - x0 - 2 * r) * lit / 2;
+            cr.moveTo(w / 2 - half, y);
+            cr.lineTo(w / 2 + half, y);
+        }
+        cr.stroke();
+        const vertical = where === 'left' || where === 'right';
+        const [fx, fy] = kind === 'edge'
+            ? (vertical ? [spot[0], dir === 'plus' ? y1 - 8 : y0 + 8] : [dir === 'plus' ? x0 + 9 : x1 - 9, spot[1]])
+            : spot;
+        ink(0.95);
+        cr.newSubPath();
+        cr.arc(fx, fy, 2.8, 0, 2 * Math.PI);
+        cr.fill();
+        ink(0.8);
+        cr.setLineWidth(1.6);
+        if (kind === 'edge') {
+            // an arrow along the edge
+            const [tx, ty] = vertical ? [fx, dir === 'plus' ? y0 + 7 : y1 - 7] : [dir === 'plus' ? x1 - 8 : x0 + 8, fy];
+            const [sx, sy] = [fx + Math.sign(tx - fx) * 5, fy + Math.sign(ty - fy) * 5];
+            cr.moveTo(sx, sy);
+            cr.lineTo(tx, ty);
+            cr.stroke();
+            const a = Math.atan2(ty - sy, tx - sx);
+            cr.moveTo(tx, ty);
+            cr.lineTo(tx - 4 * Math.cos(a - 0.5), ty - 4 * Math.sin(a - 0.5));
+            cr.moveTo(tx, ty);
+            cr.lineTo(tx - 4 * Math.cos(a + 0.5), ty - 4 * Math.sin(a + 0.5));
+            cr.stroke();
+        } else if (kind === 'tap') {
+            // two rings: two taps
+            for (const [radius, alpha] of [[6, 0.75], [9.5, 0.4]]) {
+                ink(alpha);
+                cr.newSubPath();
+                cr.arc(fx, fy, radius, 0, 2 * Math.PI);
+                cr.stroke();
+            }
+        } else {
+            // a ring filling up: the finger stays
+            ink(0.25);
+            cr.newSubPath();
+            cr.arc(fx, fy, 7.5, 0, 2 * Math.PI);
+            cr.stroke();
+            ink(0.9);
+            cr.newSubPath();
+            cr.arc(fx, fy, 7.5, -Math.PI / 2, Math.PI);
+            cr.stroke();
+        }
+    });
+    return area;
+}
+
 const APP_WINDOWS = 'app-windows:';
 
 /** The name of an app by its id ('' : the app in front). */
@@ -195,6 +282,27 @@ function pickApp(near, onPick) {
 }
 
 export const gestureMethods = {
+    /** A row of a card: a picture of the gesture, its name (and a line under it), the control. */
+    _pictureRow(form, picture, title, control, note = '') {
+        const card = this._cardOf(form);
+        if (card._rows > 0)
+            card.append(new Gtk.Separator());
+        card._rows++;
+        const row = new Gtk.Box({css_classes: ['s-row'], spacing: 14});
+        row.append(picture);
+        const texts = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, hexpand: true, valign: Gtk.Align.CENTER});
+        texts.append(new Gtk.Label({label: title, css_classes: ['s-row-title'], xalign: 0, wrap: true}));
+        if (note) {
+            const line = this._dim(note);
+            line.wrap = true;
+            line.xalign = 0;
+            texts.append(line);
+        }
+        row.append(texts);
+        row.append(control);
+        card.append(row);
+    },
+
     /**
      * The action of a gesture, from the whole catalog (with a search), "Windows of an app…" (then an app) and "Press
      * keys…" (then the keys). live: also the actions that follow three or four fingers.
@@ -325,8 +433,8 @@ export const gestureMethods = {
             plusBox._inline = true;
             plusBox.append(swap);
             plusBox.append(this._settingChooser(settings, `edge-${edge}-plus`));
-            this._row(form, plus, plusBox);
-            this._row(form, minus, this._settingChooser(settings, `edge-${edge}-minus`));
+            this._pictureRow(form, onePicture('edge', edge, 'plus'), plus, plusBox);
+            this._pictureRow(form, onePicture('edge', edge, 'minus'), minus, this._settingChooser(settings, `edge-${edge}-minus`));
         }
 
         // a double tap, a finger held still: in four zones
@@ -339,11 +447,11 @@ export const gestureMethods = {
             // no such schema
         }
         for (const [zone, title] of ZONES)
-            this._row(form, title, this._settingChooser(settings, `edge-tap-${zone}`),
+            this._pictureRow(form, onePicture('tap', zone), title, this._settingChooser(settings, `edge-tap-${zone}`),
                 zone === 'top' && tapToClick ? _('Tap to click is on: a double tap is also a double click where the pointer is. Holding a finger does not click.') : '');
         form.append(new Gtk.Label({label: _('Hold a finger still (half a second)'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         for (const [zone, title] of ZONES)
-            this._row(form, title, this._settingChooser(settings, `edge-hold-${zone}`));
+            this._pictureRow(form, onePicture('hold', zone), title, this._settingChooser(settings, `edge-hold-${zone}`));
 
         // can Muna read the touchpad? (GNOME lets nobody see where one finger is, so it reads it itself)
         const device = touchpadDevice();

@@ -8,6 +8,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Every one-finger gesture in the settings has a small picture like the three- and four-finger ones: the lit edge with an arrow for a swipe along it, two rings for a double tap, a filling ring for a hold, each in its place on the touchpad.
 - Which way the desktops go with three or four fingers (Settings → Touchpad gestures → Desktops): with the fingers like a phone (swipe left, the desktop on the right comes) or the way of the swipe (swipe left, the desktop on the left). Along an edge a ⇄ button swaps the actions of the two directions.
 
 - Every gesture chooses from the same whole list of actions (about sixty, with a search, plus "Windows of an app…" and "Press keys…"): three and four fingers, one finger along an edge (now each direction on its own: left edge up and down, top edge to the right and to the left ...), a double tap, a hold, and touching the fingerprint reader. Along an edge, actions that can be repeated (brightness, volume, workspaces, tabs, zoom, tracks, windows of an app, keys) run at every step, the others once a swipe. The actions that follow three or four fingers (switching apps, the overview, the workspaces) are left out for one finger; their once-only versions are there. New actions: dark style, night light, cleaning mode, record the screen. The earlier edge choices are carried over.

@@ -66,6 +66,7 @@ export const DEFAULTS = Object.freeze({
     'topbar-hide': 'intellihide',
     'muna-bar': true,
     'muna-bar-hide': 'intellihide',
+    'gesture-desktops': 'fingers',
     'edge-gestures': true,
     'edge-left': 'brightness',
     'edge-right': 'volume',

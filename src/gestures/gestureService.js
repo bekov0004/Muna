@@ -176,6 +176,15 @@ export class GestureService {
         };
     }
 
+    /** Desktops go the way of the swipe (swipe left: the desktop on the left), not with the fingers. */
+    _reverseDesktops() {
+        try {
+            return this._gsettings.get_string('gesture-desktops') === 'swipe';
+        } catch (e) {
+            return false;
+        }
+    }
+
     /** GNOME's own workspace and overview gestures, given the fingers' moves (they look and feel as GNOME's). */
     _native(kind, info) {
         const tracker = kind === 'workspaces' ? Main.wm._workspaceAnimation?._swipeTracker : Main.overview._swipeTracker;
@@ -183,7 +192,8 @@ export class GestureService {
         if (!gesture || !tracker.enabled || !(tracker._allowedModes & Main.actionMode))
             return null;
         const distance = info.axis === 'x' ? 400 : 300;      // GNOME's TOUCHPAD_BASE_WIDTH / HEIGHT
-        const natural = this._touchpad.get_boolean('natural-scroll');
+        // the desktops can go the way of the swipe instead of following the fingers (Settings → Touchpad gestures)
+        const natural = this._touchpad.get_boolean('natural-scroll') !== (kind === 'workspaces' && this._reverseDesktops());
         const [x, y] = global.get_pointer();
         gesture.emit('begin', info.time, x, y);
         let ended = false;
@@ -255,7 +265,8 @@ export class GestureService {
         case 'workspaces':
         case 'workspace-left':
         case 'workspace-right': {
-            const left = action.id === 'workspace-left' || (action.id === 'workspaces' && (direction === 'right' || direction === 'down') === this._touchpad.get_boolean('natural-scroll'));
+            const natural = this._touchpad.get_boolean('natural-scroll') !== this._reverseDesktops();
+            const left = action.id === 'workspace-left' || (action.id === 'workspaces' && (direction === 'right' || direction === 'down') === natural);
             const monitor = global.display.get_current_monitor();
             if (this._desktops?.ownsMonitor(monitor)) {
                 this._desktops.step(monitor, left ? -1 : 1);

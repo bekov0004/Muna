@@ -382,6 +382,13 @@
       <description>Like topbar-hide, for the Muna bar (and the capsule) on the monitors without GNOME's top bar.</description>
     </key>
 
+    <key name="gesture-desktops" type="s">
+      <choices><choice value="fingers"/><choice value="swipe"/></choices>
+      <default>'fingers'</default>
+      <summary>Which way the desktops go with a swipe</summary>
+      <description>fingers: they move with the fingers, like a phone (swipe left: the desktop on the right; reversed when natural scrolling is off); swipe: the way of the swipe (swipe left: the desktop on the left).</description>
+    </key>
+
     <key name="edge-gestures" type="b">
       <default>true</default>
       <summary>One-finger swipes along the touchpad's edges</summary>

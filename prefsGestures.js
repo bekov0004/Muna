@@ -313,7 +313,19 @@ export const gestureMethods = {
             _('Start at an edge of the touchpad and slide along it: up or down on the left and right edges, sideways on the top and bottom edges. A move that starts anywhere else stays an ordinary pointer move.'));
         for (const [edge, plus, minus] of [['left', _('Left edge, up'), _('Left edge, down')], ['right', _('Right edge, up'), _('Right edge, down')],
             ['top', _('Top edge, to the right'), _('Top edge, to the left')], ['bottom', _('Bottom edge, to the right'), _('Bottom edge, to the left')]]) {
-            this._row(form, plus, this._settingChooser(settings, `edge-${edge}-plus`));
+            // ⇄: the two directions the other way round (the desktop on the left with a swipe to the right ...)
+            const swap = new Gtk.Button({icon_name: 'object-flip-horizontal-symbolic', css_classes: ['flat'], valign: Gtk.Align.CENTER,
+                tooltip_text: _('Swap the two directions')});
+            swap.connect('clicked', () => {
+                const [a, b] = [settings.get_string(`edge-${edge}-plus`), settings.get_string(`edge-${edge}-minus`)];
+                settings.set_string(`edge-${edge}-plus`, b);
+                settings.set_string(`edge-${edge}-minus`, a);
+            });
+            const plusBox = new Gtk.Box({spacing: 4, halign: Gtk.Align.END, valign: Gtk.Align.CENTER});
+            plusBox._inline = true;
+            plusBox.append(swap);
+            plusBox.append(this._settingChooser(settings, `edge-${edge}-plus`));
+            this._row(form, plus, plusBox);
             this._row(form, minus, this._settingChooser(settings, `edge-${edge}-minus`));
         }
 
@@ -371,6 +383,9 @@ export const gestureMethods = {
             _('Three and four fingers on the touchpad, anywhere on the desktop. Two fingers stay with the apps (scrolling, zoom). In the overview, GNOME\'s own gestures work as usual.'));
         this._row(form, _('Sensitivity'), this._slider(settings, 'gesture-sensitivity', [50, 200, 5]),
             _('More: a shorter move of the fingers is enough.'));
+        this._row(form, _('Desktops'), this._dropdown(settings, 'gesture-desktops', [
+            ['fingers', _('Move with the fingers')], ['swipe', _('Go the way of the swipe')]]),
+            _('Three and four fingers. With the fingers (like a phone): swipe left and the desktop on the right comes. The way of the swipe: swipe left, go to the desktop on the left. Along an edge each direction has its own action (⇄ swaps them).'));
         this._rule(form);
 
         this._edgesGroup(form, settings);

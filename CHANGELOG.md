@@ -8,6 +8,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- The agents window has Muna's colours like the settings: black, dark grey blocks and a blue accent (not the system's grey and orange), and follows Settings → General → Appearance (light, dark or the system's). The colours live in one place (theme.js) for every window of Muna.
+
 - Every one-finger gesture in the settings has a small picture like the three- and four-finger ones: the lit edge with an arrow for a swipe along it, two rings for a double tap, a filling ring for a hold, each in its place on the touchpad.
 - Which way the desktops go with three or four fingers (Settings → Touchpad gestures → Desktops): with the fingers like a phone (swipe left, the desktop on the right comes) or the way of the swipe (swipe left, the desktop on the left). Along an edge a ⇄ button swaps the actions of the two directions.
 

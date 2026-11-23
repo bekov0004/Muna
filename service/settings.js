@@ -8,16 +8,26 @@ import GLib from 'gi://GLib';
  * The settings window, as the window of the Muna app: its own icon and name in the dock and Alt+Tab (not the
  * Extensions app's). The window itself is the one of prefsWindow.js, which the Extensions app shows too.
  */
-export async function createSettingsWindow({openStatus}) {
-    GLib.set_prgname('dev.muna.Muna');
-    Adw.init();
-    // the extension's folder: this file is <extension>/service/settings.js
-    const extensionDir = GLib.path_get_dirname(GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]));
+/** The extension's folder: this file is <extension>/service/settings.js. */
+export const extensionDir = GLib.path_get_dirname(GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]));
+
+let shared = null;
+/** The extension's settings (its schema is in the extension's folder, not installed system-wide). */
+export function extensionSettings() {
+    if (shared)
+        return shared;
     const source = Gio.SettingsSchemaSource.new_from_directory(`${extensionDir}/schemas`, Gio.SettingsSchemaSource.get_default(), false);
     const schema = source.lookup('org.gnome.shell.extensions.muna', true);
     if (!schema)
         throw new Error(`no settings schema in ${extensionDir}/schemas`);
-    const settings = new Gio.Settings({settings_schema: schema});
+    shared = new Gio.Settings({settings_schema: schema});
+    return shared;
+}
+
+export async function createSettingsWindow({openStatus}) {
+    GLib.set_prgname('dev.muna.Muna');
+    Adw.init();
+    const settings = extensionSettings();
     let metadata = {};
     try {
         metadata = JSON.parse(new TextDecoder().decode(GLib.file_get_contents(`${extensionDir}/metadata.json`)[1]));

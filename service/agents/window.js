@@ -5,6 +5,9 @@ import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk?version=4.0';
 import Pango from 'gi://Pango';
 
+import {SETTINGS_THEME, accentCss, schemeOf} from '../../theme.js';
+import {extensionSettings} from '../settings.js';
+
 /**
  * The agents window of the Muna app. On the left the tasks (and the plan's limits); on the right what the chosen task
  * does, live: its messages, every file it reads or edits and every command it runs, its questions about permissions
@@ -20,18 +23,42 @@ const STATUS = {
     done: ['emblem-ok-symbolic', 'Done'], failed: ['dialog-error-symbolic', 'Failed'], stopped: ['media-playback-stop-symbolic', 'Stopped'],
 };
 
-const CSS = `
-.agent-bubble { background: alpha(@accent_bg_color, 0.18); border-radius: 12px; padding: 8px 12px; }
+/** The window in Muna's colours (theme.js, as the settings window): black, dark grey blocks, a blue accent. */
+const css = p => `${accentCss(p)}
+.muna-agents, .muna-agents.background, .muna-agents > contents { background-color: ${p.BACKGROUND}; color: ${p.TEXT}; }
+.muna-agents headerbar { background-image: none; background-color: ${p.BACKGROUND}; box-shadow: none; border-bottom: none; color: ${p.TEXT}; }
+.muna-agents toolbarview, .muna-agents .content-pane, .muna-agents stack, .muna-agents scrolledwindow,
+.muna-agents viewport { background-color: transparent; }
+.muna-agents .sidebar-pane, .muna-agents .sidebar-pane headerbar { background-color: ${p.TOOLBAR}; }
+.muna-agents .navigation-sidebar { background: none; }
+.muna-agents .navigation-sidebar row { border-radius: 12px; margin: 2px 6px; }
+.muna-agents .navigation-sidebar row:hover { background-color: ${p.HOVER}; }
+.muna-agents .navigation-sidebar row:selected { background-color: ${p.ACCENT_SOFT}; }
+.muna-agents separator { background-color: ${p.BORDER}; }
+.muna-agents entry, .muna-agents textview, .muna-agents .view { background-color: ${p.CONTROL}; color: ${p.TEXT}; border-radius: 12px; }
+.muna-agents entry { border-radius: 999px; padding: 0 14px; min-height: 36px; box-shadow: none; }
+.muna-agents entry:focus-within { box-shadow: 0 0 0 3px ${p.ACCENT_SOFT}; }
+.muna-agents button { border-radius: 999px; }
+.muna-agents button.suggested-action { background-color: ${p.ACCENT}; color: white; }
+.muna-agents button.destructive-action { background-color: rgba(255, 69, 58, 0.16); color: #ff453a; }
+.muna-agents button.flat, .muna-agents headerbar button { background-color: transparent; }
+.muna-agents button:not(.suggested-action):not(.destructive-action):not(.flat) { background-color: ${p.CONTROL}; }
+.muna-agents levelbar trough { background-color: ${p.TRACK}; border-radius: 99px; min-height: 6px; }
+.muna-agents levelbar block.filled { background-color: ${p.ACCENT}; border-radius: 99px; }
+.muna-agents preferencespage, .muna-agents preferencespage > scrolledwindow { background-color: transparent; }
+.muna-agents .boxed-list, .muna-agents list.boxed-list { background-color: ${p.SURFACE}; border-radius: 12px; }
+.muna-agents row.combo, .muna-agents row.action { background-color: ${p.SURFACE}; }
+.muna-agents .dim-label { color: ${p.TEXT_SECONDARY}; }
+.agent-bubble { background-color: ${p.ACCENT_SOFT}; border-radius: 16px; padding: 8px 14px; }
 .agent-text { padding: 2px 4px; }
 .agent-tool { padding: 2px 4px; }
-.agent-tool-ok { color: @success_color; }
-.agent-tool-error { color: @error_color; }
-.agent-output { font-family: monospace; font-size: 0.85em; background: alpha(@view_fg_color, 0.06); border-radius: 8px; padding: 6px 8px; }
-.agent-result { background: alpha(@success_bg_color, 0.15); border-radius: 12px; padding: 8px 12px; }
-.agent-result-error { background: alpha(@error_bg_color, 0.15); }
-.agent-permission { background: alpha(@warning_bg_color, 0.22); border-radius: 14px; padding: 12px; }
+.agent-tool-ok { color: #30d158; }
+.agent-tool-error { color: #ff453a; }
+.agent-output { font-family: monospace; font-size: 0.85em; background-color: ${p.CONTROL}; border-radius: 10px; padding: 6px 10px; }
+.agent-result { background-color: ${p.SURFACE}; border: 1px solid rgba(48, 209, 88, 0.35); border-radius: 14px; padding: 8px 14px; }
+.agent-result-error { border-color: rgba(255, 69, 58, 0.4); }
+.agent-permission { background-color: ${p.SURFACE}; border: 1px solid rgba(255, 159, 10, 0.45); border-radius: 16px; padding: 12px 14px; }
 .agent-note { font-size: 0.85em; }
-.agent-usage-bar trough { min-height: 6px; }
 `;
 
 const ago = ms => {
@@ -68,11 +95,24 @@ function label(text, {classes = [], wrap = true, xalign = 0, selectable = false,
 export function createAgentsWindow(module) {
     GLib.set_prgname('dev.muna.Muna');
     Adw.init();
+    // Muna's colours and its light / dark choice (Settings → General → Appearance), as in the settings window
+    let settings = null;
+    try {
+        settings = extensionSettings();
+    } catch (e) {
+        settings = null;
+    }
+    const style = Adw.StyleManager.get_default();
+    const applyScheme = () => (style.color_scheme = schemeOf(settings, Adw));
+    applyScheme();
+    const schemeId = settings?.connect('changed::color-scheme', applyScheme) ?? 0;
     const provider = new Gtk.CssProvider();
-    provider.load_from_string(CSS);
-    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+    const paint = () => provider.load_from_string(css(SETTINGS_THEME[style.dark ? 'dark' : 'light']));
+    paint();
+    const darkId = style.connect('notify::dark', paint);
+    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
-    const window = new Adw.Window({title: 'Muna Agents', default_width: 980, default_height: 680});
+    const window = new Adw.Window({title: 'Muna Agents', default_width: 980, default_height: 680, css_classes: ['muna-agents']});
     const split = new Adw.NavigationSplitView({min_sidebar_width: 280, max_sidebar_width: 340});
 
     // --- sidebar: tasks and limits -------------------------------------------------------------------------
@@ -263,6 +303,10 @@ export function createAgentsWindow(module) {
         destroy() {
             stopListening();
             GLib.source_remove(ticker);
+            style.disconnect(darkId);
+            if (schemeId)
+                settings.disconnect(schemeId);
+            Gtk.StyleContext.remove_provider_for_display(Gdk.Display.get_default(), provider);
         },
     };
 }

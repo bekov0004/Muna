@@ -5,6 +5,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
+import {SETTINGS_THEME, accentCss} from './theme.js';
 
 import {DEFAULT_WIDGETS, WIDGET_INFO} from './src/utils/widgetInfo.js';
 import * as R from './src/utils/reminders.js';
@@ -14,47 +15,8 @@ import {assignShortcut, focusLeftWindow, grabSystemKeys, shortcutFor, utilityMet
 // --- theme -----------------------------------------------------------------
 // One place for every colour of the settings window (layered surfaces, a quiet blue accent, a dark
 // "capsule" preview). Both schemes follow the system setting; the dark one has the capsule's own colours.
-const SETTINGS_THEME = {
-    light: {
-        BACKGROUND: '#f2f2f4',
-        TOOLBAR: '#e4e4e9',
-        SURFACE: '#ffffff',
-        CARD: '#f7f7f9',
-        CONTROL: 'rgba(0, 0, 0, 0.07)',
-        BORDER: 'rgba(0, 0, 0, 0.09)',
-        HOVER: 'rgba(0, 0, 0, 0.05)',
-        SELECTED: 'rgba(0, 0, 0, 0.09)',
-        TEXT: 'rgba(0, 0, 0, 0.86)',
-        TEXT_SECONDARY: 'rgba(0, 0, 0, 0.5)',
-        TEXT_DISABLED: 'rgba(0, 0, 0, 0.26)',
-        ACCENT: '#007aff',
-        ACCENT_SOFT: 'rgba(0, 122, 255, 0.14)',
-        CAPSULE: '#0c0c10',
-        CAPSULE_BLOCK: '#232327',
-        TRACK: 'rgba(0, 0, 0, 0.16)',
-    },
-    // the colours of the capsule itself: black, with dark grey blocks on it
-    dark: {
-        BACKGROUND: '#000000',
-        TOOLBAR: '#0f0f11',
-        SURFACE: '#151517',
-        CARD: '#1d1d20',
-        CONTROL: '#29292c',
-        BORDER: 'rgba(255, 255, 255, 0.09)',
-        HOVER: 'rgba(255, 255, 255, 0.07)',
-        SELECTED: 'rgba(255, 255, 255, 0.12)',
-        TEXT: '#f5f5f7',
-        TEXT_SECONDARY: '#98989d',
-        TEXT_DISABLED: 'rgba(255, 255, 255, 0.28)',
-        ACCENT: '#1283ff',
-        ACCENT_SOFT: 'rgba(18, 131, 255, 0.2)',
-        CAPSULE: '#050507',
-        CAPSULE_BLOCK: '#1d1d21',
-        TRACK: '#3a3a3d',
-    },
-};
 
-const buildCss = p => `
+const buildCss = p => `${accentCss(p)}
 window.background, window.background > contents { background-color: ${p.BACKGROUND}; }
 headerbar { background-image: none; background-color: ${p.BACKGROUND}; box-shadow: none;
     border-bottom: none; color: ${p.TEXT}; }

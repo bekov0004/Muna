@@ -28,6 +28,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Over a film or a game in full screen, the top bar, the Muna bar and the capsule no longer come and go when brought out: GNOME shows a full-screen app straight to the screen, past the shell, between its animations; while Muna is out over it, the shell draws again (as GNOME does for its notifications and menus).
+
 - A capsule on a monitor with an app in full screen no longer appears and disappears over and over when the pointer is where it would be: it stays hidden until the pointer pushes against the top edge, then it comes out over the app.
 
 ## [0.3.1] - 2026-11-20

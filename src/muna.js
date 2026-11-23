@@ -254,6 +254,7 @@ export class Muna {
         this._settings?.disconnectObject(this);
         this._reminderView?.destroy();
         this._reminderView = null;
+        this._bar?.hold(this, false);
         this._bar?.disconnectObject(this);
         this._bar = null;
         this._services?.activities.disconnectObject(this);
@@ -430,6 +431,7 @@ export class Muna {
 
     /** The bar at the top of this monitor (ui/barHider.js): the capsule goes away and comes out with it. */
     setBar(bar) {
+        this._bar?.hold(this, false);
         this._bar?.disconnectObject(this);
         this._bar = bar;
         if (!bar)
@@ -1356,6 +1358,8 @@ export class Muna {
             this._slideWithBar(true);
         else if (state === State.CLOSED && this._bar && !this._bar.shown)
             this._slideWithBar(false);
+        // shown over a full-screen app (a card while the bar is away, or open): drawn by the shell meanwhile
+        this._bar?.hold(this, state !== State.CLOSED);
         this._bar?.update();
         this._timers.clear('leave');
         if (state !== State.HOVER)

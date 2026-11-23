@@ -51,6 +51,8 @@ export class BarHider extends Signals.EventEmitter {
         this._barrier = null;
         this._pressure = null;
         this._tracked = null;      // how the box was tracked by the layout manager before, to give it back
+        this._holds = new Set();   // who shows something over a full-screen app now (the capsule's cards ...)
+        this._unredirectOff = false;
 
         this._takeBox();
         this._makeBarrier();
@@ -116,6 +118,10 @@ export class BarHider extends Signals.EventEmitter {
             ids.forEach(id => window.disconnect(id));
         this._windowSignals.clear();
         this._dropBarrier();
+        this._holds.clear();
+        if (this._unredirectOff)
+            global.compositor.enable_unredirect();
+        this._unredirectOff = false;
         this._giveBox();
     }
 
@@ -171,8 +177,40 @@ export class BarHider extends Signals.EventEmitter {
             this._slide(animate);
             this.emit('changed', shown);
         }
+        this._syncUnredirect();
         if (this._revealed || !shown)
             this._startWatch();
+    }
+
+    /** The capsule (or something else) shows itself over a full-screen app now, without the bar. */
+    hold(owner, on) {
+        if (on)
+            this._holds.add(owner);
+        else
+            this._holds.delete(owner);
+        this._syncUnredirect();
+    }
+
+    /** A full-screen app on this monitor (focused or not). */
+    _fullscreenHere() {
+        return global.get_window_actors().some(a => a.meta_window?.is_fullscreen() && a.meta_window.get_monitor() === this._index &&
+            a.meta_window.showing_on_its_workspace());
+    }
+
+    /**
+     * A full-screen app (a film) is shown straight to the screen, past GNOME Shell ("unredirected"); what Muna shows
+     * over it would then come and go. While the bar or the capsule is out over it, it is drawn by the shell again
+     * (as GNOME does for its own notifications and menus).
+     */
+    _syncUnredirect() {
+        const wanted = (this._shown || this._holds.size > 0) && this._fullscreenHere();
+        if (wanted === this._unredirectOff)
+            return;
+        this._unredirectOff = wanted;
+        if (wanted)
+            global.compositor.disable_unredirect();
+        else
+            global.compositor.enable_unredirect();
     }
 
     _slide(animate) {

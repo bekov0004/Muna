@@ -6,32 +6,26 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-23
+
 ### Added
 
 - The agents window has Muna's colours like the settings: black, dark grey blocks and a blue accent (not the system's grey and orange), and follows Settings → General → Appearance (light, dark or the system's). The colours live in one place (theme.js) for every window of Muna.
-
 - Every one-finger gesture in the settings has a small picture like the three- and four-finger ones: the lit edge with an arrow for a swipe along it, two rings for a double tap, a filling ring for a hold, each in its place on the touchpad.
 - Which way the desktops go with three or four fingers (Settings → Touchpad gestures → Desktops): with the fingers like a phone (swipe left, the desktop on the right comes) or the way of the swipe (swipe left, the desktop on the left). Along an edge a ⇄ button swaps the actions of the two directions.
-
 - Every gesture chooses from the same whole list of actions (about sixty, with a search, plus "Windows of an app…" and "Press keys…"): three and four fingers, one finger along an edge (now each direction on its own: left edge up and down, top edge to the right and to the left ...), a double tap, a hold, and touching the fingerprint reader. Along an edge, actions that can be repeated (brightness, volume, workspaces, tabs, zoom, tracks, windows of an app, keys) run at every step, the others once a swipe. The actions that follow three or four fingers (switching apps, the overview, the workspaces) are left out for one finger; their once-only versions are there. New actions: dark style, night light, cleaning mode, record the screen. The earlier edge choices are carried over.
-
 - "Windows of an app…" for any touchpad gesture (three and four fingers, along an edge, a double tap, a hold): choose the action, then the app (or "The app in front"); each time, the next window of that app comes to the front (along an edge: forwards and backwards). An app that is not running starts.
-
 - A double tap or a finger held still (half a second) on the touchpad: at the left or right edge, or in the middle of the top or bottom edge, each with its own action (play or pause, next or previous track, mute, the quick panel, the capsule, the Command Bar, the clipboard, the overview, a screenshot, lock, dark style, keep awake). By default a double tap or a hold in the middle of the top edge plays or pauses the music. With tap to click on, a double tap also double-clicks where the pointer is; holding a finger does not click.
 - One finger along an edge of the touchpad (Settings → Touchpad gestures → One finger along an edge): start at the left or right edge and slide up or down, or at the top or bottom edge and slide sideways, to change the brightness, the volume or the desktop (each edge chosen on its own; brightness on the left and top, volume on the right and bottom by default). A move that starts anywhere else stays an ordinary pointer move, and the pointer is put back where it was after the swipe. GNOME lets nobody see where one finger is, so Muna reads the touchpad itself: run the command shown there once (`sudo bash …/service/edges/touchpad-access.sh`), which gives the person at the computer access to touchpads only, not to the keyboard.
-
 - Private notes and clipboard items: the lock button of a note or a clipboard item makes it private; it shows as "Private · touch the fingerprint reader" (and the Command Bar does not find it) until your finger touches the reader, then private items stay open for 5 minutes or until the screen locks.
 - Fingerprint reader (Settings → Fingerprint): touching it can run an action (lock the screen, open the quick panel or the capsule, the Command Bar, play or pause, mute the microphone, a screenshot, dark style, keep awake), and while Claude Code asks for a permission your finger on it allows it (a wrong finger does nothing). It works through fprintd and only reports whether a finger was put on it; while the touch action is on, sudo and password dialogs ask for the password instead, and the reader is given up while the screen is locked so it still unlocks with a finger.
-
 - Reminders brought by the butterfly: at the time you choose it flies out of the capsule, beating its wings and growing as it comes down, hovers at the top of the screen (also over an app in full screen) and shows your text, with "In 10 min" and "Done"; then it flies back into the capsule. Once, every day or on weekdays; a short sound (can be turned off); one missed while the computer slept still comes up to 3 hours late. Set them in the new Reminders tab of the quick panel, or in Settings → Dynamic Island → Appearance → Reminders; "Try it" shows one at once.
-
 - The Muna bar: a top bar on every monitor without GNOME's (Settings → General → Top bar). On the left the desktops of that monitor (a dot switches, the free space opens the overview), in the middle its capsule or the date and time, on the right the items of GNOME's top bar (the readings, the Muna button, network, sound, battery ...) whose menus open on that monitor. It hides on its own setting, like the top bar.
 - The top bar can hide (Settings → General → Top bar): never, when a window touches it (the default), or always. Hidden, it comes out when the pointer pushes against the top edge of the screen, also over an app in full screen, and stays while the pointer is on it, a menu of it is open or the capsule is in use; it is always there in the overview. The capsule hides and comes out with it. The monitors without GNOME's top bar have the same choice for their capsule.
 
 ### Fixed
 
 - Over a film or a game in full screen, the top bar, the Muna bar and the capsule no longer come and go when brought out: GNOME shows a full-screen app straight to the screen, past the shell, between its animations; while Muna is out over it, the shell draws again (as GNOME does for its notifications and menus).
-
 - A capsule on a monitor with an app in full screen no longer appears and disappears over and over when the pointer is where it would be: it stays hidden until the pointer pushes against the top edge, then it comes out over the app.
 
 ## [0.3.1] - 2026-11-20
@@ -178,7 +172,8 @@ The first public release: Muna can be installed from a zip, without cloning or b
 - The Mirror circle shrank every time the panel opened.
 - Dragging a file out of the tray is more reliable (quick flicks work, no leftover windows).
 
-[Unreleased]: https://github.com/bekov0004/Muna/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/bekov0004/Muna/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/bekov0004/Muna/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/bekov0004/Muna/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/bekov0004/Muna/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/bekov0004/Muna/releases/tag/v0.2.0

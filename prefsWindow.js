@@ -30,12 +30,13 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 
 .muna-sidebar { background-color: ${p.TOOLBAR}; border-radius: 14px; margin: 8px 0 8px 8px; padding: 8px 8px 10px 8px; }
 .muna-sidebar searchentry, .muna-sidebar entry { background-color: ${p.CONTROL}; color: ${p.TEXT}; border: none;
-    border-radius: 999px; box-shadow: none; min-height: 28px; padding: 0 8px; margin: 2px 2px 8px 2px; }
+    border-radius: 999px; box-shadow: none; min-height: 28px; padding: 0 8px; margin: 2px 12px 8px 2px; }
 .muna-sidebar searchentry:focus-within { box-shadow: 0 0 0 3px ${p.ACCENT_SOFT}; }
 .muna-sidebar list { background: none; }
 .muna-sidebar-scroll, .muna-sidebar-scroll > viewport { background: none; }
 .muna-sidebar row { background: none; border-radius: 10px; padding: 5px 8px; margin: 1px 2px; min-height: 22px; color: ${p.TEXT}; }
 .muna-sidebar row:hover { background-color: ${p.HOVER}; }
+.muna-sidebar row.muna-sidebar-heading, .muna-sidebar row.muna-sidebar-heading:hover { background: none; }
 .muna-sidebar row image { color: ${p.ACCENT}; }
 .muna-sidebar row:selected { background-color: ${p.ACCENT}; color: white; }
 .muna-sidebar row:selected image, .muna-sidebar row:selected label { color: white; }
@@ -325,7 +326,8 @@ export class MunaPreferences {
         const sidebar = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['muna-sidebar'], width_request: 236});
         const search = new Gtk.SearchEntry({placeholder_text: _('Search'), hexpand: true});
         sidebar.append(search);
-        const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.SINGLE, vexpand: true});
+        // margin_end: room on the right for the scrollbar, so it does not lie over the rows
+        const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.SINGLE, vexpand: true, margin_end: 10});
         const rowsByName = new Map();
         const INTROS = {
             features: _('Everything Muna can do. Each line says where it appears: in the window of the top-bar button, or in the capsule (the island).'),
@@ -346,6 +348,7 @@ export class MunaPreferences {
             list.append(new Gtk.ListBoxRow({
                 selectable: false,
                 activatable: false,
+                css_classes: ['muna-sidebar-heading'],
                 child: new Gtk.Label({label: heading, css_classes: ['caption-heading'], xalign: 0}),
             }));
             for (const [name, title, icon, content] of entries) {

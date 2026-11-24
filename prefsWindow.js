@@ -65,6 +65,8 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .s-card { background-color: ${p.SURFACE}; border-radius: 12px; padding: 4px 16px; margin-bottom: 6px; }
 .s-card-title { font-size: 13px; font-weight: 600; margin: 12px 0 2px 0; }
 .s-row { padding: 9px 0; min-height: 26px; }
+.s-topic { padding: 0 6px; margin: 2px -6px; border-radius: 10px; font-weight: normal; }
+.s-topic:hover { background-color: ${p.HOVER}; }
 .s-row-title { font-size: 14.5px; }
 .s-card separator { background-color: ${p.BORDER}; min-height: 1px; margin: 0; }
 .s-badge { font-size: 10px; font-weight: 600; padding: 1px 8px; border-radius: 8px; background-color: ${p.ACCENT_SOFT}; color: ${p.ACCENT}; }
@@ -275,7 +277,7 @@ export class MunaPreferences {
             hexpand: true,
             vexpand: true,
         });
-        const featuresPage = this._featuresPage(settings);
+        const features = this._featurePages(settings);
         const P = name => pages.find(p => p[0] === name)[3];
         const sections = [
             [_('Essentials'), [
@@ -283,8 +285,11 @@ export class MunaPreferences {
                 ['tools', _('Menu bar'), 'window-new-symbolic', P('tools')],
                 ['touchpad', _('Touchpad gestures'), 'input-touchpad-symbolic', this._touchpadGesturesPage(settings)],
                 ['fingerprint', _('Fingerprint'), 'auth-fingerprint-symbolic', this._fingerprintPage(settings)],
-                ['features', _('Features'), 'view-app-grid-symbolic', featuresPage],
                 ['monitor', _('Monitor'), 'utilities-system-monitor-symbolic', P('monitor')],
+            ]],
+            [_('Features'), [
+                ['features', _('Overview'), 'view-app-grid-symbolic', features.overview],
+                ...features.topics.map(([name, title, icon, , content]) => [name, title, icon, content]),
             ]],
             [_('Utilities'), [
                 ['command', _('Command Bar'), 'system-search-symbolic', this._commandPage(settings)],
@@ -330,7 +335,8 @@ export class MunaPreferences {
         const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.SINGLE, vexpand: true, margin_end: 10});
         const rowsByName = new Map();
         const INTROS = {
-            features: _('Everything Muna can do. Each line says where it appears: in the window of the top-bar button, or in the capsule (the island).'),
+            features: _('Everything Muna can do, by topic. Each line says where it appears: in the window of the top-bar button, or in the capsule (the island).'),
+            'feat-search': _('Every feature whose name or description has what you typed.'),
             tools: '',
             muna: _('Choose the widgets of the capsule (the island), their order and their width.'),
             appearance: _('The look of the capsule and the top bar.'),
@@ -344,6 +350,23 @@ export class MunaPreferences {
             monitor: _('What the top bar and the panel show about this computer, and when to warn you.'),
             about: '',
         };
+        for (const [name, , , about] of features.topics)
+            INTROS[name] = about;
+        // One page of the stack: its intro, its content, scrolled.
+        const addPage = (name, content) => {
+            const page = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8, css_classes: ['muna-page'], hexpand: true});
+            const head = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 4, css_classes: ['muna-page-head']});
+            if (INTROS[name])
+                head.append(this._dim(INTROS[name]));
+            page.append(head);
+            content.margin_start = content.margin_end = 0;
+            content.margin_top = 8;
+            page.append(content);
+            const clamp = new Adw.Clamp({maximum_size: 1000, tightening_threshold: 760, child: page, valign: Gtk.Align.START, hexpand: true});
+            const scroller = new Gtk.ScrolledWindow({child: clamp, hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, hexpand: true});
+            stack.add_named(scroller, name);
+        };
+        addPage('feat-search', features.search);
         for (const [heading, entries] of sections) {
             list.append(new Gtk.ListBoxRow({
                 selectable: false,
@@ -352,17 +375,7 @@ export class MunaPreferences {
                 child: new Gtk.Label({label: heading, css_classes: ['caption-heading'], xalign: 0}),
             }));
             for (const [name, title, icon, content] of entries) {
-                const page = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8, css_classes: ['muna-page'], hexpand: true});
-                const head = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 4, css_classes: ['muna-page-head']});
-                if (INTROS[name])
-                    head.append(this._dim(INTROS[name]));
-                page.append(head);
-                content.margin_start = content.margin_end = 0;
-                content.margin_top = 8;
-                page.append(content);
-                const clamp = new Adw.Clamp({maximum_size: 1000, tightening_threshold: 760, child: page, valign: Gtk.Align.START, hexpand: true});
-                const scroller = new Gtk.ScrolledWindow({child: clamp, hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, hexpand: true});
-                stack.add_named(scroller, name);
+                addPage(name, content);
                 const row = new Gtk.ListBoxRow();
                 row._page = name;
                 row._title = title;
@@ -429,10 +442,19 @@ export class MunaPreferences {
         sidebar.append(new Gtk.ScrolledWindow({child: list, hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, css_classes: ['muna-sidebar-scroll']}));
         list.select_row(rowsByName.get('general'));
 
-        // Typing in the search field shows the features page, filtered.
+        // A topic of the features overview opens its page.
+        features.overview._navigate = name => list.select_row(rowsByName.get(name));
+        // Typing in the search field shows every matching feature; an empty field goes back to the overview.
         search.connect('search-changed', () => {
-            list.select_row(rowsByName.get('features'));
-            featuresPage._filter(search.text);
+            features.search._filter(search.text);
+            if (search.text.trim() === '') {
+                list.select_row(rowsByName.get('features'));
+                return;
+            }
+            list.unselect_all();
+            stack.set_visible_child_name('feat-search');
+            heading.label = _('Search');
+            tryButton.visible = false;
         });
 
         const layout = new Gtk.Box({orientation: Gtk.Orientation.HORIZONTAL, vexpand: true, hexpand: true});
@@ -447,50 +469,69 @@ export class MunaPreferences {
     // --- features ------------------------------------------------------------
 
     /**
-     * Every feature of Muna in one list, grouped, each with a switch and a line that says what it
-     * does. A widget switch adds it to / removes it from the capsule; the others are settings.
-     * The returned box has _filter(text) for the search field.
+     * Every feature of Muna, by topic: an overview (bundles, and how many are on in each topic) and one page per topic,
+     * each feature with a switch and a line that says what it does. A widget switch adds it to / removes it from the
+     * capsule; the others are settings. `search` lists them all, for the search field (its _filter(text)).
+     * @returns {{overview: Gtk.Widget, topics: [string, string, string, string, Gtk.Widget][], search: Gtk.Widget}}
      */
-    _featuresPage(settings) {
-        const body = this._body();
-        const rows = [];
+    _featurePages(settings) {
         const TOOLS = _('Tools window (top-bar button)');
         const ISLAND = _('Island widgets (the capsule)');
+        // The topic of each widget; the rest of the capsule's own things go to "Capsule".
+        const TOPIC_OF = {
+            media: 'feat-media', sound: 'feat-media', mirror: 'feat-media',
+            system: 'feat-system', network: 'feat-system', disks: 'feat-system', power: 'feat-system', awake: 'feat-system',
+            displays: 'feat-system', toggles: 'feat-system', utilities: 'feat-system',
+            windows: 'feat-windows', workspaces: 'feat-windows', controls: 'feat-windows', input: 'feat-windows',
+            focus: 'feat-work', timer: 'feat-work', todo: 'feat-work', notes: 'feat-work', reminders: 'feat-work',
+            shortcuts: 'feat-work', calendar: 'feat-work', agents: 'feat-work',
+            downloads: 'feat-files', phone: 'feat-files', phonecard: 'feat-files',
+        };
         // The tools in the order of the tabs of their window, then the capsule's widgets.
         const MENU_ORDER = ['awake', 'reminders', 'phone', 'displays', 'sound', 'system', 'network', 'disks', 'power', 'utilities', 'controls', 'toggles', 'windows', 'workspaces', 'focus', 'input', 'downloads', 'agents'];
         const rank = w => (w.menu ? MENU_ORDER.indexOf(w.id) : 100 + WIDGET_INFO.indexOf(w));
         const widgetRows = [...WIDGET_INFO].sort((a, b) => rank(a) - rank(b)).map(w => ({
+            topic: TOPIC_OF[w.id] ?? 'feat-capsule',
             group: w.menu ? TOOLS : ISLAND,
             title: w.title,
             subtitle: w.subtitle,
             icon: WIDGET_ICONS[w.id] ?? 'applications-symbolic',
             widget: w.id,
         }));
-        const key = (group, title, subtitle, icon, setting) => ({group, title, subtitle, icon, key: setting});
+        const key = (topic, group, title, subtitle, icon, setting) => ({topic, group, title, subtitle, icon, key: setting});
         const features = [
             ...widgetRows,
-            key(_('Live Activities'), _('Music'), _('The playing track in the collapsed capsule'), 'folder-music-symbolic', 'activity-media'),
-            key(_('Live Activities'), _('Timer'), _('A running countdown or focus session in the capsule'), 'alarm-symbolic', 'activity-timer'),
-            key(_('Live Activities'), _('Calendar'), _('The next meeting, from 10 minutes before it'), 'x-office-calendar-symbolic', 'activity-calendar'),
-            key(_('Live Activities'), _('Tray'), _('A card when files are added to the tray'), 'folder-download-symbolic', 'activity-files'),
-            key(_('Live Activities'), _('Downloads'), _('Files arriving in the Downloads folder'), 'folder-download-symbolic', 'activity-downloads'),
-            key(_('Cards and alerts'), _('System alerts'), _('A busy processor, heat, a full disk or memory, a low battery'), 'dialog-warning-symbolic', 'system-alerts'),
-            key(_('Cards and alerts'), _('AI agents finished'), _('A card when Claude Code or Codex finishes a long task'), 'emblem-ok-symbolic', 'agents-alerts'),
-            key(_('Cards and alerts'), _('Keyboard layout'), _('The capsule widens for a moment and shows the layout when you switch it'), 'input-keyboard-symbolic', 'show-input-source'),
-            key(_('Cards and alerts'), _('Caps Lock'), _('The capsule shows whether Caps Lock is on or off'), 'input-keyboard-symbolic', 'show-caps-lock'),
-            key(_('Music'), _('Lyrics'), _('The line being sung under the title (the song is looked up on lrclib.net)'), 'audio-x-generic-symbolic', 'show-lyrics'),
-            key(_('Music'), _('Colored effects'), _('The effect takes the color of the album art'), 'applications-graphics-symbolic', 'colored-effects'),
-            key(_('Clipboard'), _('Click pastes'), _('A click on an item pastes it into the app you were in'), 'edit-paste-symbolic', 'clipboard-click-pastes'),
-            key(_('Clipboard'), _('Keep history'), _('Save everything you copied after a restart (pinned items and notes are always saved)'), 'document-save-symbolic', 'clipboard-keep-history'),
-            key(_('Clipboard'), _('Clean links'), _('Remove tracking parameters (utm_*, fbclid ...) from copied links'), 'insert-link-symbolic', 'clipboard-clean-urls'),
-            key(_('Files and sharing'), _('Keep the tray'), _('The files on the tray stay after a restart'), 'folder-download-symbolic', 'tray-keep-files'),
-            key(_('Files and sharing'), _('Receive files with LocalSend'), _('This computer becomes visible to LocalSend devices (port 53317); every transfer asks first'), 'network-wireless-symbolic', 'localsend-receive'),
-            key(_('Behaviour'), _('Open on hover'), _('The capsule opens when the pointer rests on it'), 'input-mouse-symbolic', 'open-on-hover'),
-            key(_('Behaviour'), _('Collapse when the pointer leaves'), _('The open panel closes by itself'), 'view-restore-symbolic', 'auto-collapse'),
-            key(_('Behaviour'), _('Touchpad gestures everywhere'), _('Three and four fingers: switch apps, workspaces, windows, sound and more'), 'input-touchpad-symbolic', 'touchpad-gestures'),
-            key(_('Behaviour'), _('Swipe down to open'), _('A two-finger swipe down on the capsule opens it'), 'input-touchpad-symbolic', 'gestures-swipe-open'),
-            key(_('Behaviour'), _('Swipe up to close'), _('A two-finger swipe up closes the panel'), 'input-touchpad-symbolic', 'gestures-swipe-close'),
-            key(_('Behaviour'), _('Swipe to change tracks'), _('A sideways swipe on the capsule skips songs'), 'media-skip-forward-symbolic', 'gestures-media-swipe'),
+            key('feat-capsule', _('Live Activities'), _('Music'), _('The playing track in the collapsed capsule'), 'folder-music-symbolic', 'activity-media'),
+            key('feat-capsule', _('Live Activities'), _('Timer'), _('A running countdown or focus session in the capsule'), 'alarm-symbolic', 'activity-timer'),
+            key('feat-capsule', _('Live Activities'), _('Calendar'), _('The next meeting, from 10 minutes before it'), 'x-office-calendar-symbolic', 'activity-calendar'),
+            key('feat-capsule', _('Live Activities'), _('Tray'), _('A card when files are added to the tray'), 'folder-download-symbolic', 'activity-files'),
+            key('feat-capsule', _('Live Activities'), _('Downloads'), _('Files arriving in the Downloads folder'), 'folder-download-symbolic', 'activity-downloads'),
+            key('feat-system', _('Cards and alerts'), _('System alerts'), _('A busy processor, heat, a full disk or memory, a low battery'), 'dialog-warning-symbolic', 'system-alerts'),
+            key('feat-work', _('Cards and alerts'), _('AI agents finished'), _('A card when Claude Code or Codex finishes a long task'), 'emblem-ok-symbolic', 'agents-alerts'),
+            key('feat-capsule', _('Cards and alerts'), _('Keyboard layout'), _('The capsule widens for a moment and shows the layout when you switch it'), 'input-keyboard-symbolic', 'show-input-source'),
+            key('feat-capsule', _('Cards and alerts'), _('Caps Lock'), _('The capsule shows whether Caps Lock is on or off'), 'input-keyboard-symbolic', 'show-caps-lock'),
+            key('feat-media', _('Music'), _('Lyrics'), _('The line being sung under the title (the song is looked up on lrclib.net)'), 'audio-x-generic-symbolic', 'show-lyrics'),
+            key('feat-media', _('Music'), _('Colored effects'), _('The effect takes the color of the album art'), 'applications-graphics-symbolic', 'colored-effects'),
+            key('feat-media', _('Music'), _('Swipe to change tracks'), _('A sideways swipe on the capsule skips songs'), 'media-skip-forward-symbolic', 'gestures-media-swipe'),
+            key('feat-files', _('Clipboard'), _('Click pastes'), _('A click on an item pastes it into the app you were in'), 'edit-paste-symbolic', 'clipboard-click-pastes'),
+            key('feat-files', _('Clipboard'), _('Keep history'), _('Save everything you copied after a restart (pinned items and notes are always saved)'), 'document-save-symbolic', 'clipboard-keep-history'),
+            key('feat-files', _('Clipboard'), _('Clean links'), _('Remove tracking parameters (utm_*, fbclid ...) from copied links'), 'insert-link-symbolic', 'clipboard-clean-urls'),
+            key('feat-files', _('Files and sharing'), _('Keep the tray'), _('The files on the tray stay after a restart'), 'folder-download-symbolic', 'tray-keep-files'),
+            key('feat-files', _('Files and sharing'), _('Receive files with LocalSend'), _('This computer becomes visible to LocalSend devices (port 53317); every transfer asks first'), 'network-wireless-symbolic', 'localsend-receive'),
+            key('feat-windows', _('Behaviour'), _('Touchpad gestures everywhere'), _('Three and four fingers: switch apps, workspaces, windows, sound and more'), 'input-touchpad-symbolic', 'touchpad-gestures'),
+            key('feat-capsule', _('Behaviour'), _('Open on hover'), _('The capsule opens when the pointer rests on it'), 'input-mouse-symbolic', 'open-on-hover'),
+            key('feat-capsule', _('Behaviour'), _('Collapse when the pointer leaves'), _('The open panel closes by itself'), 'view-restore-symbolic', 'auto-collapse'),
+            key('feat-capsule', _('Behaviour'), _('Swipe down to open'), _('A two-finger swipe down on the capsule opens it'), 'input-touchpad-symbolic', 'gestures-swipe-open'),
+            key('feat-capsule', _('Behaviour'), _('Swipe up to close'), _('A two-finger swipe up closes the panel'), 'input-touchpad-symbolic', 'gestures-swipe-close'),
+        ];
+        // name, title, icon, what it is about
+        const TOPICS = [
+            ['feat-media', _('Music and media'), 'audio-x-generic-symbolic', _('The player, the lyrics, the colours of the album art, the sound and the mirror.')],
+            ['feat-system', _('System'), 'computer-symbolic', _('The processor, the network, the disks, the battery, the monitors, staying awake, and the warnings about them.')],
+            ['feat-windows', _('Windows and desktops'), 'focus-windows-symbolic', _('Windows, desktops (workspaces), the switches for them, the mouse and the keyboard, and the touchpad.')],
+            ['feat-work', _('Work'), 'checkbox-checked-symbolic', _('Focus, timer, to-do, notes, reminders, shortcuts, the calendar and the AI agents.')],
+            ['feat-files', _('Files and sharing'), 'folder-publicshare-symbolic', _('The tray, downloads, the clipboard, LocalSend and the phone.')],
+            ['feat-capsule', _('Capsule'), 'muna-butterfly-symbolic', _('What the capsule shows on its own (Live Activities, cards), how it opens and closes, and the companion.')],
         ];
 
         // What a feature costs while it is on, said plainly (like "Nothing at rest").
@@ -520,9 +561,96 @@ export class MunaPreferences {
             [_('Clipboard')]: '',
             [_('Files and sharing')]: 'green',
             [_('Behaviour')]: '',
-            [_('System')]: 'red',
         };
-        // A count and one-click sets, like a "start with a bundle" row.
+        const isOn = feature => (feature.widget ? settings.get_strv('enabled-widgets').includes(feature.widget) : settings.get_boolean(feature.key));
+
+        // A list of features under the headings of their groups; _filter(text) keeps only the matching ones.
+        const featureList = items => {
+            const body = this._body();
+            const rows = [];
+            const grouped = new Map();
+            for (const feature of items) {
+                if (!grouped.has(feature.group))
+                    grouped.set(feature.group, []);
+                grouped.get(feature.group).push(feature);
+            }
+            for (const [group, members] of grouped) {
+                const heading = new Gtk.Label({label: group, css_classes: ['s-card-title'], xalign: 0, margin_start: 4});
+                body.append(heading);
+                const card = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['s-card']});
+                body.append(card);
+                const entries = [];
+                members.forEach((feature, index) => {
+                    const wrap = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
+                    if (index > 0)
+                        wrap.append(new Gtk.Separator());
+                    const row = new Gtk.Box({css_classes: ['s-row'], spacing: 12});
+                    const tile = new Gtk.Box({css_classes: ['s-tile', TONES[group] ?? ''], halign: Gtk.Align.START, valign: Gtk.Align.CENTER});
+                    tile.hexpand = false;
+                    tile.set_size_request(28, 28);
+                    tile.append(new Gtk.Image({icon_name: feature.icon, pixel_size: 15, hexpand: true, vexpand: true, halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
+                    row.append(tile);
+                    const texts = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, hexpand: true, valign: Gtk.Align.CENTER, spacing: 2});
+                    const titleLine = new Gtk.Box({spacing: 8});
+                    titleLine.append(new Gtk.Label({label: feature.title, css_classes: ['s-row-title'], xalign: 0}));
+                    if (WHERE[group])
+                        titleLine.append(new Gtk.Label({label: WHERE[group][0], css_classes: ['s-badge', WHERE[group][1]].filter(Boolean), valign: Gtk.Align.CENTER}));
+                    texts.append(titleLine);
+                    texts.append(this._dim(feature.subtitle));
+                    row.append(texts);
+                    if (feature.widget && COST[feature.widget])
+                        row.append(new Gtk.Label({label: COST[feature.widget], css_classes: ['dim-label', 's-cost'], valign: Gtk.Align.CENTER}));
+                    const toggle = new Gtk.Switch({valign: Gtk.Align.CENTER});
+                    if (feature.widget) {
+                        const sync = () => {
+                            const on = isOn(feature);
+                            if (toggle.active !== on)
+                                toggle.active = on;
+                        };
+                        sync();
+                        toggle.connect('notify::active', () => {
+                            const list = settings.get_strv('enabled-widgets');
+                            const has = list.includes(feature.widget);
+                            if (toggle.active && !has)
+                                settings.set_strv('enabled-widgets', [...list, feature.widget]);
+                            else if (!toggle.active && has)
+                                settings.set_strv('enabled-widgets', list.filter(id => id !== feature.widget));
+                        });
+                        settings.connect('changed::enabled-widgets', sync);
+                    } else {
+                        settings.bind(feature.key, toggle, 'active', Gio.SettingsBindFlags.DEFAULT);
+                    }
+                    row.append(toggle);
+                    wrap.append(row);
+                    card.append(wrap);
+                    entries.push({row: wrap, text: `${feature.title} ${feature.subtitle} ${group}`.toLowerCase()});
+                });
+                rows.push({heading, card, entries});
+            }
+            const empty = this._dim(_('Nothing found.'));
+            empty.visible = false;
+            body.append(empty);
+            body._filter = text => {
+                const q = text.trim().toLowerCase();
+                let found = false;
+                for (const {heading, card, entries} of rows) {
+                    let any = false;
+                    for (const {row, text: haystack} of entries) {
+                        const match = q === '' || haystack.includes(q);
+                        row.visible = match;
+                        any = any || match;
+                    }
+                    heading.visible = any;
+                    card.visible = any;
+                    found = found || any;
+                }
+                empty.visible = !found;
+            };
+            return body;
+        };
+
+        // The overview: bundles, then each topic with how many of its features are on (a click opens it).
+        const overview = this._body();
         const WIDGET_IDS = WIDGET_INFO.map(w => w.id);
         const PRESETS = [
             [_('Everything'), _('Every tool and widget.'), WIDGET_IDS],
@@ -546,90 +674,53 @@ export class MunaPreferences {
             presets.append(card);
         }
         summary.append(presets);
-        const syncCount = () => {
-            const on = settings.get_strv('enabled-widgets').filter(id => WIDGET_IDS.includes(id)).length;
-            count.label = _('%d of %d tools and widgets are on').format(on, WIDGET_IDS.length);
-        };
-        syncCount();
-        settings.connect('changed::enabled-widgets', syncCount);
-        body.append(new Gtk.Label({label: _('Start with a bundle'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
-        body.append(summary);
+        overview.append(new Gtk.Label({label: _('Start with a bundle'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        overview.append(summary);
 
-        const grouped = new Map();
-        for (const feature of features) {
-            if (!grouped.has(feature.group))
-                grouped.set(feature.group, []);
-            grouped.get(feature.group).push(feature);
-        }
-        for (const [group, items] of grouped) {
-            const heading = new Gtk.Label({label: group, css_classes: ['s-card-title'], xalign: 0, margin_start: 4});
-            body.append(heading);
-            const card = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['s-card']});
-            body.append(card);
-            const entries = [];
-            items.forEach((feature, index) => {
-                const wrap = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL});
-                if (index > 0)
-                    wrap.append(new Gtk.Separator());
-                const row = new Gtk.Box({css_classes: ['s-row'], spacing: 12});
-                const tile = new Gtk.Box({css_classes: ['s-tile', TONES[group] ?? ''], halign: Gtk.Align.START, valign: Gtk.Align.CENTER});
-                tile.hexpand = false;
-                tile.set_size_request(28, 28);
-                tile.append(new Gtk.Image({icon_name: feature.icon, pixel_size: 15, hexpand: true, vexpand: true, halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
-                row.append(tile);
-                const texts = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, hexpand: true, valign: Gtk.Align.CENTER, spacing: 2});
-                const titleLine = new Gtk.Box({spacing: 8});
-                titleLine.append(new Gtk.Label({label: feature.title, css_classes: ['s-row-title'], xalign: 0}));
-                if (WHERE[group]) {
-                    titleLine.append(new Gtk.Label({label: WHERE[group][0], css_classes: ['s-badge', WHERE[group][1]].filter(Boolean), valign: Gtk.Align.CENTER}));
-                }
-                texts.append(titleLine);
-                texts.append(this._dim(feature.subtitle));
-                row.append(texts);
-                if (feature.widget && COST[feature.widget])
-                    row.append(new Gtk.Label({label: COST[feature.widget], css_classes: ['dim-label', 's-cost'], valign: Gtk.Align.CENTER}));
-                const toggle = new Gtk.Switch({valign: Gtk.Align.CENTER});
-                if (feature.widget) {
-                    const sync = () => {
-                        const on = settings.get_strv('enabled-widgets').includes(feature.widget);
-                        if (toggle.active !== on)
-                            toggle.active = on;
-                    };
-                    sync();
-                    toggle.connect('notify::active', () => {
-                        const list = settings.get_strv('enabled-widgets');
-                        const has = list.includes(feature.widget);
-                        if (toggle.active && !has)
-                            settings.set_strv('enabled-widgets', [...list, feature.widget]);
-                        else if (!toggle.active && has)
-                            settings.set_strv('enabled-widgets', list.filter(id => id !== feature.widget));
-                    });
-                    settings.connect('changed::enabled-widgets', sync);
-                } else {
-                    settings.bind(feature.key, toggle, 'active', Gio.SettingsBindFlags.DEFAULT);
-                }
-                row.append(toggle);
-                wrap.append(row);
-                card.append(wrap);
-                entries.push({row: wrap, text: `${feature.title} ${feature.subtitle} ${group}`.toLowerCase()});
+        overview.append(new Gtk.Label({label: _('By topic'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        const topicCard = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['s-card']});
+        overview.append(topicCard);
+        const counters = [];
+        TOPICS.forEach(([name, title, icon, about], index) => {
+            if (index > 0)
+                topicCard.append(new Gtk.Separator());
+            const button = new Gtk.Button({css_classes: ['flat', 's-topic'], halign: Gtk.Align.FILL, hexpand: true});
+            const row = new Gtk.Box({css_classes: ['s-row'], spacing: 12, halign: Gtk.Align.FILL, hexpand: true});
+            const tile = new Gtk.Box({css_classes: ['s-tile'], halign: Gtk.Align.START, valign: Gtk.Align.CENTER});
+            tile.hexpand = false;
+            tile.set_size_request(28, 28);
+            tile.append(new Gtk.Image({icon_name: icon, pixel_size: 15, hexpand: true, vexpand: true, halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
+            row.append(tile);
+            const texts = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, hexpand: true, halign: Gtk.Align.FILL, valign: Gtk.Align.CENTER, spacing: 2});
+            texts.append(new Gtk.Label({label: title, css_classes: ['s-row-title'], xalign: 0, halign: Gtk.Align.START}));
+            const line = this._dim(about);
+            line.wrap = true;
+            texts.append(line);
+            row.append(texts);
+            const on = new Gtk.Label({css_classes: ['dim-label', 's-cost'], valign: Gtk.Align.CENTER});
+            row.append(on);
+            row.append(new Gtk.Image({icon_name: 'go-next-symbolic', pixel_size: 14, valign: Gtk.Align.CENTER, css_classes: ['dim-label']}));
+            button.set_child(row);
+            button.connect('clicked', () => overview._navigate?.(name));
+            topicCard.append(button);
+            const members = features.filter(f => f.topic === name);
+            counters.push(() => {
+                on.label = _('%d of %d on').format(members.filter(isOn).length, members.length);
             });
-            rows.push({heading, card, entries});
-        }
-        // The search field of the sidebar: only the matching features stay, and only their headings.
-        body._filter = text => {
-            const q = text.trim().toLowerCase();
-            for (const {heading, card, entries} of rows) {
-                let any = false;
-                for (const {row, text: haystack} of entries) {
-                    const match = q === '' || haystack.includes(q);
-                    row.visible = match;
-                    any = any || match;
-                }
-                heading.visible = any;
-                card.visible = any;
-            }
+        });
+        const syncCounts = () => {
+            const enabled = settings.get_strv('enabled-widgets').filter(id => WIDGET_IDS.includes(id)).length;
+            count.label = _('%d of %d tools and widgets are on').format(enabled, WIDGET_IDS.length);
+            counters.forEach(sync => sync());
         };
-        return body;
+        syncCounts();
+        settings.connect('changed', syncCounts);
+
+        return {
+            overview,
+            topics: TOPICS.map(([name, title, icon, about]) => [name, title, icon, about, featureList(features.filter(f => f.topic === name))]),
+            search: featureList(features),
+        };
     }
 
     // --- theme --------------------------------------------------------------

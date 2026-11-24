@@ -709,6 +709,7 @@ export class MunaHost {
                 mode: () => this._settings.get(onPrimary ? 'topbar-hide' : 'muna-bar-hide'),
                 isBusy: () => !!capsule()?.busy || menuFrom(onPrimary ? Main.panel : box),
                 hoverActors: () => [capsule()?._actor].filter(Boolean),
+                stackActors: () => [capsule()?._actor, ...(capsule()?._ears ?? [])].filter(Boolean),
             }));
         }
     }

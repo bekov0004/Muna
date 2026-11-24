@@ -32,15 +32,17 @@ const WINDOW_TYPES = [Meta.WindowType.NORMAL, Meta.WindowType.DIALOG, Meta.Windo
 export class BarHider extends Signals.EventEmitter {
     /**
      * @param {{monitorIndex: number, box?: St.Widget|null, mode: () => string, isBusy?: () => boolean,
-     *          hoverActors?: () => Clutter.Actor[]}} options
+     *          hoverActors?: () => Clutter.Actor[], stackActors?: () => Clutter.Actor[]}} options
+     *   stackActors: what is shown with the bar (the capsule and its ears), lifted with it over a full-screen app
      */
-    constructor({monitorIndex, box = null, mode, isBusy = () => false, hoverActors = () => []}) {
+    constructor({monitorIndex, box = null, mode, isBusy = () => false, hoverActors = () => [], stackActors = () => []}) {
         super();
         this._index = monitorIndex;
         this._box = box;
         this._mode = mode;
         this._isBusy = isBusy;
         this._hoverActors = hoverActors;
+        this._stackActors = stackActors;
         this._signals = new SignalTracker();
         this._windowSignals = new Map();   // Meta.Window -> [ids]
         this._shown = true;
@@ -53,6 +55,7 @@ export class BarHider extends Signals.EventEmitter {
         this._tracked = null;      // how the box was tracked by the layout manager before, to give it back
         this._holds = new Set();   // who shows something over a full-screen app now (the capsule's cards ...)
         this._unredirectOff = false;
+        this._lifted = false;      // above the windows GNOME keeps over its own chrome (X11 popups, some games)
 
         this._takeBox();
         this._makeBarrier();
@@ -122,6 +125,7 @@ export class BarHider extends Signals.EventEmitter {
         if (this._unredirectOff)
             global.compositor.enable_unredirect();
         this._unredirectOff = false;
+        this._lift(false);
         this._giveBox();
     }
 
@@ -191,8 +195,13 @@ export class BarHider extends Signals.EventEmitter {
         this._syncUnredirect();
     }
 
-    /** A full-screen app on this monitor (focused or not). */
+    /**
+     * A full-screen app on this monitor (focused or not); also a window without a frame as big as the monitor (games,
+     * players), which GNOME counts as full screen too.
+     */
     _fullscreenHere() {
+        if (global.display.get_monitor_in_fullscreen(this._index))
+            return true;
         return global.get_window_actors().some(a => a.meta_window?.is_fullscreen() && a.meta_window.get_monitor() === this._index &&
             a.meta_window.showing_on_its_workspace());
     }
@@ -204,6 +213,7 @@ export class BarHider extends Signals.EventEmitter {
      */
     _syncUnredirect() {
         const wanted = (this._shown || this._holds.size > 0) && this._fullscreenHere();
+        this._lift(wanted);
         if (wanted === this._unredirectOff)
             return;
         this._unredirectOff = wanted;
@@ -211,6 +221,38 @@ export class BarHider extends Signals.EventEmitter {
             global.compositor.disable_unredirect();
         else
             global.compositor.enable_unredirect();
+    }
+
+    /**
+     * GNOME keeps its chrome under the group of windows that sit over everything (X11 popups, the windows of some
+     * games in full screen). Over a full-screen app the bar and the capsule go just above that group (still under
+     * dialogs, the on-screen keyboard and the screenshot tool), and back under it afterwards.
+     */
+    _lift(on) {
+        const group = Main.layoutManager.uiGroup;
+        const top = global.top_window_group;
+        if (!group.contains(top) || on === this._lifted)
+            return;
+        this._lifted = on;
+        const actors = [...this._stackActors(), this._box].filter(a => a && a.get_parent() === group);
+        if (on) {
+            // where each was, to put it back exactly there
+            const kids = group.get_children();
+            this._places = actors.map(actor => [actor, actor.get_previous_sibling(), kids.indexOf(actor)]);
+            // each goes just above the windows' group, the capsule first and the bar last: the capsule stays over the bar
+            actors.forEach(actor => group.set_child_above_sibling(actor, top));
+            return;
+        }
+        // back from the lowest to the highest, each just above what was under it before
+        for (const [actor, below] of (this._places ?? []).sort((a, b) => a[2] - b[2])) {
+            if (actor.get_parent() !== group)
+                continue;
+            if (below && below.get_parent() === group)
+                group.set_child_above_sibling(actor, below);
+            else
+                group.set_child_below_sibling(actor, top);
+        }
+        this._places = null;
     }
 
     _slide(animate) {

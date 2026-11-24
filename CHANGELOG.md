@@ -12,7 +12,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- Over an app in full screen the top bar, the Muna bar and the capsule no longer end up under it: a window without a frame as big as the monitor (many games and players) counts as full screen too, and while they are out over it they stand above the windows GNOME keeps over everything (X11 popups, some games), going back to their place afterwards.
+- The top bar, the Muna bar and the capsule no longer go under a window that covers the whole monitor: a maximized window while the bar is hidden (a terminal, a browser, any app; it then reaches the top edge, and GNOME shows it straight to the screen, past the shell) or an app in full screen. While they are out over such a window the shell draws them again, and they stand above the windows GNOME keeps over everything (X11 popups, some games), going back to their place afterwards.
 - "Play or pause", "Next track" and "Previous track" did nothing from a touchpad gesture, a shortcut or the fingerprint reader; they now act on the player the capsule shows (a video in the browser too).
 - Settings: the scrollbar of the left list no longer lies over its rows, and its headings no longer light up under the pointer.
 

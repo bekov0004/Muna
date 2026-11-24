@@ -196,19 +196,29 @@ export class BarHider extends Signals.EventEmitter {
     }
 
     /**
-     * A full-screen app on this monitor (focused or not); also a window without a frame as big as the monitor (games,
-     * players), which GNOME counts as full screen too.
+     * A window that covers this whole monitor: an app in full screen, or a maximized window while the bar is hidden
+     * (it then reaches the top edge). GNOME shows such a window straight to the screen, past the shell.
      */
     _fullscreenHere() {
         if (global.display.get_monitor_in_fullscreen(this._index))
             return true;
-        return global.get_window_actors().some(a => a.meta_window?.is_fullscreen() && a.meta_window.get_monitor() === this._index &&
-            a.meta_window.showing_on_its_workspace());
+        const monitor = this.monitor;
+        if (!monitor)
+            return false;
+        return global.get_window_actors().some(actor => {
+            const window = actor.meta_window;
+            if (!window || !actor.visible || window.minimized || window.get_monitor() !== this._index || !window.showing_on_its_workspace())
+                return false;
+            if (window.is_fullscreen())
+                return true;
+            const r = window.get_frame_rect();
+            return r.x <= monitor.x && r.y <= monitor.y && r.x + r.width >= monitor.x + monitor.width && r.y + r.height >= monitor.y + monitor.height;
+        });
     }
 
     /**
-     * A full-screen app (a film) is shown straight to the screen, past GNOME Shell ("unredirected"); what Muna shows
-     * over it would then come and go. While the bar or the capsule is out over it, it is drawn by the shell again
+     * A window covering the monitor (a film in full screen, a maximized window under the hidden bar) is shown straight
+     * to the screen, past GNOME Shell ("unredirected"); what Muna shows over it would then come and go or not show. While the bar or the capsule is out over it, it is drawn by the shell again
      * (as GNOME does for its own notifications and menus).
      */
     _syncUnredirect() {

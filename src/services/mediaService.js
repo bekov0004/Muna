@@ -228,6 +228,19 @@ export class MediaService extends Signals.EventEmitter {
         return [...this._players.values()];
     }
 
+    /** Play or pause the player the capsule shows (a gesture, a shortcut, the fingerprint reader). */
+    playPause() {
+        this._active?.playPause();
+    }
+
+    next() {
+        this._active?.next();
+    }
+
+    previous() {
+        this._active?.previous();
+    }
+
     start() {
         this._subscription = Gio.DBus.session.signal_subscribe(
             'org.freedesktop.DBus', 'org.freedesktop.DBus', 'NameOwnerChanged',

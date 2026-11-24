@@ -6,6 +6,15 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Settings: the features have their own part of the left list: an overview (the bundles, and how many features are on in each topic; a topic opens with a click) and a page for each topic: music and media, system, windows and desktops, work, files and sharing, capsule. The search field finds them all at once.
+
+### Fixed
+
+- "Play or pause", "Next track" and "Previous track" did nothing from a touchpad gesture, a shortcut or the fingerprint reader; they now act on the player the capsule shows (a video in the browser too).
+- Settings: the scrollbar of the left list no longer lies over its rows, and its headings no longer light up under the pointer.
+
 ## [0.4.0] - 2026-11-23
 
 ### Added

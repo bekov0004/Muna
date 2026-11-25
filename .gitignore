@@ -1,6 +1,8 @@
 *.zip
-schemas/gschemas.compiled
 dist/
-airdrop/build/
 __pycache__/
-airdrop/captures/
+linux/schemas/gschemas.compiled
+linux/airdrop/build/
+linux/airdrop/captures/
+macos/.build/
+macos/build/

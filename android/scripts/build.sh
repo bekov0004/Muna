@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Builds the Muna Phone app (android/) and copies the apk to dist/muna-phone.apk.
-#   scripts/build-android.sh            builds the debug apk (signed with the debug key)
-#   scripts/build-android.sh test       runs the unit tests of the phone-side server
-#   scripts/build-android.sh install    builds and installs it on the phone adb is connected to
+#   android/scripts/build.sh            builds the debug apk (signed with the debug key)
+#   android/scripts/build.sh test       runs the unit tests of the phone-side server
+#   android/scripts/build.sh install    builds and installs it on the phone adb is connected to
 # Needs the Android SDK (ANDROID_HOME, default /opt/android-sdk) and a JDK 17.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/../android"
+cd "$(dirname "${BASH_SOURCE[0]}")/.."   # android/
 export ANDROID_HOME="${ANDROID_HOME:-/opt/android-sdk}"
 [[ -f local.properties ]] || echo "sdk.dir=$ANDROID_HOME" > local.properties
 case "${1:-build}" in

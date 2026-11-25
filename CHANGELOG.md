@@ -13,6 +13,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The repository has a folder per platform: `linux/` (Muna for GNOME), `macos/` (in progress), `windows/` (later), `android/` (Muna Phone) and `shared/` (how they exchange files, the data files, colours and logo). `scripts/install.sh` and `scripts/uninstall.sh` still work from the top and pick the installer of the system they run on.
 - Settings: the features have their own part of the left list: an overview (the bundles, and how many features are on in each topic; a topic opens with a click) and a page for each topic: music and media, system, windows and desktops, work, files and sharing, capsule. The search field finds them all at once.
 
 ### Fixed

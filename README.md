@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="Muna logo" src="icons/dev.muna.Muna.svg" width="128">
+  <img alt="Muna logo" src="shared/brand/dev.muna.Muna.svg" width="128">
 </p>
 
 <h1 align="center">Muna</h1>
@@ -46,6 +46,18 @@ extension off brings the stock GNOME clock back.
     <td align="center"><img alt="A reading of the top bar opened" src="docs/screenshots/reading.png" width="300"><br><b>Top-bar readings</b>: each one opens its details</td>
   </tr>
 </table>
+
+## Platforms
+
+| System | State | Folder |
+|---|---|---|
+| Linux (GNOME Shell 50, 51) | Available: everything on this page | [`linux/`](linux) |
+| macOS | In progress: the capsule with music, LocalSend and groups, Tray, clipboard, calendar, notes, to-dos | [`macos/`](macos) |
+| Windows | Planned after macOS | [`windows/`](windows) |
+| Android | The Muna Phone app (the phone's side of the Phone card) | [`android/`](android) |
+
+What the platforms share (how they exchange files, the data files, colours, the logo) is described
+in [`shared/`](shared). The rest of this page is about Muna for GNOME unless it says otherwise.
 
 ## What can it do?
 
@@ -236,7 +248,7 @@ Please open an [issue](https://github.com/bekov0004/Muna/issues) with the output
 
 ## How it is built
 
-Muna is two parts that talk over D-Bus (`dev.muna.Muna`), and both ship inside the extension folder:
+Muna for GNOME (in `linux/`) is two parts that talk over D-Bus (`dev.muna.Muna`), and both ship inside the extension folder:
 
 - the **extension** (`extension.js`, `src/`) is the face: the capsule, panels, cards, gestures, and
   everything that has to live in the shell (clipboard capture, notifications, key bindings, the
@@ -254,25 +266,32 @@ Muna is two parts that talk over D-Bus (`dev.muna.Muna`), and both ship inside t
 | Artwork, Lyrics | Cover art and lyrics downloads |
 | Downloads, System, Agents | Watching the Downloads folder, the computer, the AI agents' logs |
 | Power, Tools, Processes, Cleaner | Keep awake, small jobs, processes and ports, the cache cleaner |
-| Phone | Pairing of an Android phone (adb over mDNS), the link to the Muna Phone app (`src/phone/phoneLink.js`); its screen (screenrecord + GStreamer) in a capsule card or a window; control through `phone-helper/muna-input.jar` (Muna's own tiny helper that runs on the phone; rebuild with `scripts/build-phone-helper.sh`), or the phone's `input` commands when the helper cannot start |
+| Phone | Pairing of an Android phone (adb over mDNS), the link to the Muna Phone app (`src/phone/phoneLink.js`); its screen (screenrecord + GStreamer) in a capsule card or a window; control through `phone-helper/muna-input.jar` (Muna's own tiny helper that runs on the phone; rebuild with `linux/scripts/build-phone-helper.sh`), or the phone's `input` commands when the helper cannot start |
 
 Without the service the extension still runs; only the features that live in the service are unavailable.
 
 ### For developers
 
 ```
-metadata.json  extension.js  prefs.js  stylesheet.css
-schemas/                     GSettings schema
-scripts/                     install.sh  uninstall.sh  package.sh
-src/
-  muna.js                   the capsule: actor, states, animations, gestures
-  services/                  panel, events, cards, activities, settings, media, calendar, files, mirrors of service modules
-  ui/                        closed view, panel (header, tabs, pages), layout, cards, live activities
-  widgets/                   one folder per widget + widget.js, registry.js
-  tray/  clipboard/  commandbar/  localsend/  notifications/  windows/  helpers/
-  client/moduleClient.js     the extension's end of the service's D-Bus modules
-service/                     the service and app: main.js, module.js, window.js, <module>/module.js
+linux/                       Muna for GNOME (everything below is inside it)
+  metadata.json  extension.js  prefs.js  stylesheet.css
+  schemas/                   GSettings schema
+  scripts/                   install.sh  uninstall.sh  package.sh  build-phone-helper.sh  build-airdrop.sh
+  src/
+    muna.js                  the capsule: actor, states, animations, gestures
+    services/                panel, events, cards, activities, settings, media, calendar, files, mirrors of service modules
+    ui/                      closed view, panel (header, tabs, pages), layout, cards, live activities
+    widgets/                 one folder per widget + widget.js, registry.js
+    tray/  clipboard/  commandbar/  localsend/  notifications/  windows/  helpers/
+    client/moduleClient.js   the extension's end of the service's D-Bus modules
+  service/                   the service and app: main.js, module.js, window.js, <module>/module.js
+  phone-helper/  airdrop/    the phone's input helper (Java), AirDrop experiments (C)
+macos/  windows/  android/   the other platforms
+shared/                      protocols, data formats, colours, logo, test tools for every platform
+scripts/                     install.sh / uninstall.sh: run the installer of this system
 ```
+
+Paths below are inside `linux/`.
 
 - **Panel:** `PanelService` hides the stock date menu and adds an anchor in the top bar. The capsule
   is one actor in the shell's chrome, so its top edge never moves: only x, width and height animate.
@@ -284,7 +303,7 @@ service/                     the service and app: main.js, module.js, window.js,
 - **A new service module:** add a class in `service/<name>/module.js` (a JSON state plus `rpc_<method>`
   calls), register it in `service/main.js`, then add a `ModuleClient` in `src/client/moduleClient.js`
   and a mirror in `src/services/`.
-- **Build a release zip:** `scripts/package.sh` creates `Muna-<version>.zip`.
+- **Build a release zip:** `linux/scripts/package.sh` creates `linux/Muna-<version>.zip`.
 - **Try changes:** `scripts/install.sh --nested`. Wayland cannot reload a shell extension in place.
 
 ## Contributing
@@ -308,7 +327,7 @@ android/app/src/main/java/dev/muna/phone/
             AndroidInjector.kt (touches, keys, panel off, wake: the system calls), Session.kt (one connection)
   ui/       MainActivity.kt: a screen that says what the app is for
 android/app/src/test/   unit tests of the server, and FakePhone.kt (the server with a fake phone, for Muna's tests)
-phone-helper/           the small helper used when the app is not installed (adb pushes it)
+linux/phone-helper/     the small helper used when the app is not installed (adb pushes it)
 ```
 
 With the app installed, Muna starts its server once through adb (`CLASSPATH=<apk> app_process / dev.muna.phone.server.Server <host> <port> <token>`).
@@ -346,4 +365,4 @@ connects to the phone's own debugging service and starts the server, which dials
 (`muna://connect?host=...&port=...&token=...`) as a QR code and as text; the app opens it (camera, or paste) and the
 computer listens on a port that is kept between sessions, so the link stays valid.
 
-Build: `scripts/build-android.sh` (apk in `dist/muna-phone.apk`), tests: `scripts/build-android.sh test`, install: `scripts/build-android.sh install`.
+Build: `android/scripts/build.sh` (apk in `dist/muna-phone.apk`), tests: `android/scripts/build.sh test`, install: `android/scripts/build.sh install`.

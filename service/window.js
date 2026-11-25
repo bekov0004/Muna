@@ -30,7 +30,7 @@ export function createWindow(application, modules, {restart, openScratchpad}) {
     page.add(status);
 
     const running = new Adw.ActionRow({title: 'Running', subtitle: `process ${new TextDecoder().decode(GLib.file_get_contents('/proc/self/stat')[1]).split(' ')[0]}`});
-    running.add_prefix(new Gtk.Image({icon_name: 'emblem-ok-symbolic'}));
+    running.add_prefix(new Gtk.Image({icon_name: 'object-select-symbolic'}));
     status.add(running);
 
     const features = new Adw.PreferencesGroup({title: 'Features'});

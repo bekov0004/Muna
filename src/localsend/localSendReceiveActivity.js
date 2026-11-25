@@ -56,7 +56,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
         if (!this._ended && ['done', 'failed', 'declined'].includes(state)) {
             this._ended = true;
             if (!this.shown && state === 'done')
-                this._notify(`Received from ${sender.alias}`, countText(files.length), 'emblem-ok-symbolic');
+                this._notify(`Received from ${sender.alias}`, countText(files.length), 'object-select-symbolic');
             else if (!this.shown && state === 'failed')
                 this._notify('LocalSend', error, 'dialog-warning-symbolic');
             if (this.shown && state !== 'done')
@@ -101,7 +101,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
                 body.add_child(this._createProgress());
                 break;
             case 'done':
-                body.add_child(this._createNote('emblem-ok-symbolic', `Received ${countText(t.files.length)} in ${t.folder.split('/').pop() || 'your folder'}`,
+                body.add_child(this._createNote('object-select-symbolic', `Received ${countText(t.files.length)} in ${t.folder.split('/').pop() || 'your folder'}`,
                     {label: 'Show in folder', onClick: () => this._showInFolder(`file://${t.files[0].path}`)}));
                 break;
             case 'declined':

@@ -205,7 +205,7 @@ const WIDGET_ICONS = {
     controls: 'preferences-other-symbolic',
     toggles: 'view-list-symbolic',
     focus: 'preferences-system-time-symbolic',
-    system: 'utilities-system-monitor-symbolic',
+    system: 'computer-symbolic',
     network: 'network-wireless-symbolic',
     disks: 'drive-harddisk-symbolic',
     power: 'battery-full-symbolic',
@@ -260,7 +260,7 @@ export class MunaPreferences {
 
         const pages = [
             ['general', _('General'), 'preferences-system-symbolic', this._generalPage(settings)],
-            ['monitor', _('Monitor'), 'utilities-system-monitor-symbolic', this._monitorPage(settings)],
+            ['monitor', _('Monitor'), 'computer-symbolic', this._monitorPage(settings)],
             ['muna', _('Muna'), 'view-grid-symbolic', this._munaPage(settings)],
             ['tools', _('Menu bar'), 'window-new-symbolic', this._menuBarPage(settings)],
             ['appearance', _('Appearance'), 'applications-graphics-symbolic', this._appearancePage(settings)],
@@ -285,7 +285,7 @@ export class MunaPreferences {
                 ['tools', _('Menu bar'), 'window-new-symbolic', P('tools')],
                 ['touchpad', _('Touchpad gestures'), 'input-touchpad-symbolic', this._touchpadGesturesPage(settings)],
                 ['fingerprint', _('Fingerprint'), 'auth-fingerprint-symbolic', this._fingerprintPage(settings)],
-                ['monitor', _('Monitor'), 'utilities-system-monitor-symbolic', P('monitor')],
+                ['monitor', _('Monitor'), 'computer-symbolic', P('monitor')],
             ]],
             [_('Features'), [
                 ['features', _('Overview'), 'view-app-grid-symbolic', features.overview],
@@ -495,7 +495,7 @@ export class MunaPreferences {
             group: w.menu ? TOOLS : ISLAND,
             title: w.title,
             subtitle: w.subtitle,
-            icon: WIDGET_ICONS[w.id] ?? 'applications-symbolic',
+            icon: WIDGET_ICONS[w.id] ?? 'view-app-grid-symbolic',
             widget: w.id,
         }));
         const key = (topic, group, title, subtitle, icon, setting) => ({topic, group, title, subtitle, icon, key: setting});
@@ -507,7 +507,7 @@ export class MunaPreferences {
             key('feat-capsule', _('Live Activities'), _('Tray'), _('A card when files are added to the tray'), 'folder-download-symbolic', 'activity-files'),
             key('feat-capsule', _('Live Activities'), _('Downloads'), _('Files arriving in the Downloads folder'), 'folder-download-symbolic', 'activity-downloads'),
             key('feat-system', _('Cards and alerts'), _('System alerts'), _('A busy processor, heat, a full disk or memory, a low battery'), 'dialog-warning-symbolic', 'system-alerts'),
-            key('feat-work', _('Cards and alerts'), _('AI agents finished'), _('A card when Claude Code or Codex finishes a long task'), 'emblem-ok-symbolic', 'agents-alerts'),
+            key('feat-work', _('Cards and alerts'), _('AI agents finished'), _('A card when Claude Code or Codex finishes a long task'), 'object-select-symbolic', 'agents-alerts'),
             key('feat-capsule', _('Cards and alerts'), _('Keyboard layout'), _('The capsule widens for a moment and shows the layout when you switch it'), 'input-keyboard-symbolic', 'show-input-source'),
             key('feat-capsule', _('Cards and alerts'), _('Caps Lock'), _('The capsule shows whether Caps Lock is on or off'), 'input-keyboard-symbolic', 'show-caps-lock'),
             key('feat-media', _('Music'), _('Lyrics'), _('The line being sung under the title (the song is looked up on lrclib.net)'), 'audio-x-generic-symbolic', 'show-lyrics'),
@@ -1790,7 +1790,7 @@ export class MunaPreferences {
             const tabs = new Gtk.Box({spacing: 2, halign: Gtk.Align.CENTER});
             menuOrder().on.forEach((id, i) => {
                 const tab = new Gtk.Box({css_classes: i === 0 ? ['mb-prev-tab', 'on'] : ['mb-prev-tab']});
-                tab.append(new Gtk.Image({icon_name: WIDGET_ICONS[id] ?? 'applications-symbolic', pixel_size: 11}));
+                tab.append(new Gtk.Image({icon_name: WIDGET_ICONS[id] ?? 'view-app-grid-symbolic', pixel_size: 11}));
                 tabs.append(tab);
             });
             win.append(tabs);
@@ -1820,7 +1820,7 @@ export class MunaPreferences {
                 const handle = new Gtk.Image({icon_name: 'list-drag-handle-symbolic', pixel_size: 14, css_classes: ['mb-handle'], valign: Gtk.Align.CENTER});
                 row.append(handle);
                 const square = new Gtk.Box({css_classes: ['mb-square'], halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER});
-                square.append(new Gtk.Image({icon_name: WIDGET_ICONS[id] ?? 'applications-symbolic', pixel_size: 20, hexpand: true, vexpand: true}));
+                square.append(new Gtk.Image({icon_name: WIDGET_ICONS[id] ?? 'view-app-grid-symbolic', pixel_size: 20, hexpand: true, vexpand: true}));
                 row.append(square);
                 const texts = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, hexpand: true, valign: Gtk.Align.CENTER});
                 texts.append(new Gtk.Label({label: info(id).title, css_classes: ['mb-name'], xalign: 0}));
@@ -1876,10 +1876,10 @@ export class MunaPreferences {
         iconCard.append(this._dim(_('The icon of the Muna button in the top bar.')));
         const grid = new Gtk.FlowBox({selection_mode: Gtk.SelectionMode.NONE, max_children_per_line: 10, min_children_per_line: 10, homogeneous: true, column_spacing: 6, row_spacing: 6, margin_top: 6});
         const ICONS = ['muna-butterfly-symbolic', 'view-app-grid-symbolic', 'applications-system-symbolic', 'preferences-system-symbolic', 'weather-clear-night-symbolic', 'starred-symbolic',
-            'emblem-favorite-symbolic', 'input-gaming-symbolic', 'media-playback-start-symbolic', 'camera-photo-symbolic', 'audio-headphones-symbolic', 'utilities-terminal-symbolic',
+            'emblem-system-symbolic', 'input-gaming-symbolic', 'media-playback-start-symbolic', 'camera-photo-symbolic', 'audio-headphones-symbolic', 'utilities-terminal-symbolic',
             'user-home-symbolic', 'folder-symbolic', 'mail-unread-symbolic', 'network-workgroup-symbolic', 'system-search-symbolic', 'weather-clear-symbolic',
             'face-smile-symbolic', 'bookmark-new-symbolic', 'dialog-information-symbolic', 'security-high-symbolic', 'view-more-symbolic', 'go-home-symbolic',
-            'tools-symbolic', 'applications-science-symbolic', 'applications-games-symbolic', 'applications-multimedia-symbolic', 'applications-engineering-symbolic', 'applications-graphics-symbolic'];
+            'computer-symbolic', 'applications-science-symbolic', 'applications-games-symbolic', 'applications-multimedia-symbolic', 'applications-engineering-symbolic', 'applications-graphics-symbolic'];
         let group = null;
         const buttons = new Map();
         ICONS.forEach(name => {
@@ -1971,7 +1971,7 @@ export class MunaPreferences {
 
         form.append(new Gtk.Label({label: _('In the top bar'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         this._idsEditor(settings, 'bar-metrics', [
-            ['cpu', _('CPU'), 'utilities-system-monitor-symbolic'],
+            ['cpu', _('CPU'), 'computer-symbolic'],
             ['cputemp', _('CPU temperature'), 'weather-clear-symbolic'],
             ['gpu', _('GPU'), 'video-display-symbolic'],
             ['mem', _('Memory'), 'drive-harddisk-symbolic'],
@@ -1987,7 +1987,7 @@ export class MunaPreferences {
         form.append(new Gtk.Label({label: _('In the panel'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         this._idsEditor(settings, 'system-blocks', [
             ['temps', _('Temperatures'), 'weather-clear-symbolic'],
-            ['cpu', _('CPU'), 'utilities-system-monitor-symbolic'],
+            ['cpu', _('CPU'), 'computer-symbolic'],
             ['gpu', _('GPU'), 'video-display-symbolic'],
             ['memory', _('Memory'), 'drive-harddisk-symbolic'],
             ['uptime', _('Uptime'), 'preferences-system-time-symbolic'],

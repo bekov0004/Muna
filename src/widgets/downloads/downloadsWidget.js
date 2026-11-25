@@ -96,7 +96,7 @@ export class DownloadsWidget extends MunaWidget {
             const button = new St.Button({style_class: 'muna-download-main', x_expand: true, can_focus: true, reactive: item.state === 'done'});
             const line = new St.BoxLayout({x_expand: true});
             line.add_child(new St.Icon({
-                icon_name: item.state === 'done' ? 'emblem-ok-symbolic' : 'folder-download-symbolic',
+                icon_name: item.state === 'done' ? 'object-select-symbolic' : 'folder-download-symbolic',
                 style_class: 'muna-download-icon',
                 y_align: Clutter.ActorAlign.CENTER,
             }));

@@ -24,7 +24,7 @@ const short = v => formatRate(v).replace(' B/s', 'B').replace(' KB/s', 'K').repl
  */
 const READINGS = {
     cpu: {
-        label: 'CPU', title: 'Processor', icon: 'utilities-system-monitor-symbolic',
+        label: 'CPU', title: 'Processor', icon: 'computer-symbolic',
         bar: s => `${s.cpu}%`,
         detail: (s, unit) => ({
             value: `${s.cpu}%`, sub: 'in use',

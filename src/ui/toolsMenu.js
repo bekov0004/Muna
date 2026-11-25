@@ -128,7 +128,7 @@ export class ToolsMenu {
         const titleRow = new St.BoxLayout({x_expand: true, style_class: 'muna-menu-titlerow'});
         this._title = new St.Label({style_class: 'muna-menu-title', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
         titleRow.add_child(this._title);
-        this._customize = createButton({iconName: 'media-eq-symbolic', styleClass: 'muna-menu-customize', onClick: () => this._setCustomizing(true)});
+        this._customize = createButton({iconName: 'emblem-system-symbolic', styleClass: 'muna-menu-customize', onClick: () => this._setCustomizing(true)});
         this._customize.accessible_name = 'Customize';
         this._reset = createButton({iconName: 'edit-undo-symbolic', styleClass: 'muna-menu-reset', onClick: () => this._widgets[this._current]?.resetLayout?.()});
         this._ok = createButton({iconName: 'object-select-symbolic', label: 'OK', styleClass: 'muna-menu-ok', onClick: () => this._setCustomizing(false)});

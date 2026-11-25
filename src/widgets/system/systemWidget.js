@@ -15,7 +15,7 @@ import {MonitorWidget, formatDuration} from './monitorWidget.js';
 export class SystemWidget extends MonitorWidget {
     static id = 'system';
     static title = 'System';
-    static iconName = 'utilities-system-monitor-symbolic';
+    static iconName = 'computer-symbolic';
 
     constructor(context) {
         super(context);
@@ -33,7 +33,7 @@ export class SystemWidget extends MonitorWidget {
             return;
         this._events.emit({
             type: EventType.CUSTOM,
-            icon: alert.kind === 'temp' ? 'dialog-warning-symbolic' : alert.kind.startsWith('battery') || alert.kind.startsWith('device') ? 'battery-caution-symbolic' : 'utilities-system-monitor-symbolic',
+            icon: alert.kind === 'temp' ? 'dialog-warning-symbolic' : alert.kind.startsWith('battery') || alert.kind.startsWith('device') ? 'battery-caution-symbolic' : 'computer-symbolic',
             title: alert.title,
             description: alert.text,
             priority: Priority.HIGH,

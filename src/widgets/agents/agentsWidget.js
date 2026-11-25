@@ -61,7 +61,7 @@ export class AgentsWidget extends MunaWidget {
             return;
         const minutes = Math.max(1, Math.round(info.seconds / 60));
         this._events.emit({
-            type: EventType.CUSTOM, icon: 'emblem-ok-symbolic', title: `${info.name} finished`,
+            type: EventType.CUSTOM, icon: 'object-select-symbolic', title: `${info.name} finished`,
             description: `${info.project} · ${minutes} min`, priority: Priority.HIGH, duration: 6000,
         });
     }
@@ -70,7 +70,7 @@ export class AgentsWidget extends MunaWidget {
         if (!this._settings.get('agents-alerts'))
             return;
         this._events.emit({
-            type: EventType.CUSTOM, icon: info.ok ? 'emblem-ok-symbolic' : 'dialog-warning-symbolic',
+            type: EventType.CUSTOM, icon: info.ok ? 'object-select-symbolic' : 'dialog-warning-symbolic',
             title: info.ok ? `Claude finished · ${info.project}` : `Claude stopped · ${info.project}`,
             description: info.text || money(info.costUsd), priority: Priority.HIGH, duration: 6000,
         });

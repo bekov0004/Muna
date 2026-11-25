@@ -19,8 +19,8 @@ const MODELS = [['', 'Default model'], ['opus', 'Opus'], ['sonnet', 'Sonnet'], [
 
 const STATUS = {
     starting: ['content-loading-symbolic', 'Starting'], working: ['media-playback-start-symbolic', 'Working'],
-    waiting: ['dialog-question-symbolic', 'Needs you'], idle: ['emblem-ok-symbolic', 'Done, waiting for more'],
-    done: ['emblem-ok-symbolic', 'Done'], failed: ['dialog-error-symbolic', 'Failed'], stopped: ['media-playback-stop-symbolic', 'Stopped'],
+    waiting: ['dialog-question-symbolic', 'Needs you'], idle: ['object-select-symbolic', 'Done, waiting for more'],
+    done: ['object-select-symbolic', 'Done'], failed: ['dialog-error-symbolic', 'Failed'], stopped: ['media-playback-stop-symbolic', 'Stopped'],
 };
 
 /** The window in Muna's colours (theme.js, as the settings window): black, dark grey blocks, a blue accent. */
@@ -440,7 +440,7 @@ function renderEntry(entry) {
         refresh = () => {
             if (entry.ok === undefined)
                 return;
-            icon.icon_name = entry.ok ? 'emblem-ok-symbolic' : 'dialog-error-symbolic';
+            icon.icon_name = entry.ok ? 'object-select-symbolic' : 'dialog-error-symbolic';
             icon.css_classes = [entry.ok ? 'agent-tool-ok' : 'agent-tool-error'];
             if (entry.output) {
                 output.label = entry.output;

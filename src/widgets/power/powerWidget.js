@@ -39,7 +39,7 @@ export class PowerWidget extends MonitorWidget {
         card.add_child(this._apps.actor);
         card.add_child(menuDivider());
 
-        this._temp = this._iconRow('Battery temperature', 'utilities-system-monitor-symbolic');
+        this._temp = this._iconRow('Battery temperature', 'computer-symbolic');
         card.add_child(this._temp.actor);
         card.add_child(menuDivider());
 
@@ -55,7 +55,7 @@ export class PowerWidget extends MonitorWidget {
         this._charging = this._iconRow('Battery', 'battery-good-charging-symbolic', ' ');
         card.add_child(this._charging.actor);
         card.add_child(menuDivider());
-        this._health = this._iconRow('Battery health', 'emblem-favorite-symbolic', ' ');
+        this._health = this._iconRow('Battery health', 'battery-good-symbolic', ' ');
         card.add_child(this._health.actor);
 
         this._devicesBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});

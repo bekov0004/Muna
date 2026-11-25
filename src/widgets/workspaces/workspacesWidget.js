@@ -146,7 +146,7 @@ export class WorkspacesWidget extends MunaWidget {
                     onClick: () => this._remove(workspace),
                 });
             } else if (i === active) {
-                control = new St.Icon({icon_name: 'emblem-ok-symbolic', style_class: 'muna-tool-icon'});
+                control = new St.Icon({icon_name: 'object-select-symbolic', style_class: 'muna-tool-icon'});
             }
             const {row} = menuRow({
                 title: `Desktop ${i + 1}${i === active ? ' (this one)' : ''}`,
@@ -191,7 +191,7 @@ export class WorkspacesWidget extends MunaWidget {
             const {row} = menuRow({
                 title: `Desktop ${i + 1}${i === current ? ' (this one)' : ''}`,
                 subtitle: n === 0 ? 'Empty' : `${n} window${n === 1 ? '' : 's'}`,
-                control: i === current ? new St.Icon({icon_name: 'emblem-ok-symbolic', style_class: 'muna-tool-icon'}) : null,
+                control: i === current ? new St.Icon({icon_name: 'object-select-symbolic', style_class: 'muna-tool-icon'}) : null,
                 onClick: () => md.switchTo(monitor, i),
             });
             setChecked(row, i === current);

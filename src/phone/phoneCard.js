@@ -723,7 +723,7 @@ export class PhoneCardActivity extends LiveActivity {
             appButton();
             box.add_child(new St.Label({text: 'sudo apt install adb', style_class: 'muna-phone-code', x_align: Clutter.ActorAlign.CENTER}));
         } else if (state.mirroring) {
-            icon('preferences-system-windows-symbolic');
+            icon('window-new-symbolic');
             box.add_child(this._text('The phone is in its own window', 'muna-phone-title'));
             box.add_child(pill('Bring it back here', () => this._phone.call('stopMirror').catch(() => {}), true));
         } else if (this.device && !this.device.screen) {

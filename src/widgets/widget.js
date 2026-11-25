@@ -12,7 +12,7 @@
 export class MunaWidget {
     static id = 'widget';
     static title = 'Widget';
-    static iconName = 'applications-symbolic';
+    static iconName = 'view-app-grid-symbolic';
 
     constructor(context) {
         this.context = context;

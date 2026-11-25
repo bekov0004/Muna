@@ -48,7 +48,7 @@ export class NetworkWidget extends MonitorWidget {
         card.add_child(this._ip.actor);
         card.add_child(menuDivider());
         const actions = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true});
-        actions.add_child(pillButton({label: 'Speed test', icon: 'speedometer-symbolic', onClick: () => Gio.AppInfo.launch_default_for_uri('https://fast.com', null)}));
+        actions.add_child(pillButton({label: 'Speed test', icon: 'power-profile-performance-symbolic', onClick: () => Gio.AppInfo.launch_default_for_uri('https://fast.com', null)}));
         card.add_child(actions);
         return root;
     }

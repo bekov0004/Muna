@@ -341,7 +341,7 @@ export class CommandView extends St.BoxLayout {
                 run: () => this._cleaner.call('clean', {path: folder.path}).catch(e => console.warn(`[muna] cleaner: ${e.message}`)),
             }));
             if (results.length === 0)
-                results = [{icon: 'emblem-ok-symbolic', title: 'The cache is already small', subtitle: '', run: () => {}}];
+                results = [{icon: 'object-select-symbolic', title: 'The cache is already small', subtitle: '', run: () => {}}];
         } catch (e) {
             results = [{icon: 'dialog-warning-symbolic', title: e.message, subtitle: '', run: () => {}}];
         }

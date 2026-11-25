@@ -235,6 +235,11 @@ struct GeneralSettings: View {
                 Slider(value: $preferences.animationSpeed, in: 0.25...4, step: 0.25)
             }
         }
+        SettingsCard("Music") {
+            SettingsToggle(title: "Show the lyrics",
+                           detail: "The line being sung, in the Media widget. The song's artist, title, album and length are sent to lrclib.net (a free lyrics database) to find them.",
+                           isOn: $preferences.showLyrics)
+        }
         SettingsCard("Screens") {
             Picker("A capsule on", selection: $preferences.capsuleScreens) {
                 Text("Every screen").tag("all")

@@ -153,6 +153,9 @@ final class PanelState: ObservableObject {
     @Published var groupNameError = ""
     @Published var confirmDeleteGroup: String?
     @Published var hoveredTrayFile: URL?
+    /// The clipboard item whose note is being written, and the text.
+    @Published var noteForClip: String?
+    @Published var clipNoteDraft = ""
     /// The day the calendar shows.
     @Published var calendarDay = Date()
 }

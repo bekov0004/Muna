@@ -53,10 +53,12 @@ struct ClipRow: View {
     let copy: () -> Void
     @EnvironmentObject var clipboard: ClipboardModel
     @EnvironmentObject var privacy: PrivacyModel
+    @EnvironmentObject var ui: PanelState
 
     private var hidden: Bool { item.isPrivate && !privacy.unlocked }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
         HStack(spacing: 8) {
             if let files = item.files, let first = files.first.flatMap({ URL(string: $0) }) {
                 FileIcon(url: first, size: 18)
@@ -73,6 +75,10 @@ struct ClipRow: View {
             if copied {
                 Text("Copied").font(.system(size: 10, weight: .semibold)).foregroundColor(MunaColor.ok)
             }
+            IconButton(symbol: item.note.isEmpty ? "text.bubble" : "text.bubble.fill", tint: item.note.isEmpty ? MunaColor.secondary : MunaColor.accent) {
+                ui.clipNoteDraft = item.note
+                ui.noteForClip = ui.noteForClip == item.id ? nil : item.id
+            }
             IconButton(symbol: item.isPrivate ? "lock.fill" : "lock.open", tint: item.isPrivate ? MunaColor.amber : MunaColor.secondary) {
                 if hidden { privacy.unlock() } else { clipboard.togglePrivate(item) }
             }
@@ -80,6 +86,16 @@ struct ClipRow: View {
                 clipboard.togglePinned(item)
             }
             IconButton(symbol: "xmark") { clipboard.remove(item) }
+        }
+            if ui.noteForClip == item.id {
+                CapsuleField(placeholder: "A note for this item (Enter keeps it)", text: $ui.clipNoteDraft) {
+                    clipboard.setNote(item, ui.clipNoteDraft)
+                    ui.noteForClip = nil
+                }
+                .padding(.leading, 26)
+            } else if !item.note.isEmpty {
+                Text(item.note).font(.system(size: 11)).foregroundColor(MunaColor.accent).lineLimit(1).padding(.leading, 26)
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

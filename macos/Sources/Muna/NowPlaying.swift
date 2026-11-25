@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import MunaCore
 
 /// The track a player is on.
 struct Track: Equatable {
@@ -60,6 +61,10 @@ final class NowPlaying: ObservableObject {
     @Published private(set) var track: Track?
     @Published private(set) var isPlaying = false
     @Published private(set) var position: Double = 0
+    /// The words of the song, when "show lyrics" is on and lrclib.net knows them.
+    @Published private(set) var lyrics: LyricsResult?
+    private let lyricsClient = LyricsClient()
+
     /// When `position` was read: while playing, the position now is position + the time since.
     private(set) var positionTime = Date()
 
@@ -95,10 +100,31 @@ final class NowPlaying: ObservableObject {
                 best = candidate
             }
         }
-        if best?.track != track { track = best?.track }
+        if best?.track != track {
+            track = best?.track
+            lookUpLyrics()
+        }
         isPlaying = best?.playing ?? false
         position = best?.position ?? 0
         positionTime = Date()
+    }
+
+    private func lookUpLyrics() {
+        lyrics = nil
+        guard let track, Preferences.shared.showLyrics else { return }
+        let client = lyricsClient
+        Task { [weak self] in
+            let found = await client.lookup(artist: track.artist, title: track.title, album: track.album, length: track.duration)
+            DispatchQueue.main.async {
+                if self?.track == track { self?.lyrics = found }
+            }
+        }
+    }
+
+    /// The line sung now, if the lyrics are timed.
+    func lyricLine(at date: Date = Date()) -> String? {
+        guard let line = lyrics?.line(at: currentPosition(at: date)), !line.text.isEmpty else { return nil }
+        return line.text
     }
 
     /// Where the track is now (between two questions to the player too).

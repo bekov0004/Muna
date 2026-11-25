@@ -178,6 +178,12 @@ final class ClipboardModel: ObservableObject {
         items = history.items
     }
 
+    /// The user's label of an item (found by the search too).
+    func setNote(_ item: ClipItem, _ note: String) {
+        history.setNote(item, note.trimmingCharacters(in: .whitespacesAndNewlines))
+        items = history.items
+    }
+
     func remove(_ item: ClipItem) {
         history.remove(item)
         items = history.items

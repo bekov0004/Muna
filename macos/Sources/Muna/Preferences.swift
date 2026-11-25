@@ -53,6 +53,8 @@ final class Preferences: ObservableObject {
     @Published var cornerRadius: Double { didSet { defaults.set(cornerRadius, forKey: "corner-radius") } }
     @Published var backgroundOpacity: Double { didSet { defaults.set(backgroundOpacity, forKey: "background-opacity") } }
     @Published var animationSpeed: Double { didSet { defaults.set(animationSpeed, forKey: "animation-speed") } }
+    /// The words of the song, from lrclib.net (artist, title, album and length are sent there).
+    @Published var showLyrics: Bool { didSet { defaults.set(showLyrics, forKey: "show-lyrics") } }
     /// ⌃⌥1 … ⌃⌥5 open the sections.
     @Published var sectionHotKeys: Bool { didSet { defaults.set(sectionHotKeys, forKey: "section-hotkeys") } }
     /// ⌥Space opens the Command Bar.
@@ -93,6 +95,7 @@ final class Preferences: ObservableObject {
         backgroundOpacity = min(max(double("background-opacity", 0.96), 0.5), 1)
         animationSpeed = min(max(double("animation-speed", 1), 0.25), 4)
         sectionHotKeys = bool("section-hotkeys", true)
+        showLyrics = bool("show-lyrics", false)
         capsuleScreens = defaults.string(forKey: "capsule-screens") ?? "all"
         menuBarReadings = bool("menu-bar-readings", false)
         let known = Set(WidgetCatalog.all.map(\.id))

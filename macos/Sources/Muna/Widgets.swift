@@ -18,7 +18,13 @@ struct MediaWidget: View {
                     Artwork(url: track.artworkURL, size: 64, radius: 10)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(track.title).font(.system(size: 13, weight: .bold)).foregroundColor(.white).lineLimit(1)
-                        Text(track.album).font(.system(size: 11)).foregroundColor(Color.white.opacity(0.6)).lineLimit(1)
+                        TimelineView(.periodic(from: Date(), by: 0.5)) { context in
+                            if let line = nowPlaying.lyricLine(at: context.date) {
+                                Text(line).font(.system(size: 11, weight: .semibold)).foregroundColor(MunaColor.muna).lineLimit(1)
+                            } else {
+                                Text(track.album).font(.system(size: 11)).foregroundColor(Color.white.opacity(0.6)).lineLimit(1)
+                            }
+                        }
                         Text(track.artist).font(.system(size: 11)).foregroundColor(Color.white.opacity(0.45)).lineLimit(1)
                         HStack(spacing: 2) {
                             MediaButton(symbol: "backward.fill") { nowPlaying.previous() }

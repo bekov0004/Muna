@@ -16,7 +16,7 @@ Change this table together with the code.
 | Width in cells of 44, pages of widgets | ✅ | ✅ | ⬜ | same rules (`PanelLayout`, tested against Linux) |
 | Files dropped on the capsule | ✅ | ✅ | ⬜ | |
 | Capsule on several monitors | ✅ | ✅ | ⬜ | Mac: every screen, the main one, or the built-in one with the notch (Settings → General → Screens) |
-| Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | 🟡 | ⬜ | Mac: apps, calculator, units, clipboard, web search, ;snippets (⌥Space); no kill, ports, clean yet |
+| Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | ✅ | ⬜ | Mac: apps, calculator, units, clipboard, web search, ;snippets, kill, ports, clean (~/Library/Caches), scratch (⌥Space) |
 | Keyboard shortcuts for every section | ✅ | ✅ | ⬜ | Mac: ⌥Space Command Bar, ⌃⌥1–5 the sections (can be switched off) |
 | Two-finger pull makes lists taller | ✅ | ➖ | ⬜ | Mac: the Clipboard and Alerts sections are tall and scroll |
 | Appearance: size, corner radius, colour, opacity | ✅ | 🟡 | ⬜ | Mac: corner radius, opacity, animation speed; widths per widget |
@@ -25,7 +25,7 @@ Change this table together with the code.
 
 | Widget | Linux | macOS | Windows | Note |
 |---|---|---|---|---|
-| Media player | ✅ | 🟡 | ⬜ | Mac: Music and Spotify only (macOS closed "now playing" to other apps); no lyrics yet |
+| Media player | ✅ | 🟡 | ⬜ | Mac: Music and Spotify only (macOS closed "now playing" to other apps); lyrics from lrclib.net (setting) |
 | Calendar | ✅ | ✅ | ⬜ | Mac: EventKit |
 | Mirror (camera) | ✅ | ✅ | ⬜ | with the enlarged card |
 | Timer | ✅ | ✅ | ⬜ | |
@@ -40,7 +40,7 @@ Change this table together with the code.
 |---|---|---|---|---|
 | Tray | ✅ | ✅ | ⬜ | |
 | LocalSend: send, several devices, groups, receive | ✅ | ✅ | ⬜ | Mac ↔ Linux to be tried on real machines |
-| Clipboard history, pin, search, clean links, private items, drag out | ✅ | ✅ | ⬜ | Linux also: notes on items |
+| Clipboard history, pin, notes, search, clean links, private items, drag out | ✅ | ✅ | ⬜ | |
 | Alerts | ✅ | 🟡 | ⬜ | macOS lets no app read other apps' notifications: Muna's own events only |
 
 ## The top-bar window (quick panel) and tools

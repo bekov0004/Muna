@@ -52,6 +52,9 @@ struct ClipRow: View {
     let copied: Bool
     let copy: () -> Void
     @EnvironmentObject var clipboard: ClipboardModel
+    @EnvironmentObject var privacy: PrivacyModel
+
+    private var hidden: Bool { item.isPrivate && !privacy.unlocked }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -62,13 +65,16 @@ struct ClipRow: View {
                     .lineLimit(1)
             } else {
                 Image(systemName: "text.alignleft").font(.system(size: 11)).foregroundColor(MunaColor.secondary).frame(width: 18)
-                Text(item.isPrivate ? "Private" : (item.text ?? "").replacingOccurrences(of: "\n", with: " "))
+                Text(hidden ? "Private · Touch ID" : (item.text ?? "").replacingOccurrences(of: "\n", with: " "))
                     .font(.system(size: 12))
                     .lineLimit(1)
             }
             Spacer(minLength: 6)
             if copied {
                 Text("Copied").font(.system(size: 10, weight: .semibold)).foregroundColor(MunaColor.ok)
+            }
+            IconButton(symbol: item.isPrivate ? "lock.fill" : "lock.open", tint: item.isPrivate ? MunaColor.amber : MunaColor.secondary) {
+                if hidden { privacy.unlock() } else { clipboard.togglePrivate(item) }
             }
             IconButton(symbol: item.saved ? "pin.fill" : "pin", tint: item.saved ? MunaColor.accent : MunaColor.secondary) {
                 clipboard.togglePinned(item)
@@ -79,6 +85,18 @@ struct ClipRow: View {
         .padding(.vertical, 6)
         .background(RoundedRectangle(cornerRadius: 10).fill(MunaColor.tile))
         .contentShape(Rectangle())
-        .onTapGesture(perform: copy)
+        .onTapGesture {
+            if hidden { privacy.unlock() } else { copy() }
+        }
+        // drag an item out into any app
+        .onDrag { dragItem() }
+    }
+
+    private func dragItem() -> NSItemProvider {
+        if hidden { return NSItemProvider() }
+        if let first = item.files?.first.flatMap({ URL(string: $0) }) {
+            return NSItemProvider(contentsOf: first) ?? NSItemProvider()
+        }
+        return NSItemProvider(object: (item.text ?? "") as NSString)
     }
 }

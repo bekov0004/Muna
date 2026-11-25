@@ -20,6 +20,7 @@ enum WidgetCatalog {
         WidgetInfo(id: "todo", title: "To-do", subtitle: "A simple local task list", symbol: "checklist", cells: 4, minCells: 3),
         WidgetInfo(id: "notes", title: "Notes", subtitle: "Quick notes you can copy later", symbol: "note.text", cells: 4, minCells: 3),
         WidgetInfo(id: "shortcuts", title: "Shortcuts", subtitle: "Launch your favourite apps", symbol: "square.grid.2x2", cells: 4, minCells: 2),
+        WidgetInfo(id: "companion", title: "Companion", subtitle: "A small friend: its eyes follow the pointer, it sways to the music, falls asleep", symbol: "face.smiling", cells: 2, minCells: 2),
     ]
 
     static func info(_ id: String) -> WidgetInfo? { all.first { $0.id == id } }
@@ -47,6 +48,13 @@ final class Preferences: ObservableObject {
 
     /// Which screens have a capsule: "all", "main" (the one with the menu bar), "notch" (the built-in one).
     @Published var capsuleScreens: String { didSet { defaults.set(capsuleScreens, forKey: "capsule-screens") } }
+    /// The look of the capsule, as on Linux: the open capsule's corner radius, how opaque it is, how
+    /// fast it moves.
+    @Published var cornerRadius: Double { didSet { defaults.set(cornerRadius, forKey: "corner-radius") } }
+    @Published var backgroundOpacity: Double { didSet { defaults.set(backgroundOpacity, forKey: "background-opacity") } }
+    @Published var animationSpeed: Double { didSet { defaults.set(animationSpeed, forKey: "animation-speed") } }
+    /// ⌃⌥1 … ⌃⌥5 open the sections.
+    @Published var sectionHotKeys: Bool { didSet { defaults.set(sectionHotKeys, forKey: "section-hotkeys") } }
     /// ⌥Space opens the Command Bar.
     @Published var commandHotKey: Bool { didSet { defaults.set(commandHotKey, forKey: "command-hotkey") } }
 
@@ -81,6 +89,10 @@ final class Preferences: ObservableObject {
         capsuleButterfly = bool("capsule-butterfly", true)
         activitiesInCollapsed = bool("activities-in-collapsed", true)
         commandHotKey = bool("command-hotkey", true)
+        cornerRadius = min(max(double("corner-radius", 32), 8), 44)
+        backgroundOpacity = min(max(double("background-opacity", 0.96), 0.5), 1)
+        animationSpeed = min(max(double("animation-speed", 1), 0.25), 4)
+        sectionHotKeys = bool("section-hotkeys", true)
         capsuleScreens = defaults.string(forKey: "capsule-screens") ?? "all"
         menuBarReadings = bool("menu-bar-readings", false)
         let known = Set(WidgetCatalog.all.map(\.id))

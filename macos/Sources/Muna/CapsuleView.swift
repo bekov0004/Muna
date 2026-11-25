@@ -73,6 +73,7 @@ struct ButterflyImage: View {
 
 struct CapsuleView: View {
     @EnvironmentObject var model: CapsuleModel
+    @EnvironmentObject var preferences: Preferences
     @EnvironmentObject var tray: TrayModel
     @EnvironmentObject var localSend: LocalSendController
 
@@ -81,8 +82,8 @@ struct CapsuleView: View {
         let open = model.isOpen
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                CapsuleShape(radius: open ? 32 : 12, ear: open ? 20 : 7)
-                    .fill(MunaColor.background)
+                CapsuleShape(radius: open ? CGFloat(preferences.cornerRadius) : 12, ear: open ? 20 : 7)
+                    .fill(Color.black.opacity(preferences.backgroundOpacity))
                 if open {
                     OpenPanel()
                         .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
@@ -91,7 +92,7 @@ struct CapsuleView: View {
                         .transition(.opacity)
                 }
                 if model.isDropTarget {
-                    CapsuleShape(radius: open ? 32 : 12, ear: open ? 20 : 7)
+                    CapsuleShape(radius: open ? CGFloat(preferences.cornerRadius) : 12, ear: open ? 20 : 7)
                         .stroke(MunaColor.accent, lineWidth: 2)
                 }
             }
@@ -243,7 +244,7 @@ struct OpenPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if model.tab == .command || model.tab == .agent {
+            if model.tab == .command || model.tab == .agent || model.tab == .mirror {
                 Spacer().frame(height: model.headerHeight)
             } else {
                 header
@@ -257,6 +258,7 @@ struct OpenPanel: View {
                 case .alerts: AlertsPage()
                 case .command: CommandView()
                 case .agent: AgentPermissionView(openWindow: { model.onAgents() })
+                case .mirror: MirrorLarge()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -372,6 +374,7 @@ struct WidgetView: View {
         case "todo": TodoWidget()
         case "notes": NotesWidget()
         case "shortcuts": ShortcutsWidget()
+        case "companion": CompanionWidget()
         default: EmptyView()
         }
     }

@@ -17,9 +17,9 @@ Change this table together with the code.
 | Files dropped on the capsule | ✅ | ✅ | ⬜ | |
 | Capsule on several monitors | ✅ | ✅ | ⬜ | Mac: every screen, the main one, or the built-in one with the notch (Settings → General → Screens) |
 | Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | 🟡 | ⬜ | Mac: apps, calculator, units, clipboard, web search, ;snippets (⌥Space); no kill, ports, clean yet |
-| Keyboard shortcuts for every section | ✅ | 🟡 | ⬜ | Mac: ⌥Space for the Command Bar (Carbon hot key); the sections not yet |
-| Two-finger pull makes lists taller | ✅ | ⬜ | ⬜ | |
-| Appearance: size, corner radius, colour, opacity | ✅ | ⬜ | ⬜ | |
+| Keyboard shortcuts for every section | ✅ | ✅ | ⬜ | Mac: ⌥Space Command Bar, ⌃⌥1–5 the sections (can be switched off) |
+| Two-finger pull makes lists taller | ✅ | ➖ | ⬜ | Mac: the Clipboard and Alerts sections are tall and scroll |
+| Appearance: size, corner radius, colour, opacity | ✅ | 🟡 | ⬜ | Mac: corner radius, opacity, animation speed; widths per widget |
 
 ## Widgets of the Muna section
 
@@ -27,12 +27,12 @@ Change this table together with the code.
 |---|---|---|---|---|
 | Media player | ✅ | 🟡 | ⬜ | Mac: Music and Spotify only (macOS closed "now playing" to other apps); no lyrics yet |
 | Calendar | ✅ | ✅ | ⬜ | Mac: EventKit |
-| Mirror (camera) | ✅ | ✅ | ⬜ | enlarged card not yet |
+| Mirror (camera) | ✅ | ✅ | ⬜ | with the enlarged card |
 | Timer | ✅ | ✅ | ⬜ | |
 | To-do, Notes | ✅ | ✅ | ⬜ | same files (`formats/data-files.md`) |
 | Shortcuts (apps) | ✅ | ✅ | ⬜ | |
 | Phone card | ✅ | ⬜ | ⬜ | adb works on a Mac too |
-| Companion | ✅ | ⬜ | ⬜ | |
+| Companion | ✅ | ✅ | ⬜ | |
 
 ## Sections
 
@@ -40,7 +40,7 @@ Change this table together with the code.
 |---|---|---|---|---|
 | Tray | ✅ | ✅ | ⬜ | |
 | LocalSend: send, several devices, groups, receive | ✅ | ✅ | ⬜ | Mac ↔ Linux to be tried on real machines |
-| Clipboard history, pin, search, clean links | ✅ | ✅ | ⬜ | Linux also: notes on items, drag an item out |
+| Clipboard history, pin, search, clean links, private items, drag out | ✅ | ✅ | ⬜ | Linux also: notes on items |
 | Alerts | ✅ | 🟡 | ⬜ | macOS lets no app read other apps' notifications: Muna's own events only |
 
 ## The top-bar window (quick panel) and tools
@@ -54,17 +54,17 @@ Change this table together with the code.
 | Quick toggles, Utilities, Controls | ✅ | 🟡 | ⬜ | Mac: dark mode, screenshot, colour picker, empty trash, screen off, eject disks |
 | Focus (Pomodoro, stopwatch) | ✅ | ✅ | ⬜ | same focus.json |
 | Downloads | ✅ | ✅ | ⬜ | |
-| Windows (snapping), Desktops | ✅ | ⬜ | ⬜ | Mac: Accessibility permission |
+| Windows (snapping), Desktops | ✅ | 🟡 | ⬜ | Mac: halves, quarters, thirds, maximize, centre, next screen (Accessibility permission); desktops are macOS's own Spaces |
 | Reminders (the butterfly) | ✅ | ✅ | ⬜ | a card in the capsule and a sound |
 | AI agents (Claude Code, Codex) | ✅ | 🟡 | ⬜ | Mac: Claude Code tasks, questions in the capsule, agents window, plan limits; not yet: Codex, sessions run in a terminal |
-| Radial menu, colour picker, cleaning mode, scratchpad | ✅ | ⬜ | ⬜ | |
+| Radial menu, colour picker, cleaning mode, scratchpad | ✅ | 🟡 | ⬜ | Mac: colour picker, cleaning mode, scratchpad; no radial menu yet |
 
 ## The system
 
 | Feature | Linux | macOS | Windows | Note |
 |---|---|---|---|---|
-| Settings window | ✅ | 🟡 | ⬜ | Mac: general, widgets, LocalSend, clipboard, tray |
+| Settings window | ✅ | 🟡 | ⬜ | Mac: general, appearance, screens, shortcuts, widgets, LocalSend, clipboard, tray, snippets |
 | Touchpad gestures (3/4 fingers, edges, taps) | ✅ | ➖ | ⬜ | macOS keeps its own gestures; edge swipes maybe later |
-| Fingerprint (private notes, confirm) | ✅ | ⬜ | ⬜ | Mac: Touch ID (LocalAuthentication) |
+| Fingerprint (private notes, confirm) | ✅ | ✅ | ⬜ | Mac: Touch ID or the password opens private notes and clipboard items for 5 minutes |
 | Muna bar, hiding the top bar, desktops per monitor | ✅ | ➖ | ⬜ | GNOME-only ideas |
 | Open at login | ✅ | ✅ | ⬜ | |

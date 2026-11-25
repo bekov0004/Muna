@@ -21,6 +21,11 @@ final class NotesModel: ObservableObject {
         try? store.remove(id: note.id)
         notes = store.notes
     }
+
+    func togglePrivate(_ note: Note) {
+        try? store.setPrivate(id: note.id, !note.isPrivate)
+        notes = store.notes
+    }
 }
 
 /// The to-do list (MunaCore's TodoStore) for the views.
@@ -165,6 +170,11 @@ final class ClipboardModel: ObservableObject {
 
     func togglePinned(_ item: ClipItem) {
         history.setSaved(item, !item.saved)
+        items = history.items
+    }
+
+    func togglePrivate(_ item: ClipItem) {
+        history.setPrivate(item, !item.isPrivate)
         items = history.items
     }
 

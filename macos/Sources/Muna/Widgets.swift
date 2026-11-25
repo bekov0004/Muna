@@ -232,6 +232,7 @@ struct DayCell: View {
 /// A round camera preview, running only while it is seen.
 struct MirrorWidget: View {
     @EnvironmentObject var camera: CameraModel
+    @EnvironmentObject var model: CapsuleModel
 
     var body: some View {
         GeometryReader { proxy in
@@ -254,6 +255,13 @@ struct MirrorWidget: View {
             }
             .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .overlay(alignment: .topTrailing) {
+            if camera.access == .granted {
+                IconButton(symbol: "arrow.up.left.and.arrow.down.right") {
+                    withAnimation(CapsuleMetrics.animation) { model.tab = .mirror }
+                }
+            }
         }
         .onAppear { camera.start() }
         .onDisappear { camera.stop() }
@@ -284,6 +292,25 @@ struct CameraPreview: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// The Mirror enlarged: a big round-cornered picture (Linux's enlarged Mirror card).
+struct MirrorLarge: View {
+    @EnvironmentObject var camera: CameraModel
+    @EnvironmentObject var model: CapsuleModel
+
+    var body: some View {
+        VStack(spacing: 10) {
+            CameraPreview(session: camera.session)
+                .scaleEffect(x: -1, y: 1)
+                .frame(width: 250, height: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 28))
+            Pill(label: "Smaller") { withAnimation(CapsuleMetrics.animation) { model.tab = .muna } }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { camera.start() }
+        .onDisappear { camera.stop() }
+    }
 }
 
 // --- Timer ------------------------------------------------------------------------------------
@@ -429,6 +456,7 @@ struct TodoWidget: View {
 struct NotesWidget: View {
     @EnvironmentObject var notes: NotesModel
     @EnvironmentObject var ui: PanelState
+    @EnvironmentObject var privacy: PrivacyModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -436,15 +464,23 @@ struct NotesWidget: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(notes.notes) { note in
+                        let hidden = note.isPrivate && !privacy.unlocked
                         HStack(alignment: .top, spacing: 6) {
-                            Text(note.isPrivate ? "Private note" : note.text)
+                            Text(hidden ? "Private · Touch ID" : note.text)
                                 .font(.system(size: 11))
-                                .foregroundColor(note.isPrivate ? Color.white.opacity(0.4) : MunaColor.text)
+                                .foregroundColor(hidden ? Color.white.opacity(0.4) : MunaColor.text)
                                 .lineLimit(2)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            IconButton(symbol: "doc.on.doc") {
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(note.text, forType: .string)
+                                .contentShape(Rectangle())
+                                .onTapGesture { if hidden { privacy.unlock() } }
+                            if !hidden {
+                                IconButton(symbol: "doc.on.doc") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(note.text, forType: .string)
+                                }
+                            }
+                            IconButton(symbol: note.isPrivate ? "lock.fill" : "lock.open", tint: note.isPrivate ? MunaColor.amber : MunaColor.secondary) {
+                                if hidden { privacy.unlock() } else { notes.togglePrivate(note) }
                             }
                             IconButton(symbol: "xmark") { notes.remove(note) }
                         }

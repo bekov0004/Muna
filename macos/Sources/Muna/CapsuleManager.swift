@@ -139,6 +139,7 @@ final class CapsuleManager {
     /// Something happened: a card in every closed capsule, and a line in the Alerts section.
     func tell(_ title: String, _ details: String, symbol: String, ok: Bool) {
         app.alerts.add(title, details, symbol: symbol, ok: ok)
+        app.companion.surprise()
         let card = CapsuleCard(title: title, details: details, symbol: symbol, ok: ok)
         controllers.forEach { $0.showCard(card) }
     }

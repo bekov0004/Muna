@@ -27,12 +27,14 @@ final class CommandModel: ObservableObject {
     @Published var selected = 0
     /// Ask to leave (after running something, or Esc).
     var onDone: () -> Void = {}
+    /// "scratch": open the Scratchpad.
+    var onScratchpad: () -> Void = {}
 
     private let clipboard: ClipboardModel
     private let snippets: SnippetsModel
     private var apps: [(name: String, path: String)] = []
 
-    static let examples = ["12*(3+4)", "5 km to mi", "100 c to f", ";snippets"]
+    static let examples = ["12*(3+4)", "5 km to mi", ";snippets", "scratch"]
     static let maxApps = 5
     static let maxClips = 3
 
@@ -109,6 +111,12 @@ final class CommandModel: ObservableObject {
             }
             results = list
             return
+        }
+        if "scratchpad".hasPrefix(text.lowercased()) && text.count >= 3 {
+            list.append(CommandResult(id: "scratchpad", icon: .symbol("note.text"), title: "Scratchpad", subtitle: "A window for long notes") { [weak self] in
+                self?.onDone()
+                self?.onScratchpad()
+            })
         }
         if let value = CommandEngine.calculate(text) {
             let answer = CommandEngine.format(value)

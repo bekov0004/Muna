@@ -221,6 +221,20 @@ struct GeneralSettings: View {
                 Slider(value: $preferences.closeDelay, in: 0...2, step: 0.05)
             }
         }
+        SettingsCard("Appearance") {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Corner radius: \(Int(preferences.cornerRadius))").font(.system(size: 13))
+                Slider(value: $preferences.cornerRadius, in: 8...44, step: 1)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Opacity: \(Int(preferences.backgroundOpacity * 100))%").font(.system(size: 13))
+                Slider(value: $preferences.backgroundOpacity, in: 0.5...1, step: 0.01)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Animation speed: \(String(format: "%.2f", preferences.animationSpeed))×").font(.system(size: 13))
+                Slider(value: $preferences.animationSpeed, in: 0.25...4, step: 0.25)
+            }
+        }
         SettingsCard("Screens") {
             Picker("A capsule on", selection: $preferences.capsuleScreens) {
                 Text("Every screen").tag("all")
@@ -247,6 +261,9 @@ struct GeneralSettings: View {
             SettingsToggle(title: "Command Bar: ⌥Space",
                            detail: "Option and Space open the Command Bar from any app: start apps, calculate, convert units, find what you copied, search the web.",
                            isOn: $preferences.commandHotKey)
+            SettingsToggle(title: "Sections: ⌃⌥1 to ⌃⌥5",
+                           detail: "Control, Option and a number open Muna, Tray, LocalSend, Clipboard and Alerts.",
+                           isOn: $preferences.sectionHotKeys)
         }
         SettingsCard("Start") {
             SettingsToggle(title: "Open at login", detail: "Muna starts when you log in.",

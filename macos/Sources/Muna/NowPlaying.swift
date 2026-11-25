@@ -67,6 +67,7 @@ final class NowPlaying: ObservableObject {
 
     /// Every change of the track (for the capsule's size).
     var trackPublisher: Published<Track?>.Publisher { $track }
+    var playingPublisher: Published<Bool>.Publisher { $isPlaying }
 
     func start() {
         refresh()

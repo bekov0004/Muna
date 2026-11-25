@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 import Combine
 import ServiceManagement
 
@@ -23,6 +24,10 @@ final class AppState {
     let downloads = DownloadsModel()
     let sound = SoundModel()
     let agents = AgentsModel()
+    let privacy = PrivacyModel()
+    let companion = CompanionModel()
+    let scratchpad = ScratchpadModel()
+    let windows = WindowsModel()
 
     func start() {
         nowPlaying.start()
@@ -30,7 +35,10 @@ final class AppState {
         calendar.start()
         localSend.start()
         downloads.start()
+        nowPlaying.playingPublisher.sink { [weak self] playing in self?.companion.musicPlaying = playing }.store(in: &observers)
     }
+
+    private var observers: [AnyCancellable] = []
 
     /// The panel opened on a section: bring what it shows up to date.
     func panelOpened(on tab: PanelTab) {
@@ -53,8 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private var capsules: CapsuleManager?
     private var settings: SettingsWindowController?
     private var agentsWindow: AgentsWindowController?
+    private var scratchpadWindow: ScratchpadWindowController?
     private var statusItem: NSStatusItem?
     private var commandKey: HotKey?
+    private var sectionKeys: [HotKey] = []
     private var keyObserver: Any?
     private let menu = NSMenu()
     private let popover = NSPopover()
@@ -68,6 +78,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         self.settings = settings
         let agentsWindow = AgentsWindowController(agents: app.agents)
         self.agentsWindow = agentsWindow
+        scratchpadWindow = ScratchpadWindowController(model: app.scratchpad)
+        app.command.onScratchpad = { [weak self] in self?.scratchpadWindow?.show() }
+        quickState.onScratchpad = { [weak self] in
+            self?.popover.performClose(nil)
+            self?.scratchpadWindow?.show()
+        }
+        quickState.onCleaning = { [weak self] in
+            self?.popover.performClose(nil)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { CleaningMode.shared.start() }
+        }
+        quickState.onCommand = { [weak self] in
+            self?.popover.performClose(nil)
+            self?.capsules?.openCommand()
+        }
         let capsules = CapsuleManager(app: app)
         capsules.onSettings = { [weak self] in self?.settings?.show() }
         capsules.onAgents = { [weak self] in self?.agentsWindow?.show() }
@@ -77,6 +101,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         setCommandKey(Preferences.shared.commandHotKey)
         keyObserver = Preferences.shared.$commandHotKey.dropFirst().removeDuplicates().sink { [weak self] on in
             self?.setCommandKey(on)
+        }
+        setSectionKeys(Preferences.shared.sectionHotKeys)
+        Preferences.shared.$sectionHotKeys.dropFirst().removeDuplicates().sink { [weak self] on in
+            self?.setSectionKeys(on)
+        }.store(in: &readingsObservers)
+    }
+
+    /// ⌃⌥1 … ⌃⌥5: the sections, in the order of the tabs.
+    private func setSectionKeys(_ on: Bool) {
+        sectionKeys = []
+        guard on else { return }
+        let codes = [kVK_ANSI_1, kVK_ANSI_2, kVK_ANSI_3, kVK_ANSI_4, kVK_ANSI_5]
+        for (index, tab) in PanelTab.visible.enumerated() where index < codes.count {
+            sectionKeys.append(HotKey(keyCode: UInt32(codes[index]), modifiers: UInt32(controlKey | optionKey), id: UInt32(11 + index)) { [weak self] in
+                self?.capsules?.open(on: tab)
+            })
         }
     }
 
@@ -99,6 +139,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         app.camera.stop()
         app.awake.stop()
         app.agents.stopAll()
+        app.scratchpad.save()
+        CleaningMode.shared.stop()
         app.localSend.shutdown()
     }
 
@@ -141,6 +183,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         .environmentObject(app.downloads)
         .environmentObject(app.sound)
         .environmentObject(app.agents)
+        .environmentObject(app.windows)
         popover.contentViewController = NSHostingController(rootView: panel)
         popover.behavior = .transient
         popover.appearance = NSAppearance(named: .darkAqua)
@@ -165,6 +208,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             popover.performClose(nil)
         } else {
             quickState.message = nil
+            // the window tools act on the app that was in front
+            if let front = NSWorkspace.shared.frontmostApplication, front != NSRunningApplication.current {
+                app.windows.target = front
+            }
             app.monitor.watch()
             app.sound.watch()
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
@@ -220,6 +267,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             menu.addItem(note)
         }
         menu.addItem(.separator())
+        add(menu, "Scratchpad", #selector(openScratchpad))
         add(menu, "Settings…", #selector(openSettings), key: ",")
         add(menu, "About Muna", #selector(showAbout))
         let quit = NSMenuItem(title: "Quit Muna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -245,6 +293,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
 
     @objc private func toggleReceiving() {
         Preferences.shared.localSendReceive.toggle()
+    }
+
+    @objc private func openScratchpad() {
+        scratchpadWindow?.show()
     }
 
     @objc private func openSettings() {

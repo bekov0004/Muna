@@ -278,7 +278,7 @@ enum QuickTools {
 // --- the window -----------------------------------------------------------------------------------
 
 enum QuickPage: String, CaseIterable, Identifiable {
-    case system, network, sound, awake, focus, reminders, downloads, agents, tools
+    case system, network, sound, awake, focus, reminders, downloads, windows, agents, tools
 
     var id: String { rawValue }
 
@@ -291,6 +291,7 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .focus: return "Focus"
         case .reminders: return "Reminders"
         case .downloads: return "Downloads"
+        case .windows: return "Windows"
         case .agents: return "AI agents"
         case .tools: return "Tools"
         }
@@ -305,6 +306,7 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .focus: return "target"
         case .reminders: return "bell.badge"
         case .downloads: return "arrow.down.circle"
+        case .windows: return "rectangle.split.2x1"
         case .agents: return "sparkles"
         case .tools: return "wrench.and.screwdriver"
         }
@@ -314,6 +316,10 @@ enum QuickPage: String, CaseIterable, Identifiable {
 final class QuickPanelState: ObservableObject {
     @Published var page = QuickPage.system
     @Published var message: String?
+    /// The tools that open something else (set by the app).
+    var onScratchpad: () -> Void = {}
+    var onCleaning: () -> Void = {}
+    var onCommand: () -> Void = {}
 }
 
 struct QuickPanelView: View {
@@ -355,6 +361,7 @@ struct QuickPanelView: View {
                 case .focus: FocusPage()
                 case .reminders: RemindersPage()
                 case .downloads: DownloadsPage()
+                case .windows: WindowsPage()
                 case .agents: AgentsPage(openWindow: onAgents)
                 case .tools: ToolsPage()
                 }
@@ -571,6 +578,9 @@ struct ToolsPage: View {
                 ToolTile(symbol: "eject", label: volumes.isEmpty ? "No disks" : "Eject all") {
                     volumes.forEach(QuickTools.eject)
                 }
+                ToolTile(symbol: "note.text", label: "Scratchpad") { state.onScratchpad() }
+                ToolTile(symbol: "sparkles.rectangle.stack", label: "Cleaning") { state.onCleaning() }
+                ToolTile(symbol: "magnifyingglass", label: "Command Bar") { state.onCommand() }
             }
             if !volumes.isEmpty {
                 QuickBlock {

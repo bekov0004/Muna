@@ -111,3 +111,15 @@ ran out while Muna was closed starts again idle.
 Newest first, at most 200. `trigger`: what is typed in the command bar, unique (saving one with an
 existing trigger replaces it). `text`: at most 5000 characters; when pasted, `{date}` (2026-11-25),
 `{time}` (14:05) and `{datetime}` (both) become the local date and time.
+
+## scratchpad.json
+
+```json
+{"version": 1, "notes": [
+  {"text": "Long notes of any length…", "at": 1764072300000}
+]}
+```
+
+At most 200 notes; `text` is the whole note, `at` when it was made (ms since 1970). Saved half a
+second after the last change. The Linux window lists all notes; the Mac window edits the first one
+and keeps the others as they are.

@@ -85,7 +85,7 @@ struct CapsuleGeometry: Equatable {
 
 /// The sections of the open capsule, as on Linux.
 enum PanelTab: String, CaseIterable, Identifiable {
-    case muna, tray, localSend, clipboard, alerts, command, agent
+    case muna, tray, localSend, clipboard, alerts, command, agent, mirror
 
     /// The tabs on top (the Command Bar has none: the capsule becomes its field).
     static let visible: [PanelTab] = [.muna, .tray, .localSend, .clipboard, .alerts]
@@ -101,6 +101,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .alerts: return "Alerts"
         case .command: return "Command Bar"
         case .agent: return "Agent"
+        case .mirror: return "Mirror"
         }
     }
 
@@ -114,6 +115,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .alerts: return "bell"
         case .command: return "magnifyingglass"
         case .agent: return "sparkles"
+        case .mirror: return "camera"
         }
     }
 
@@ -125,6 +127,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .clipboard, .alerts: return 236
         case .command: return 250
         case .agent: return 120
+        case .mirror: return 300
         }
     }
 }
@@ -177,7 +180,7 @@ final class CapsuleModel: ObservableObject {
 
     static let headerHeight: CGFloat = 36
     /// The Command Bar has no tabs on top.
-    var headerHeight: CGFloat { tab == .command || tab == .agent ? 8 : Self.headerHeight }
+    var headerHeight: CGFloat { tab == .command || tab == .agent || tab == .mirror ? 8 : Self.headerHeight }
     static let bottomPadding: CGFloat = 12
     static let cardHeight: CGFloat = 34
 
@@ -223,8 +226,11 @@ final class CapsuleModel: ObservableObject {
 }
 
 enum CapsuleMetrics {
-    static let animation = Animation.spring(response: 0.38, dampingFraction: 0.82)
-    static let animationTime: TimeInterval = 0.42
+    /// Settings → General → Appearance → Animation speed.
+    static var animation: Animation {
+        .spring(response: 0.38 / Preferences.shared.animationSpeed, dampingFraction: 0.82)
+    }
+    static var animationTime: TimeInterval { 0.42 / Preferences.shared.animationSpeed }
     static let cardTime: TimeInterval = 4
 }
 
@@ -268,6 +274,8 @@ final class CapsuleController {
             .environmentObject(app.camera)
             .environmentObject(app.command)
             .environmentObject(app.agents)
+            .environmentObject(app.privacy)
+            .environmentObject(app.companion)
         let host = NSHostingView(rootView: root)
         host.translatesAutoresizingMaskIntoConstraints = false
         tracking.addSubview(host)
@@ -501,7 +509,7 @@ final class CapsuleController {
         // the window shrinks when the drawing has; the Command Bar is not where the next opening goes
         DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.animationTime) { [weak self] in
             guard let self else { return }
-            if !self.model.isOpen && (self.model.tab == .command || self.model.tab == .agent) { self.model.tab = .muna }
+            if !self.model.isOpen && [.command, .agent, .mirror].contains(self.model.tab) { self.model.tab = .muna }
             self.placeClosed()
         }
     }

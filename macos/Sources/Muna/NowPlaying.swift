@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 
 /// The track a player is on.
 struct Track: Equatable {
@@ -61,7 +62,9 @@ final class NowPlaying: ObservableObject {
     @Published private(set) var position: Double = 0
 
     private var timer: Timer?
-    private var listeners: [UUID: () -> Void] = [:]
+
+    /// Every change of the track (for the capsule's size).
+    var trackPublisher: Published<Track?>.Publisher { $track }
 
     func start() {
         refresh()
@@ -71,13 +74,6 @@ final class NowPlaying: ObservableObject {
     func stop() {
         timer?.invalidate()
         timer = nil
-    }
-
-    /// Called when a track appears, changes or goes away. @returns a token (keep it alive).
-    func onTrackChange(_ callback: @escaping () -> Void) -> Any {
-        let id = UUID()
-        listeners[id] = callback
-        return id
     }
 
     /// Asks the players now (the panel just opened, a button was pressed).
@@ -96,13 +92,9 @@ final class NowPlaying: ObservableObject {
                 best = candidate
             }
         }
-        let changed = best?.track != track
-        track = best?.track
+        if best?.track != track { track = best?.track }
         isPlaying = best?.playing ?? false
         position = best?.position ?? 0
-        if changed {
-            listeners.values.forEach { $0() }
-        }
     }
 
     func playPause() { send("playpause") }

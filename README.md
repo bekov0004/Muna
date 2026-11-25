@@ -52,7 +52,7 @@ extension off brings the stock GNOME clock back.
 | System | State | Folder |
 |---|---|---|
 | Linux (GNOME Shell 50, 51) | Available: everything on this page | [`linux/`](linux) |
-| macOS | In progress: the capsule with music, LocalSend and groups, Tray, clipboard, calendar, notes, to-dos | [`macos/`](macos) |
+| macOS | First version: the capsule with music, calendar, Tray, LocalSend and groups, clipboard, notes, to-dos | [`macos/`](macos) |
 | Windows | Planned after macOS | [`windows/`](windows) |
 | Android | The Muna Phone app (the phone's side of the Phone card) | [`android/`](android) |
 

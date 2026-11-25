@@ -26,6 +26,12 @@
     <true/>
     <key>NSHumanReadableCopyright</key>
     <string>GNU General Public License, version 3 or later</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Muna shows your next events in the capsule.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Muna shows your next events in the capsule.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Muna finds the computers and phones on this network to send files to them (LocalSend), and receives files from them.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Muna shows the music that Music or Spotify plays and lets you pause it or skip a track.</string>
 </dict>

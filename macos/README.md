@@ -1,14 +1,22 @@
 # Muna for macOS
 
 The capsule of Muna on a Mac: it sits under the camera notch (on a Mac without one, in the middle of
-the menu bar) and opens into a panel when the pointer comes to it. In progress; see the
-[platforms table](../README.md#platforms).
+the menu bar) and opens into a panel when the pointer comes to it.
 
-| Done | Next |
+| Page | What it does |
 |---|---|
-| The capsule under the notch, opening and closing under the pointer | LocalSend and groups (sending to Muna on Linux and other Macs) |
-| The time and date; the music of Music and Spotify (title, artist, cover, play/pause, next, previous) | The Tray (files dropped on the capsule) and the clipboard history |
-| A menu-bar item (About, Quit) | Calendar, notes and to-dos |
+| **Muna** | The time and date; the music of Music and Spotify (cover, progress, play/pause, next, previous); today's and tomorrow's events; the open to-dos |
+| **Tray** | Files dropped on the capsule wait here: drag them out somewhere else, open them, or send them with LocalSend |
+| **LocalSend** | Send files to several devices at once or to a saved group (Muna on Linux and Mac, the LocalSend apps); receive files (you accept each sending) |
+| **Clipboard** | What you copied (text and files), with search; a click copies it again; pinned items stay |
+| **Notes** | Quick notes and the to-do list |
+
+While music plays, the closed capsule shows the cover and moving bars beside the notch; when a sending
+ends while it is closed, a short card says how it went. The menu-bar item opens any page and holds
+the settings: receiving files, keeping the clipboard history and the Tray, opening at login.
+
+The data files are the same as Muna on Linux ([`../shared/formats`](../shared/formats)), so notes,
+to-dos, clipboard and groups can be copied between them.
 
 ## Install
 
@@ -27,16 +35,23 @@ A built app is also attached to every run of the
 not signed by Apple: after unpacking, run `xattr -dr com.apple.quarantine Muna.app` once, or macOS
 will refuse to open it.
 
-**Permissions:** the first time Muna asks Music or Spotify what they play, macOS asks whether Muna
-may control them (System Settings → Privacy & Security → Automation). macOS gives other apps no
-common "now playing" any more, so music from a browser does not show yet.
+**Permissions** (macOS asks once for each):
+
+- *Automation* for Music / Spotify: to show and steer the music. macOS gives other apps no common
+  "now playing" any more, so music in a browser does not show.
+- *Calendars*: when you click "Show my calendar".
+- *Local Network*: to find the other devices and to receive files (LocalSend). Receiving is off until
+  you switch it on (menu-bar item → Receive files, or "Receiving" on the LocalSend page).
 
 ## Inside
 
 ```
 Package.swift                 Swift package: the app (Muna) and its core (MunaCore)
 Sources/MunaCore/             no screen: the data files, LocalSend, groups (builds and is tested on Linux too)
-Sources/Muna/                 the app: AppKit window of the capsule, SwiftUI views, music
+Sources/MunaCore/             (also: HTTP parsing, LocalSend client, receiving, announcements, the sending
+                              session for several devices, clipboard history, Tray)
+Sources/Muna/                 the app: the capsule's window (CapsuleController), its pages (SwiftUI),
+                              music (NowPlaying), LocalSend's HTTPS server and certificate, the menu
 Tests/MunaCoreTests/          tests of the core, among them reading files written by Muna on Linux
 Resources/                    Info.plist, AppIcon.icns (made from shared/brand/dev.muna.Muna.svg)
 scripts/                      build-app.sh, install.sh, uninstall.sh

@@ -3,41 +3,71 @@ import MunaCore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Muna's colours (shared/design/colors.json, "capsule").
+/// Muna's colours (shared/design/colors.json "capsule", linux/stylesheet.css).
 enum MunaColor {
-    static let background = Color.black
+    static let background = Color.black.opacity(0.96)
     static let tile = Color.white.opacity(0.07)
     static let tileHover = Color(red: 77 / 255, green: 141 / 255, blue: 1).opacity(0.28)
     static let text = Color.white.opacity(0.92)
     static let secondary = Color.white.opacity(0.45)
     static let caption = Color.white.opacity(0.55)
+    static let divider = Color.white.opacity(0.08)
     static let accent = Color(red: 77 / 255, green: 141 / 255, blue: 1)
     static let muna = Color(red: 179 / 255, green: 154 / 255, blue: 1)
     static let ok = Color(red: 87 / 255, green: 227 / 255, blue: 137 / 255)
     static let warning = Color(red: 1, green: 163 / 255, blue: 72 / 255)
+    static let amber = Color(red: 242 / 255, green: 169 / 255, blue: 59 / 255)
 }
 
-/// The black shape hanging from the top edge: square top corners (it continues the screen's edge),
-/// round bottom ones.
+/// The capsule's outline, as on Linux: it hangs from the top edge, meets it with two concave
+/// "ears" (fillets) and has round corners below.
 struct CapsuleShape: Shape {
     var radius: CGFloat
+    var ear: CGFloat
 
-    var animatableData: CGFloat {
-        get { radius }
-        set { radius = newValue }
+    var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(radius, ear) }
+        set {
+            radius = newValue.first
+            ear = newValue.second
+        }
     }
 
     func path(in rect: CGRect) -> Path {
-        let r = min(radius, rect.height / 2, rect.width / 2)
+        let e = min(ear, rect.width / 4, rect.height / 2)
+        let left = rect.minX + e
+        let right = rect.maxX - e
+        let r = min(radius, rect.height / 2, (right - left) / 2)
         var path = Path()
         path.move(to: CGPoint(x: rect.minX, y: rect.minY))
         path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
-        path.addQuadCurve(to: CGPoint(x: rect.maxX - r, y: rect.maxY), control: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
-        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - r), control: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addQuadCurve(to: CGPoint(x: right, y: rect.minY + e), control: CGPoint(x: right, y: rect.minY))
+        path.addLine(to: CGPoint(x: right, y: rect.maxY - r))
+        path.addQuadCurve(to: CGPoint(x: right - r, y: rect.maxY), control: CGPoint(x: right, y: rect.maxY))
+        path.addLine(to: CGPoint(x: left + r, y: rect.maxY))
+        path.addQuadCurve(to: CGPoint(x: left, y: rect.maxY - r), control: CGPoint(x: left, y: rect.maxY))
+        path.addLine(to: CGPoint(x: left, y: rect.minY + e))
+        path.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.minY), control: CGPoint(x: left, y: rect.minY))
         path.closeSubpath()
         return path
+    }
+}
+
+/// Muna's butterfly (shared/brand/muna-butterfly.svg, drawn into Resources/butterfly.png).
+struct ButterflyImage: View {
+    var height: CGFloat = 16
+
+    static let image: NSImage? = Bundle.main.url(forResource: "butterfly", withExtension: "png").flatMap { NSImage(contentsOf: $0) }
+
+    var body: some View {
+        if let image = Self.image {
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(72.0 / 64.0, contentMode: .fit)
+                .frame(height: height)
+        } else {
+            Image(systemName: "sparkles").font(.system(size: height * 0.8, weight: .semibold)).foregroundColor(MunaColor.muna)
+        }
     }
 }
 
@@ -47,20 +77,21 @@ struct CapsuleView: View {
     @EnvironmentObject var localSend: LocalSendController
 
     var body: some View {
-        let size = model.isOpen ? CapsuleGeometry.openSize : model.closedSize
+        let size = model.size
+        let open = model.isOpen
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                CapsuleShape(radius: model.isOpen ? 28 : 10)
+                CapsuleShape(radius: open ? 32 : 12, ear: open ? 20 : 7)
                     .fill(MunaColor.background)
-                if model.isOpen {
+                if open {
                     OpenPanel()
-                        .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .top)))
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
                 } else {
                     ClosedContent()
                         .transition(.opacity)
                 }
                 if model.isDropTarget {
-                    CapsuleShape(radius: model.isOpen ? 28 : 10)
+                    CapsuleShape(radius: open ? 32 : 12, ear: open ? 20 : 7)
                         .stroke(MunaColor.accent, lineWidth: 2)
                 }
             }
@@ -74,7 +105,7 @@ struct CapsuleView: View {
         }
     }
 
-    /// Files dropped on the capsule: to LocalSend when that page is open, else to the Tray.
+    /// Files dropped on the capsule: to LocalSend when that section is open, else to the Tray.
     private func receive(_ providers: [NSItemProvider]) {
         let toLocalSend = model.isOpen && model.tab == .localSend
         for provider in providers {
@@ -93,32 +124,48 @@ struct CapsuleView: View {
     }
 }
 
-/// The closed capsule: the time (without a notch), or while music plays its cover on the left and
-/// moving bars on the right (beside the notch, where they can be seen); a card under it.
+/// The closed capsule, as on Linux: the date on the left, the butterfly in the middle (with a notch:
+/// the notch itself), the time on the right. Something going on takes both sides over: a sending
+/// (an arrow, how far), the timer (its time), the music (the cover, moving bars).
 struct ClosedContent: View {
     @EnvironmentObject var model: CapsuleModel
+    @EnvironmentObject var preferences: Preferences
     @EnvironmentObject var nowPlaying: NowPlaying
+    @EnvironmentObject var timer: TimerModel
+    @EnvironmentObject var localSend: LocalSendController
+
+    private enum Activity { case sending(Int), timer, music(Track) }
+
+    private var activity: Activity? {
+        guard preferences.activitiesInCollapsed else { return nil }
+        let session = localSend.session
+        if session.phase == .sending {
+            let total = session.transfers.reduce(Int64(0)) { $0 + $1.total }
+            let sent = session.transfers.reduce(Int64(0)) { $0 + $1.sent }
+            return .sending(total > 0 ? Int(100 * sent / total) : 0)
+        }
+        if timer.active { return .timer }
+        if let track = nowPlaying.track { return .music(track) }
+        return nil
+    }
 
     var body: some View {
+        let geometry = model.geometry
+        let side = geometry.hasNotch ? CapsuleGeometry.earWidth - 8 : nil
         VStack(spacing: 0) {
             HStack(spacing: 0) {
-                if let track = nowPlaying.track {
-                    Artwork(url: track.artworkURL, size: model.geometry.closedSize.height - 10)
-                        .frame(width: CapsuleMetrics.earWidth)
-                    Spacer(minLength: 0)
-                    Bars(playing: nowPlaying.isPlaying)
-                        .frame(width: CapsuleMetrics.earWidth)
-                } else if !model.geometry.hasNotch {
-                    Spacer(minLength: 0)
-                    TimelineView(.everyMinute) { context in
-                        Text(context.date, style: .time)
-                            .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                            .foregroundColor(MunaColor.text)
-                    }
+                left
+                    .frame(width: side, alignment: geometry.hasNotch ? .center : .leading)
+                Spacer(minLength: 0)
+                if !geometry.hasNotch {
+                    middle
                     Spacer(minLength: 0)
                 }
+                right
+                    .frame(width: side, alignment: geometry.hasNotch ? .center : .trailing)
             }
-            .frame(height: model.geometry.closedSize.height)
+            .padding(.horizontal, geometry.hasNotch ? 8 : 16)
+            .frame(height: geometry.barHeight)
             if let card = model.card {
                 HStack(spacing: 8) {
                     Image(systemName: card.symbol)
@@ -127,7 +174,7 @@ struct ClosedContent: View {
                     Text(card.details).font(.system(size: 11)).foregroundColor(MunaColor.secondary)
                 }
                 .lineLimit(1)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 22)
                 .frame(height: CapsuleModel.cardHeight)
             }
         }
@@ -135,37 +182,111 @@ struct ClosedContent: View {
         .contentShape(Rectangle())
         .onTapGesture { model.onTap() }
     }
+
+    @ViewBuilder private var left: some View {
+        switch activity {
+        case .some(.sending):
+            Image(systemName: "arrow.up.circle.fill").font(.system(size: 13, weight: .semibold)).foregroundColor(MunaColor.accent)
+        case .some(.timer):
+            Image(systemName: "timer").font(.system(size: 12, weight: .bold)).foregroundColor(MunaColor.amber)
+        case .some(.music(let track)):
+            Artwork(url: track.artworkURL, size: max(14, model.geometry.barHeight - 12))
+        case .none:
+            TimelineView(.everyMinute) { context in
+                Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.white.opacity(0.78))
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    @ViewBuilder private var right: some View {
+        switch activity {
+        case .some(.sending(let percent)):
+            Text("\(percent)%").font(.system(size: 12, weight: .bold).monospacedDigit()).foregroundColor(.white)
+        case .some(.timer):
+            Text(TimerModel.text(timer.remaining))
+                .font(.system(size: 12, weight: .bold).monospacedDigit())
+                .foregroundColor(timer.state == .done ? MunaColor.amber : .white)
+        case .some(.music):
+            Bars(playing: nowPlaying.isPlaying)
+        case .none:
+            TimelineView(.everyMinute) { context in
+                Text(context.date.formatted(date: .omitted, time: .shortened))
+                    .font(.system(size: 12, weight: .bold).monospacedDigit())
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    /// The butterfly, or the small "camera" circle when it is switched off.
+    @ViewBuilder private var middle: some View {
+        if preferences.capsuleButterfly {
+            ButterflyImage(height: max(12, model.geometry.barHeight - 9))
+        } else {
+            Circle()
+                .fill(Color(red: 8 / 255, green: 8 / 255, blue: 12 / 255))
+                .overlay(Circle().stroke(Color.white.opacity(0.10), lineWidth: 1))
+                .overlay(Circle().fill(Color(red: 70 / 255, green: 110 / 255, blue: 1).opacity(0.55)).frame(width: 4, height: 4))
+                .frame(width: 14, height: 14)
+        }
+    }
 }
 
-/// The open panel: the pages' tabs on top, the page under them.
+/// The open capsule: the tabs, the page dots and the gear on top; the section under them.
 struct OpenPanel: View {
     @EnvironmentObject var model: CapsuleModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
                 ForEach(PanelTab.allCases) { tab in
                     TabButton(tab: tab, selected: model.tab == tab) {
                         withAnimation(.easeOut(duration: 0.15)) { model.tab = tab }
                     }
                 }
-                Spacer()
+                Spacer(minLength: 8)
+                if model.tab == .muna && model.layout.pages.count > 1 {
+                    HStack(spacing: 6) {
+                        ForEach(0..<model.layout.pages.count, id: \.self) { index in
+                            Circle()
+                                .fill(Color.white.opacity(index == model.pageIndex ? 0.85 : 0.22))
+                                .frame(width: 5, height: 5)
+                                .contentShape(Rectangle().size(width: 13, height: 13))
+                                .onTapGesture { withAnimation(.easeOut(duration: 0.2)) { model.pageIndex = index } }
+                        }
+                    }
+                    .padding(.trailing, 6)
+                }
+                Button { model.onSettings() } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color.white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
             }
+            .frame(height: 24)
+            .padding(.top, 6)
+            .padding(.bottom, 6)
             Group {
                 switch model.tab {
-                case .home: HomePage()
+                case .muna: MunaPage()
                 case .tray: TrayPage()
                 case .localSend: LocalSendPage()
                 case .clipboard: ClipboardPage()
-                case .notes: NotesPage()
+                case .alerts: AlertsPage()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        // below the notch / menu bar
-        .padding(.top, model.geometry.closedSize.height + 6)
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
+        .padding(.top, model.geometry.topInset)
+        .padding(.horizontal, PanelLayout.padding + 4)
+        .padding(.bottom, CapsuleModel.bottomPadding)
         .foregroundColor(MunaColor.text)
     }
 }
@@ -177,17 +298,70 @@ struct TabButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
-                Image(systemName: tab.symbol).font(.system(size: 11, weight: .semibold))
-                Text(tab.title).font(.system(size: 12, weight: .semibold))
+            HStack(spacing: 6) {
+                if tab == .muna {
+                    ButterflyImage(height: 12)
+                } else {
+                    Image(systemName: tab.symbol).font(.system(size: 11, weight: .semibold))
+                }
+                Text(tab.title).font(.system(size: 12, weight: .bold))
             }
-            .foregroundColor(selected ? .white : MunaColor.secondary)
+            .foregroundColor(selected ? .white : Color.white.opacity(0.55))
             .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(selected ? Color.white.opacity(0.12) : Color.clear))
+            .frame(height: 24)
+            .background(Capsule().fill(Color.white.opacity(selected ? 0.13 : 0)))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// The Muna section: the chosen widgets side by side (thin lines between them), several pages when
+/// they do not fit; a swipe or the dots change the page.
+struct MunaPage: View {
+    @EnvironmentObject var model: CapsuleModel
+
+    var body: some View {
+        let pages = model.layout.pages
+        let slots = pages.indices.contains(model.pageIndex) ? pages[model.pageIndex] : (pages.first ?? [])
+        HStack(alignment: .top, spacing: PanelLayout.gap) {
+            ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
+                WidgetView(id: slot.id)
+                    .frame(width: slot.width, height: PanelLayout.rowHeight, alignment: .topLeading)
+                    .overlay(alignment: .leading) {
+                        if index > 0 {
+                            Rectangle().fill(MunaColor.divider).frame(width: 1).offset(x: -PanelLayout.gap / 2)
+                        }
+                    }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .gesture(DragGesture(minimumDistance: 30).onEnded { drag in
+            guard pages.count > 1 else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                if drag.translation.width < -40 { model.pageIndex = min(model.pageIndex + 1, pages.count - 1) }
+                if drag.translation.width > 40 { model.pageIndex = max(model.pageIndex - 1, 0) }
+            }
+        })
+    }
+}
+
+/// One widget by its id.
+struct WidgetView: View {
+    let id: String
+
+    var body: some View {
+        switch id {
+        case "media": MediaWidget()
+        case "calendar": CalendarWidget()
+        case "mirror": MirrorWidget()
+        case "timer": TimerWidget()
+        case "todo": TodoWidget()
+        case "notes": NotesWidget()
+        case "shortcuts": ShortcutsWidget()
+        default: EmptyView()
+        }
     }
 }
 
@@ -308,6 +482,7 @@ struct IconButton: View {
 struct Artwork: View {
     let url: URL?
     let size: CGFloat
+    var radius: CGFloat?
 
     var body: some View {
         Group {
@@ -322,7 +497,7 @@ struct Artwork: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+        .clipShape(RoundedRectangle(cornerRadius: radius ?? size * 0.22))
     }
 
     private var placeholder: some View {
@@ -336,6 +511,7 @@ struct Artwork: View {
 /// Three bars that move while the music plays.
 struct Bars: View {
     let playing: Bool
+    var color = MunaColor.accent
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 0.12, paused: !playing)) { context in
@@ -343,7 +519,7 @@ struct Bars: View {
             HStack(alignment: .center, spacing: 2) {
                 ForEach(0..<3) { index in
                     RoundedRectangle(cornerRadius: 1.5)
-                        .fill(MunaColor.accent)
+                        .fill(color)
                         .frame(width: 3, height: 14 * Self.level(t, index, playing))
                 }
             }

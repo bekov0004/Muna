@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import MunaCore
 import SwiftUI
 
 /// The window of the capsule: borderless, above the menu bar, on every Space and over full-screen
@@ -29,27 +30,41 @@ final class CapsulePanel: NSPanel {
     }
 }
 
-/// Where the capsule sits on a screen: under the camera notch (same size, so it looks like the notch
-/// itself) or, on a screen without one, a small pill in the middle of the menu bar.
+/// Where the capsule sits on a screen. With a camera notch the capsule is the notch itself, grown
+/// by an "ear" on each side (where the date and the time are, as in the middle of GNOME's top bar);
+/// without one it is a small pill in the middle of the menu bar, like Muna on Linux.
 struct CapsuleGeometry: Equatable {
     var screenFrame: CGRect
-    var closedSize: CGSize
     var hasNotch: Bool
+    var notchWidth: CGFloat
+    /// The menu bar's height (with a notch: the notch's).
+    var barHeight: CGFloat
 
-    static let openSize = CGSize(width: 700, height: 330)
+    static let earWidth: CGFloat = 80
+    static let pillWidth: CGFloat = 200
+    static let hoverGrow: CGFloat = 14
 
     init(screen: NSScreen) {
         screenFrame = screen.frame
         let notchHeight = screen.safeAreaInsets.top
         if notchHeight > 0, let left = screen.auxiliaryTopLeftArea, let right = screen.auxiliaryTopRightArea {
             hasNotch = true
-            closedSize = CGSize(width: screen.frame.width - left.width - right.width, height: notchHeight)
+            notchWidth = screen.frame.width - left.width - right.width
+            barHeight = notchHeight
         } else {
             hasNotch = false
-            let menuBar = max(screen.frame.maxY - screen.visibleFrame.maxY, NSStatusBar.system.thickness)
-            closedSize = CGSize(width: 200, height: max(24, menuBar))
+            notchWidth = 0
+            barHeight = max(24, screen.frame.maxY - screen.visibleFrame.maxY, NSStatusBar.system.thickness)
         }
     }
+
+    /// The closed capsule.
+    var closedSize: CGSize {
+        CGSize(width: hasNotch ? notchWidth + 2 * Self.earWidth : Self.pillWidth, height: barHeight)
+    }
+
+    /// Where the open panel's content starts: under the notch, or at the top.
+    var topInset: CGFloat { hasNotch ? barHeight : 0 }
 
     /// A window of this size hanging from the top edge, centred.
     func frame(for size: CGSize) -> CGRect {
@@ -58,31 +73,49 @@ struct CapsuleGeometry: Equatable {
     }
 }
 
-/// The pages of the open panel.
+/// The sections of the open capsule, as on Linux.
 enum PanelTab: String, CaseIterable, Identifiable {
-    case home, tray, localSend, clipboard, notes
+    case muna, tray, localSend, clipboard, alerts
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .home: return "Muna"
+        case .muna: return "Muna"
         case .tray: return "Tray"
         case .localSend: return "LocalSend"
         case .clipboard: return "Clipboard"
-        case .notes: return "Notes"
+        case .alerts: return "Alerts"
         }
     }
 
+    /// SF Symbol (Muna's own tab shows the butterfly instead).
     var symbol: String {
         switch self {
-        case .home: return "sparkles"
+        case .muna: return "sparkles"
         case .tray: return "tray.and.arrow.down"
         case .localSend: return "wifi"
         case .clipboard: return "doc.on.clipboard"
-        case .notes: return "checklist"
+        case .alerts: return "bell"
         }
     }
+
+    /// The height of the section under the tabs.
+    var bodyHeight: CGFloat {
+        switch self {
+        case .muna, .tray: return PanelLayout.rowHeight
+        case .localSend: return 138
+        case .clipboard, .alerts: return 236
+        }
+    }
+}
+
+/// A short message the closed capsule shows for a few seconds.
+struct CapsuleCard: Equatable {
+    var title: String
+    var details: String
+    var symbol: String
+    var ok: Bool
 }
 
 /// What the pages remember while the panel is open: drafts, the search, the group being named ...
@@ -98,66 +131,80 @@ final class PanelState: ObservableObject {
     @Published var groupNameError = ""
     @Published var confirmDeleteGroup: String?
     @Published var hoveredTrayFile: URL?
-}
-
-/// A short message the closed capsule shows for a few seconds.
-struct CapsuleCard: Equatable {
-    var title: String
-    var details: String
-    var symbol: String
-    var ok: Bool
+    /// The day the calendar shows.
+    @Published var calendarDay = Date()
 }
 
 /// What the capsule shows, shared with its SwiftUI views.
 final class CapsuleModel: ObservableObject {
     @Published var isOpen = false
+    @Published var isHovering = false
     @Published var geometry: CapsuleGeometry
-    @Published var tab = PanelTab.home
+    @Published var tab = PanelTab.muna
+    @Published var pageIndex = 0
+    @Published private(set) var layout: PanelLayout
     /// A text field has the keyboard: the capsule stays open.
     @Published var isEditing = false
     /// Files are dragged over the capsule: it opens to take them.
     @Published var isDropTarget = false
     @Published var card: CapsuleCard?
-    let nowPlaying: NowPlaying
-    /// A click on the closed capsule.
+    /// A click on the closed capsule; the gear.
     var onTap: () -> Void = {}
+    var onSettings: () -> Void = {}
 
-    init(geometry: CapsuleGeometry, nowPlaying: NowPlaying) {
-        self.geometry = geometry
-        self.nowPlaying = nowPlaying
-    }
-
+    static let headerHeight: CGFloat = 36
+    static let bottomPadding: CGFloat = 12
     static let cardHeight: CGFloat = 34
 
-    /// The closed capsule grows "ears" beside the notch while music plays, and a line under it for a card.
+    init(geometry: CapsuleGeometry) {
+        self.geometry = geometry
+        layout = Self.makeLayout(geometry)
+    }
+
+    func refreshLayout() {
+        layout = Self.makeLayout(geometry)
+        if pageIndex >= layout.pages.count { pageIndex = 0 }
+    }
+
+    private static func makeLayout(_ geometry: CapsuleGeometry) -> PanelLayout {
+        let preferences = Preferences.shared
+        // with a notch, the tabs must clear it: never narrower than the closed capsule and a bit
+        let atLeast = geometry.hasNotch ? geometry.closedSize.width + 2 * CapsuleGeometry.earWidth : 0
+        return PanelLayout(screenWidth: geometry.screenFrame.width, widgets: preferences.enabledWidgets,
+                           cells: { preferences.cells($0) }, atLeast: atLeast)
+    }
+
     var closedSize: CGSize {
         var size = geometry.closedSize
-        if nowPlaying.track != nil {
-            size.width += 2 * CapsuleMetrics.earWidth
-        }
+        if isHovering && !isOpen { size.width += CapsuleGeometry.hoverGrow }
         if card != nil {
             size.width = max(size.width, 380)
             size.height += Self.cardHeight
         }
         return size
     }
+
+    var openSize: CGSize {
+        CGSize(width: layout.width,
+               height: geometry.topInset + Self.headerHeight + tab.bodyHeight + Self.bottomPadding)
+    }
+
+    var size: CGSize { isOpen ? openSize : closedSize }
 }
 
 enum CapsuleMetrics {
-    static let earWidth: CGFloat = 34
-    static let openDelay: TimeInterval = 0.12
-    static let closeDelay: TimeInterval = 0.45
     static let animation = Animation.spring(response: 0.38, dampingFraction: 0.82)
     static let animationTime: TimeInterval = 0.42
     static let cardTime: TimeInterval = 4
 }
 
 /// Shows the capsule and opens it under the pointer. The window is only as big as what is drawn
-/// (closed: the notch, open: the panel), so it never catches clicks meant for the menu bar.
+/// (closed: the notch and its ears, open: the panel), so it never catches clicks meant for the menu bar.
 final class CapsuleController {
     let model: CapsuleModel
     private let panel = CapsulePanel()
     private let app: AppState
+    private let preferences = Preferences.shared
     private var hovering = false
     /// Opened by a command (a click, the menu, starting Muna again): stays open until the pointer has
     /// come and gone, or a while if it never comes.
@@ -167,15 +214,17 @@ final class CapsuleController {
     private var cardTimer: DispatchWorkItem?
     private var observers: [AnyCancellable] = []
     private var screenObserver: NSObjectProtocol?
+    private var clickMonitor: Any?
 
     init(app: AppState) {
         self.app = app
         let screen = NSScreen.screens.first ?? NSScreen.main!
-        model = CapsuleModel(geometry: CapsuleGeometry(screen: screen), nowPlaying: app.nowPlaying)
+        model = CapsuleModel(geometry: CapsuleGeometry(screen: screen))
         let tracking = HoverView { [weak self] inside in self?.pointer(inside: inside) }
         let root = CapsuleView()
             .environmentObject(model)
             .environmentObject(PanelState())
+            .environmentObject(preferences)
             .environmentObject(app.nowPlaying)
             .environmentObject(app.notes)
             .environmentObject(app.todo)
@@ -183,6 +232,9 @@ final class CapsuleController {
             .environmentObject(app.clipboard)
             .environmentObject(app.calendar)
             .environmentObject(app.localSend)
+            .environmentObject(app.timer)
+            .environmentObject(app.alerts)
+            .environmentObject(app.camera)
         let host = NSHostingView(rootView: root)
         host.translatesAutoresizingMaskIntoConstraints = false
         tracking.addSubview(host)
@@ -200,28 +252,48 @@ final class CapsuleController {
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
         ) { [weak self] _ in self?.screensChanged() }
 
-        // what keeps the capsule open, or changes its closed size
+        // what keeps the capsule open, or changes its size
         model.$isEditing.dropFirst().sink { [weak self] _ in self?.scheduleUpdate() }.store(in: &observers)
         model.$isDropTarget.dropFirst().sink { [weak self] targeted in
             if targeted { self?.openNow() } else { self?.scheduleUpdate() }
         }.store(in: &observers)
-        app.localSend.incomingPublisher.dropFirst().sink { [weak self] _ in self?.scheduleUpdate() }.store(in: &observers)
+        model.$tab.dropFirst().removeDuplicates().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.resizeOpen() }
+        }.store(in: &observers)
         model.$card.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async { self?.placeClosed() }
         }.store(in: &observers)
-        app.nowPlaying.trackPublisher.dropFirst().removeDuplicates().sink { [weak self] _ in
-            DispatchQueue.main.async { self?.placeClosed() }
+        preferences.$enabledWidgets.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.layoutChanged() }
         }.store(in: &observers)
+        preferences.$widgetCells.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.layoutChanged() }
+        }.store(in: &observers)
+        app.localSend.incomingPublisher.dropFirst().sink { [weak self] incoming in
+            self?.incomingChanged(incoming)
+        }.store(in: &observers)
+
         app.localSend.notify = { [weak self] title, details, ok in
-            self?.showCard(CapsuleCard(title: title, details: details, symbol: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill", ok: ok))
+            self?.tell(title, details, symbol: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill", ok: ok)
+        }
+        app.localSend.onIncoming = { [weak self] in
+            self?.model.tab = .localSend
+            self?.openNow()
+        }
+        app.timer.onFinished = { [weak self] in
+            self?.tell("Time is up", "The timer ended", symbol: "timer", ok: true)
         }
         model.onTap = { [weak self] in
             guard let self else { return }
             self.open(on: self.model.tab)
         }
-        app.localSend.onIncoming = { [weak self] in
-            self?.model.tab = .localSend
-            self?.openNow()
+
+        // a click outside closes the capsule that stays open by itself (opened by a command, or
+        // "Collapse when the pointer leaves" off)
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            guard let self, self.model.isOpen, !self.hovering else { return }
+            self.pinned = false
+            if !self.preferences.autoCollapse || !self.keepsOpen { self.close() }
         }
     }
 
@@ -236,7 +308,7 @@ final class CapsuleController {
         }
     }
 
-    /// Opens the panel on a page (a click, the menu-bar menu, starting Muna again).
+    /// Opens the panel on a section (a click, the menu, starting Muna again).
     func open(on tab: PanelTab) {
         model.tab = tab
         pinned = true
@@ -251,6 +323,12 @@ final class CapsuleController {
         openNow()
     }
 
+    /// Something happened: a card in the closed capsule, and a line in the Alerts section.
+    func tell(_ title: String, _ details: String, symbol: String, ok: Bool) {
+        app.alerts.add(title, details, symbol: symbol, ok: ok)
+        showCard(CapsuleCard(title: title, details: details, symbol: symbol, ok: ok))
+    }
+
     /// A short message in the closed capsule (when it is open, the panel shows things itself).
     func showCard(_ card: CapsuleCard) {
         guard !model.isOpen else { return }
@@ -263,18 +341,43 @@ final class CapsuleController {
         DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.cardTime, execute: work)
     }
 
+    private var lastIncomingState: IncomingTransfer.State?
+
+    private func incomingChanged(_ incoming: IncomingSnapshot?) {
+        defer { lastIncomingState = incoming?.state }
+        scheduleUpdate()
+        guard let incoming, incoming.state != lastIncomingState else { return }
+        let count = incoming.fileNames.count
+        let files = "\(count) file\(count == 1 ? "" : "s")"
+        switch incoming.state {
+        case .done:
+            tell("Received from \(incoming.sender)", files, symbol: "checkmark.circle.fill", ok: true)
+        case .failed:
+            tell("From \(incoming.sender)", incoming.error ?? "The transfer stopped", symbol: "exclamationmark.triangle.fill", ok: false)
+        default:
+            break
+        }
+    }
+
     private var keepsOpen: Bool {
-        hovering || pinned || model.isEditing || model.isDropTarget || app.localSend.incoming?.state == .asking
+        (hovering && preferences.autoCollapse) || pinned || model.isEditing || model.isDropTarget
+            || app.localSend.incoming?.state == .asking || (!preferences.autoCollapse && model.isOpen)
     }
 
     private func screensChanged() {
         let screen = NSScreen.screens.first ?? NSScreen.main!
         model.geometry = CapsuleGeometry(screen: screen)
+        model.refreshLayout()
         if model.isOpen {
-            panel.setFrame(model.geometry.frame(for: CapsuleGeometry.openSize), display: true)
+            resizeOpen()
         } else {
             placeClosed()
         }
+    }
+
+    private func layoutChanged() {
+        model.refreshLayout()
+        resizeOpen()
     }
 
     private func placeClosed() {
@@ -282,34 +385,64 @@ final class CapsuleController {
         panel.setFrame(model.geometry.frame(for: model.closedSize), display: true)
     }
 
+    /// The open panel takes the size of its section (the drawing follows with an animation).
+    private func resizeOpen() {
+        guard model.isOpen else { return }
+        let target = model.geometry.frame(for: model.openSize)
+        if target.height >= panel.frame.height && target.width >= panel.frame.width {
+            panel.setFrame(target, display: true)
+        } else {
+            // shrinking: let the drawing shrink first
+            DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.animationTime) { [weak self] in
+                guard let self, self.model.isOpen else { return }
+                self.panel.setFrame(self.model.geometry.frame(for: self.model.openSize), display: true)
+            }
+            // but never cut what is still drawn bigger: grow in the other direction now
+            let union = CGRect(x: min(target.minX, panel.frame.minX), y: min(target.minY, panel.frame.minY),
+                               width: max(target.width, panel.frame.width), height: max(target.height, panel.frame.height))
+            panel.setFrame(model.geometry.frame(for: union.size), display: true)
+        }
+    }
+
     private func pointer(inside: Bool) {
         hovering = inside
         if inside {
             pinTimer?.cancel()
-        } else {
+        } else if pinned {
             pinned = false
+        }
+        if !model.isOpen {
+            withAnimation(CapsuleMetrics.animation) { model.isHovering = inside }
+            if model.card == nil { placeClosed() }
         }
         scheduleUpdate()
     }
 
-    /// Opens or closes after a short wait (a pointer passing by does nothing).
+    /// Opens or closes after the chosen wait (a pointer passing by does nothing).
     private func scheduleUpdate() {
         pending?.cancel()
-        let open = keepsOpen
+        let wantsOpen = keepsOpen || (hovering && preferences.openOnHover && !model.isOpen)
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
-            if self.keepsOpen { self.openNow() } else { self.close() }
+            let hoverOpens = self.hovering && self.preferences.openOnHover
+            if self.keepsOpen || (hoverOpens && !self.model.isOpen) {
+                self.openNow()
+            } else if self.model.isOpen && !(self.hovering && !self.preferences.autoCollapse) {
+                self.close()
+            }
         }
         pending = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + (open ? CapsuleMetrics.openDelay : CapsuleMetrics.closeDelay), execute: work)
+        let delay = wantsOpen ? preferences.openDelay : preferences.closeDelay
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0.05, delay), execute: work)
     }
 
     private func openNow() {
         guard !model.isOpen else { return }
         cardTimer?.cancel()
         model.card = nil
+        model.isHovering = false
         // the window takes the open size at once; the drawing grows into it
-        panel.setFrame(model.geometry.frame(for: CapsuleGeometry.openSize), display: true)
+        panel.setFrame(model.geometry.frame(for: model.openSize), display: true)
         withAnimation(CapsuleMetrics.animation) { model.isOpen = true }
         app.panelOpened(on: model.tab)
     }
@@ -323,6 +456,7 @@ final class CapsuleController {
             panel.orderFrontRegardless()
         }
         withAnimation(CapsuleMetrics.animation) { model.isOpen = false }
+        app.panelClosed()
         // the window shrinks when the drawing has
         DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.animationTime) { [weak self] in
             self?.placeClosed()

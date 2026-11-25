@@ -60,10 +60,7 @@ final class LocalSendController: ObservableObject {
         self.client = client
         self.receiverQueue = receiverQueue
         session = SendSession(transport: client, groups: GroupsStore())
-        receiver = LocalSendReceiver(queue: receiverQueue, identity: identity, folder: {
-            FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-                ?? FileManager.default.homeDirectoryForCurrentUser
-        })
+        receiver = LocalSendReceiver(queue: receiverQueue, identity: identity, folder: { Preferences.shared.receiveFolder })
         multicast = LocalSendMulticast(queue: receiverQueue)
 
         session.onChange = { [weak self] in self?.revision += 1 }
@@ -86,12 +83,26 @@ final class LocalSendController: ObservableObject {
 
     // --- receiving ---------------------------------------------------------------------------------
 
+    private var receiveObserver: AnyCancellable?
+
+    /// Receiving follows the setting (the menu, the settings window and the LocalSend page change it).
     func start() {
-        setReceiving(Settings.bool(Settings.receiveKey, default: false))
+        apply(Preferences.shared.localSendReceive)
+        receiveObserver = Preferences.shared.$localSendReceive.dropFirst().removeDuplicates().sink { [weak self] on in
+            self?.apply(on)
+        }
     }
 
     func setReceiving(_ on: Bool) {
-        Settings.set(Settings.receiveKey, on)
+        Preferences.shared.localSendReceive = on
+    }
+
+    /// Muna quits: stop the server, keep the setting.
+    func shutdown() {
+        apply(false)
+    }
+
+    private func apply(_ on: Bool) {
         receiverQueue.async { [weak self] in
             guard let self else { return }
             if on {

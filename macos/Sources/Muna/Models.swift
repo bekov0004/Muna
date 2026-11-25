@@ -1,22 +1,8 @@
+import AVFoundation
 import AppKit
 import Combine
 import EventKit
 import MunaCore
-
-/// Muna's settings (the menu-bar menu changes them).
-enum Settings {
-    static let receiveKey = "localsend-receive"
-    static let keepClipboardKey = "clipboard-keep-history"
-    static let keepTrayKey = "tray-keep"
-
-    static func bool(_ key: String, default value: Bool) -> Bool {
-        UserDefaults.standard.object(forKey: key) == nil ? value : UserDefaults.standard.bool(forKey: key)
-    }
-
-    static func set(_ key: String, _ value: Bool) {
-        UserDefaults.standard.set(value, forKey: key)
-    }
-}
 
 /// The quick notes (MunaCore's NotesStore) for the views.
 final class NotesModel: ObservableObject {
@@ -73,10 +59,12 @@ final class TodoModel: ObservableObject {
 final class TrayModel: ObservableObject {
     private let store = TrayStore()
     @Published private(set) var files: [URL] = []
+    private var observer: AnyCancellable?
 
     init() {
-        store.keep = Settings.bool(Settings.keepTrayKey, default: true)
+        store.keep = Preferences.shared.trayKeepFiles
         files = store.files
+        observer = Preferences.shared.$trayKeepFiles.dropFirst().sink { [weak self] keep in self?.store.keep = keep }
     }
 
     func add(_ urls: [URL]) {
@@ -98,11 +86,6 @@ final class TrayModel: ObservableObject {
         store.dropMissing()
         files = store.files
     }
-
-    /// "Keep the Tray after a restart" changed in the menu.
-    func applyKeepSetting() {
-        store.keep = Settings.bool(Settings.keepTrayKey, default: true)
-    }
 }
 
 /// The clipboard history: watches the pasteboard and keeps what was copied (MunaCore's ClipboardHistory).
@@ -111,6 +94,7 @@ final class ClipboardModel: ObservableObject {
     @Published private(set) var items: [ClipItem] = []
     private var changeCount = NSPasteboard.general.changeCount
     private var timer: Timer?
+    private var observers: [AnyCancellable] = []
 
     /// Copies that password managers and the like mark as not to be kept.
     private static let secretTypes: Set<String> = [
@@ -119,16 +103,16 @@ final class ClipboardModel: ObservableObject {
     ]
 
     init() {
-        history.keepHistory = Settings.bool(Settings.keepClipboardKey, default: true)
+        let preferences = Preferences.shared
+        history.keepHistory = preferences.clipboardKeepHistory
+        history.limit = max(5, preferences.clipboardMaxItems)
         items = history.items
-    }
-
-    var keepHistory: Bool {
-        get { history.keepHistory }
-        set {
-            history.keepHistory = newValue
-            Settings.set(Settings.keepClipboardKey, newValue)
-        }
+        preferences.$clipboardKeepHistory.dropFirst().sink { [weak self] keep in self?.history.keepHistory = keep }.store(in: &observers)
+        preferences.$clipboardMaxItems.dropFirst().sink { [weak self] count in
+            guard let self else { return }
+            self.history.limit = max(5, count)
+            self.items = self.history.items
+        }.store(in: &observers)
     }
 
     func start() {
@@ -187,7 +171,7 @@ final class ClipboardModel: ObservableObject {
     }
 }
 
-/// The calendar: today's and tomorrow's events from the Mac's calendars (EventKit).
+/// The calendar: the Mac's calendars (EventKit).
 final class CalendarModel: ObservableObject {
     struct Event: Identifiable, Equatable {
         let id: String
@@ -200,8 +184,9 @@ final class CalendarModel: ObservableObject {
 
     enum Access { case unknown, granted, denied }
 
-    @Published private(set) var events: [Event] = []
     @Published private(set) var access = Access.unknown
+    /// Bumped when the calendars changed (the views ask again).
+    @Published private(set) var revision = 0
     private let store = EKEventStore()
     private var timer: Timer?
     private var observer: NSObjectProtocol?
@@ -210,24 +195,23 @@ final class CalendarModel: ObservableObject {
         let status = EKEventStore.authorizationStatus(for: .event)
         if Self.isGranted(status) {
             access = .granted
-            load()
         } else if status == .notDetermined {
             access = .unknown
         } else {
             access = .denied
         }
         observer = NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: .main) { [weak self] _ in
-            self?.load()
+            self?.revision += 1
         }
-        timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.load() }
+        timer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in self?.revision += 1 }
     }
 
-    /// Asks macOS for the calendars (the first time the panel shows them).
+    /// Asks macOS for the calendars (when the user clicks "Show my calendar").
     func requestAccess() {
         let done: (Bool, Error?) -> Void = { [weak self] granted, _ in
             DispatchQueue.main.async {
                 self?.access = granted ? .granted : .denied
-                if granted { self?.load() }
+                self?.revision += 1
             }
         }
         if #available(macOS 14.0, *) {
@@ -245,20 +229,194 @@ final class CalendarModel: ObservableObject {
     }
 
     func load() {
-        guard access == .granted else { return }
+        revision += 1
+    }
+
+    /// The events of a day, all-day ones first.
+    func events(on day: Date) -> [Event] {
+        guard access == .granted else { return [] }
         let calendar = Calendar.current
-        let start = calendar.startOfDay(for: Date())
-        guard let end = calendar.date(byAdding: .day, value: 2, to: start) else { return }
+        let start = calendar.startOfDay(for: day)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
-        let now = Date()
-        events = store.events(matching: predicate)
-            .filter { $0.endDate > now }
+        return store.events(matching: predicate)
             .sorted { ($0.isAllDay ? 0 : 1, $0.startDate) < ($1.isAllDay ? 0 : 1, $1.startDate) }
-            .prefix(12)
             .map { Event(id: $0.eventIdentifier ?? UUID().uuidString, title: $0.title ?? "Event", start: $0.startDate,
                          end: $0.endDate, allDay: $0.isAllDay, color: $0.calendar?.color) }
     }
 
-    /// The next event that has not started yet (for the closed capsule).
-    var next: Event? { events.first { !$0.allDay && $0.start > Date() } }
+    /// Whether a day has events (the dot under its number).
+    func hasEvents(on day: Date) -> Bool { !events(on: day).isEmpty }
+}
+
+/// The countdown of the Timer widget (like linux/service/timer): set it, start, pause, resume, reset.
+final class TimerModel: ObservableObject {
+    enum State { case idle, running, paused, done }
+
+    static let presets = [5, 10, 25]
+
+    @Published private(set) var state = State.idle
+    /// The time it is set to.
+    @Published private(set) var duration: TimeInterval = 5 * 60
+    /// What is left (counts down while running).
+    @Published private(set) var remaining: TimeInterval = 5 * 60
+    /// Time is up: (title, details).
+    var onFinished: () -> Void = {}
+
+    private var endAt: Date?
+    private var ticker: Timer?
+
+    var active: Bool { state == .running || state == .paused || state == .done }
+
+    func set(minutes: Int) {
+        guard state == .idle else { return }
+        duration = TimeInterval(max(1, min(minutes, 24 * 60)) * 60)
+        remaining = duration
+    }
+
+    /// −1 / +1 minute (also while it runs; at the end "+1 min" starts it again for a minute).
+    func step(_ minutes: Int) {
+        switch state {
+        case .idle:
+            set(minutes: Int(duration / 60) + minutes)
+        case .running:
+            guard let end = endAt else { return }
+            endAt = max(Date().addingTimeInterval(1), end.addingTimeInterval(TimeInterval(minutes * 60)))
+            tick()
+        case .paused:
+            remaining = max(1, remaining + TimeInterval(minutes * 60))
+        case .done:
+            if minutes > 0 {
+                remaining = TimeInterval(minutes * 60)
+                start()
+            }
+        }
+    }
+
+    func start() {
+        guard state == .idle || state == .paused || state == .done else { return }
+        if state == .idle || state == .done && remaining <= 0 { remaining = duration }
+        endAt = Date().addingTimeInterval(remaining)
+        state = .running
+        ticker?.invalidate()
+        ticker = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.tick() }
+    }
+
+    func pause() {
+        guard state == .running else { return }
+        tick()
+        ticker?.invalidate()
+        ticker = nil
+        state = .paused
+    }
+
+    func reset() {
+        ticker?.invalidate()
+        ticker = nil
+        endAt = nil
+        state = .idle
+        remaining = duration
+    }
+
+    private func tick() {
+        guard state == .running, let end = endAt else { return }
+        let left = end.timeIntervalSinceNow
+        if left <= 0 {
+            remaining = 0
+            ticker?.invalidate()
+            ticker = nil
+            state = .done
+            NSSound(named: "Glass")?.play()
+            onFinished()
+        } else if Int(left.rounded(.up)) != Int(remaining.rounded(.up)) {
+            remaining = left
+        }
+    }
+
+    /// "04:59", "1:02:03".
+    static func text(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds.rounded(.up))
+        let (h, m, s) = (total / 3600, total / 60 % 60, total % 60)
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
+    }
+}
+
+/// The Alerts tab: what Muna told you lately (sendings, received files, the timer ...).
+/// (macOS lets no app read the notifications of the others, so these are Muna's own.)
+final class AlertsModel: ObservableObject {
+    struct Alert: Identifiable, Equatable {
+        let id = UUID()
+        let title: String
+        let details: String
+        let symbol: String
+        let ok: Bool
+        let at: Date
+    }
+
+    @Published private(set) var alerts: [Alert] = []
+
+    func add(_ title: String, _ details: String, symbol: String, ok: Bool) {
+        alerts.insert(Alert(title: title, details: details, symbol: symbol, ok: ok, at: Date()), at: 0)
+        if alerts.count > 50 { alerts.removeLast(alerts.count - 50) }
+    }
+
+    func remove(_ alert: Alert) { alerts.removeAll { $0.id == alert.id } }
+    func clear() { alerts = [] }
+}
+
+/// The camera of the Mirror widget: runs only while the panel shows it.
+final class CameraModel: ObservableObject {
+    enum Access { case unknown, granted, denied, none }
+
+    @Published private(set) var access = Access.unknown
+    let session = AVCaptureSession()
+    private let queue = DispatchQueue(label: "dev.muna.camera")
+    private var configured = false
+    private var wanted = false
+
+    init() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: access = .granted
+        case .notDetermined: access = .unknown
+        default: access = .denied
+        }
+    }
+
+    /// Asks macOS for the camera (the first click on the Mirror).
+    func requestAccess() {
+        AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+            DispatchQueue.main.async {
+                self?.access = granted ? .granted : .denied
+                if granted, self?.wanted == true { self?.start() }
+            }
+        }
+    }
+
+    func start() {
+        wanted = true
+        guard access == .granted else { return }
+        queue.async { [weak self] in
+            guard let self else { return }
+            if !self.configured {
+                self.session.beginConfiguration()
+                self.session.sessionPreset = .medium
+                if let device = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: device),
+                   self.session.canAddInput(input) {
+                    self.session.addInput(input)
+                    self.configured = true
+                } else {
+                    DispatchQueue.main.async { self.access = .none }
+                }
+                self.session.commitConfiguration()
+            }
+            if self.configured, !self.session.isRunning { self.session.startRunning() }
+        }
+    }
+
+    func stop() {
+        wanted = false
+        queue.async { [weak self] in
+            if self?.session.isRunning == true { self?.session.stopRunning() }
+        }
+    }
 }

@@ -10,6 +10,9 @@ final class AppState {
     let clipboard = ClipboardModel()
     let calendar = CalendarModel()
     let localSend = LocalSendController()
+    let timer = TimerModel()
+    let alerts = AlertsModel()
+    let camera = CameraModel()
 
     func start() {
         nowPlaying.start()
@@ -18,7 +21,7 @@ final class AppState {
         localSend.start()
     }
 
-    /// The panel opened on a page: bring what it shows up to date.
+    /// The panel opened on a section: bring what it shows up to date.
     func panelOpened(on tab: PanelTab) {
         nowPlaying.refresh()
         tray.refresh()
@@ -27,37 +30,52 @@ final class AppState {
             localSend.session.refresh()
         }
     }
+
+    /// The panel closed: the camera goes off at once.
+    func panelClosed() {
+        camera.stop()
+    }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let app = AppState()
     private var capsule: CapsuleController?
+    private var settings: SettingsWindowController?
     private var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         app.start()
+        let settings = SettingsWindowController(app: app)
+        self.settings = settings
         capsule = CapsuleController(app: app)
+        capsule?.model.onSettings = { [weak self] in self?.settings?.show() }
         capsule?.show()
         setUpStatusItem()
     }
 
     /// Muna was started again (Finder, Launchpad, Spotlight) while it runs: open the panel.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        capsule?.open(on: .home)
+        capsule?.open(on: .muna)
         return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         app.nowPlaying.stop()
-        app.localSend.setReceiving(false)
+        app.camera.stop()
+        app.localSend.shutdown()
     }
 
-    // --- the menu-bar item: the way to the settings and to quit (Muna has no Dock icon) ---------
+    // --- the menu-bar item: the sections, the settings and quitting (Muna has no Dock icon) -----
 
     private func setUpStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "circle.hexagongrid.fill", accessibilityDescription: "Muna")
+            if let image = ButterflyImage.image?.copy() as? NSImage {
+                image.size = NSSize(width: 18, height: 16)
+                button.image = image
+            } else {
+                button.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Muna")
+            }
         }
         let menu = NSMenu()
         menu.delegate = self
@@ -74,25 +92,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             entry.image = NSImage(systemSymbolName: tab.symbol, accessibilityDescription: nil)
         }
         menu.addItem(.separator())
-        add(menu, "Receive files (LocalSend)", #selector(toggleReceiving)).state = app.localSend.receiving ? .on : .off
+        let preferences = Preferences.shared
+        add(menu, "Receive files (LocalSend)", #selector(toggleReceiving)).state = preferences.localSendReceive ? .on : .off
         if let problem = app.localSend.receiveProblem {
             let note = NSMenuItem(title: problem, action: nil, keyEquivalent: "")
             note.isEnabled = false
             menu.addItem(note)
         }
-        add(menu, "Keep clipboard history", #selector(toggleClipboardHistory)).state = app.clipboard.keepHistory ? .on : .off
-        add(menu, "Keep the Tray after a restart", #selector(toggleKeepTray)).state =
-            Settings.bool(Settings.keepTrayKey, default: true) ? .on : .off
-        add(menu, "Open at login", #selector(toggleLoginItem)).state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(.separator())
+        add(menu, "Settings…", #selector(openSettings), key: ",")
         add(menu, "About Muna", #selector(showAbout))
         let quit = NSMenuItem(title: "Quit Muna", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
     }
 
     @discardableResult
-    private func add(_ menu: NSMenu, _ title: String, _ action: Selector) -> NSMenuItem {
-        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+    private func add(_ menu: NSMenu, _ title: String, _ action: Selector, key: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
         item.target = self
         menu.addItem(item)
         return item
@@ -104,36 +120,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleReceiving() {
-        app.localSend.setReceiving(!app.localSend.receiving)
+        Preferences.shared.localSendReceive.toggle()
     }
 
-    @objc private func toggleClipboardHistory() {
-        app.clipboard.keepHistory.toggle()
-    }
-
-    @objc private func toggleKeepTray() {
-        Settings.set(Settings.keepTrayKey, !Settings.bool(Settings.keepTrayKey, default: true))
-        app.tray.applyKeepSetting()
-    }
-
-    @objc private func toggleLoginItem() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            let alert = NSAlert()
-            alert.messageText = "Muna could not change “Open at login”"
-            alert.informativeText = error.localizedDescription
-            NSApp.activate(ignoringOtherApps: true)
-            alert.runModal()
-        }
+    @objc private func openSettings() {
+        settings?.show()
     }
 
     @objc private func showAbout() {
-        NSApp.activate(ignoringOtherApps: true)
-        NSApp.orderFrontStandardAboutPanel(nil)
+        settings?.show(page: .about)
     }
 }

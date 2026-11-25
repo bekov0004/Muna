@@ -169,3 +169,27 @@ final class LocalSendTests: XCTestCase {
         XCTAssertEqual(ReceivedFileNames.free(in: folder, name: "noext", exists: { $0.lastPathComponent == "noext" }).lastPathComponent, "noext (1)")
     }
 }
+
+final class PanelLayoutTests: XCTestCase {
+    private let linuxCells = ["media": 5, "calendar": 4, "mirror": 3, "timer": 3, "todo": 4, "notes": 4, "shortcuts": 4]
+
+    func testSameWidthAsLinux() {
+        // Linux's rig: media, calendar, mirror, timer open 740 wide on a 1920 px monitor
+        let layout = PanelLayout(screenWidth: 1920, widgets: ["media", "calendar", "mirror", "timer"], cells: { self.linuxCells[$0] ?? 4 })
+        XCTAssertEqual(layout.width, 740)
+        XCTAssertEqual(layout.pages.count, 1)
+        XCTAssertEqual(layout.pages[0].map(\.width), [220, 176, 132, 132])
+    }
+
+    func testPagesAndMinimum() {
+        XCTAssertEqual(PanelLayout(screenWidth: 1920, widgets: ["timer"], cells: { self.linuxCells[$0] ?? 4 }).width, 560)
+        // a narrow screen: what does not fit goes on the next page
+        let all = ["media", "calendar", "mirror", "timer", "todo", "notes", "shortcuts"]
+        let layout = PanelLayout(screenWidth: 1280, widgets: all, cells: { self.linuxCells[$0] ?? 4 })
+        XCTAssertLessThanOrEqual(layout.width, 1280 * 0.72)
+        XCTAssertGreaterThan(layout.pages.count, 1)
+        XCTAssertEqual(layout.pages.flatMap { $0.map(\.id) }, all)
+        // wide enough for the notch and its ears
+        XCTAssertEqual(PanelLayout(screenWidth: 1920, widgets: ["timer"], cells: { _ in 3 }, atLeast: 600).width, 600)
+    }
+}

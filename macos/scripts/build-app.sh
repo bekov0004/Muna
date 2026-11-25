@@ -14,6 +14,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Muna"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Resources/butterfly.png "$APP/Contents/Resources/butterfly.png"
 # An ad-hoc signature: enough to run on this Mac (Apple silicon runs nothing unsigned).
 codesign --force --sign - "$APP"
 echo "Built macos/$APP"

@@ -60,6 +60,8 @@ final class NowPlaying: ObservableObject {
     @Published private(set) var track: Track?
     @Published private(set) var isPlaying = false
     @Published private(set) var position: Double = 0
+    /// When `position` was read: while playing, the position now is position + the time since.
+    private(set) var positionTime = Date()
 
     private var timer: Timer?
 
@@ -95,6 +97,23 @@ final class NowPlaying: ObservableObject {
         if best?.track != track { track = best?.track }
         isPlaying = best?.playing ?? false
         position = best?.position ?? 0
+        positionTime = Date()
+    }
+
+    /// Where the track is now (between two questions to the player too).
+    func currentPosition(at date: Date = Date()) -> Double {
+        guard let track else { return 0 }
+        let now = position + (isPlaying ? date.timeIntervalSince(positionTime) : 0)
+        return track.duration > 0 ? min(max(0, now), track.duration) : max(0, now)
+    }
+
+    /// Jumps to a moment of the track (seconds).
+    func seek(to seconds: Double) {
+        guard let player = track?.player else { return }
+        _ = run(player.command("set player position to \(Int(seconds.rounded()))"))
+        position = seconds
+        positionTime = Date()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.refresh() }
     }
 
     func playPause() { send("playpause") }

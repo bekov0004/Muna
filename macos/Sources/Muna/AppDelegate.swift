@@ -41,6 +41,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setUpStatusItem()
     }
 
+    /// Muna was started again (Finder, Launchpad, Spotlight) while it runs: open the panel.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        capsule?.open(on: .home)
+        return false
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         app.nowPlaying.stop()
         app.localSend.setReceiving(false)

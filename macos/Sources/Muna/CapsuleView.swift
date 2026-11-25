@@ -131,6 +131,9 @@ struct ClosedContent: View {
                 .frame(height: CapsuleModel.cardHeight)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .contentShape(Rectangle())
+        .onTapGesture { model.onTap() }
     }
 }
 

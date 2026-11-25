@@ -119,6 +119,8 @@ final class CapsuleModel: ObservableObject {
     @Published var isDropTarget = false
     @Published var card: CapsuleCard?
     let nowPlaying: NowPlaying
+    /// A click on the closed capsule.
+    var onTap: () -> Void = {}
 
     init(geometry: CapsuleGeometry, nowPlaying: NowPlaying) {
         self.geometry = geometry
@@ -157,6 +159,10 @@ final class CapsuleController {
     private let panel = CapsulePanel()
     private let app: AppState
     private var hovering = false
+    /// Opened by a command (a click, the menu, starting Muna again): stays open until the pointer has
+    /// come and gone, or a while if it never comes.
+    private var pinned = false
+    private var pinTimer: DispatchWorkItem?
     private var pending: DispatchWorkItem?
     private var cardTimer: DispatchWorkItem?
     private var observers: [AnyCancellable] = []
@@ -209,6 +215,10 @@ final class CapsuleController {
         app.localSend.notify = { [weak self] title, details, ok in
             self?.showCard(CapsuleCard(title: title, details: details, symbol: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill", ok: ok))
         }
+        model.onTap = { [weak self] in
+            guard let self else { return }
+            self.open(on: self.model.tab)
+        }
         app.localSend.onIncoming = { [weak self] in
             self?.model.tab = .localSend
             self?.openNow()
@@ -218,13 +228,27 @@ final class CapsuleController {
     func show() {
         placeClosed()
         panel.orderFrontRegardless()
+        // say where Muna is: it has no window and no Dock icon
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self else { return }
+            let place = self.model.geometry.hasNotch ? "Point at the notch or click it" : "Point at the capsule or click it"
+            self.showCard(CapsuleCard(title: "Muna is here", details: place, symbol: "sparkles", ok: true))
+        }
     }
 
-    /// Opens the panel on a page (from the menu-bar menu).
+    /// Opens the panel on a page (a click, the menu-bar menu, starting Muna again).
     func open(on tab: PanelTab) {
         model.tab = tab
+        pinned = true
+        pinTimer?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, !self.hovering else { return }
+            self.pinned = false
+            self.scheduleUpdate()
+        }
+        pinTimer = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)
         openNow()
-        scheduleUpdate()
     }
 
     /// A short message in the closed capsule (when it is open, the panel shows things itself).
@@ -240,7 +264,7 @@ final class CapsuleController {
     }
 
     private var keepsOpen: Bool {
-        hovering || model.isEditing || model.isDropTarget || app.localSend.incoming?.state == .asking
+        hovering || pinned || model.isEditing || model.isDropTarget || app.localSend.incoming?.state == .asking
     }
 
     private func screensChanged() {
@@ -260,6 +284,11 @@ final class CapsuleController {
 
     private func pointer(inside: Bool) {
         hovering = inside
+        if inside {
+            pinTimer?.cancel()
+        } else {
+            pinned = false
+        }
         scheduleUpdate()
     }
 

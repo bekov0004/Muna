@@ -8,6 +8,8 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Muna for macOS, first steps (`macos/`): the capsule under the camera notch (or in the middle of the menu bar) that opens under the pointer, with the time and the music of Music and Spotify (cover, play/pause, next, previous), and a menu-bar item. `scripts/install.sh` builds and installs it on a Mac. Its core (data files, LocalSend, groups) reads the same files as Muna on Linux.
+
 - LocalSend: send files to several devices at once. A click on a device chooses it (a check mark), "All" chooses everyone, and "Send to N" sends to all of them together; each one shows how far it got, and at the end who got the files, with "Try again" for those who declined or could not be reached. "Save as group" keeps the chosen devices under a name (for example "Office"): the group stands first in the row, and a click on it chooses its members that are on the network (those who are not are listed at the end as "Not on the network"). A group knows its devices by their fingerprint, so it still finds them after their address changed. Other computers with Muna are marked "Muna" and come first. Each receiver still accepts every sending.
 - GNOME Shell 51 (for example on Arch Linux): the same Muna runs on GNOME 50 and 51. Before, GNOME 51 refused to load it ("incompatible"), and even when allowed it stopped at start. The installer now names the GNOME versions Muna is made for and tells how to get what it needs on Arch too.
 

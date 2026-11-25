@@ -58,9 +58,19 @@ struct CapsuleGeometry: Equatable {
         }
     }
 
-    /// The closed capsule.
-    var closedSize: CGSize {
+    /// The closed capsule at rest: exactly the notch (it shows nothing, the menu bar stays free), or the pill.
+    var restingSize: CGSize {
+        CGSize(width: hasNotch ? notchWidth : Self.pillWidth, height: barHeight)
+    }
+
+    /// The closed capsule with something to show: the notch grows an ear on each side.
+    var earsSize: CGSize {
         CGSize(width: hasNotch ? notchWidth + 2 * Self.earWidth : Self.pillWidth, height: barHeight)
+    }
+
+    /// A stable id of the screen (to keep its capsule when the screens change).
+    static func id(of screen: NSScreen) -> String {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.stringValue ?? screen.localizedName
     }
 
     /// Where the open panel's content starts: under the notch, or at the top.
@@ -154,6 +164,8 @@ final class CapsuleModel: ObservableObject {
     /// Files are dragged over the capsule: it opens to take them.
     @Published var isDropTarget = false
     @Published var card: CapsuleCard?
+    /// Music, the timer or a sending runs (it shows beside the notch).
+    @Published var hasActivity = false
     /// A click on the closed capsule; the gear.
     var onTap: () -> Void = {}
     var onSettings: () -> Void = {}
@@ -177,13 +189,18 @@ final class CapsuleModel: ObservableObject {
     private static func makeLayout(_ geometry: CapsuleGeometry) -> PanelLayout {
         let preferences = Preferences.shared
         // with a notch, the tabs must clear it: never narrower than the closed capsule and a bit
-        let atLeast = geometry.hasNotch ? geometry.closedSize.width + 2 * CapsuleGeometry.earWidth : 0
+        let atLeast = geometry.hasNotch ? geometry.earsSize.width + 2 * CapsuleGeometry.earWidth : 0
         return PanelLayout(screenWidth: geometry.screenFrame.width, widgets: preferences.enabledWidgets,
                            cells: { preferences.cells($0) }, atLeast: atLeast)
     }
 
+    /// Beside a notch, the date and time (or what runs) show only when there is a reason.
+    var showsEars: Bool {
+        !geometry.hasNotch || hasActivity || isHovering || card != nil
+    }
+
     var closedSize: CGSize {
-        var size = geometry.closedSize
+        var size = showsEars ? geometry.earsSize : geometry.restingSize
         if isHovering && !isOpen { size.width += CapsuleGeometry.hoverGrow }
         if card != nil {
             size.width = max(size.width, 380)
@@ -206,10 +223,12 @@ enum CapsuleMetrics {
     static let cardTime: TimeInterval = 4
 }
 
-/// Shows the capsule and opens it under the pointer. The window is only as big as what is drawn
-/// (closed: the notch and its ears, open: the panel), so it never catches clicks meant for the menu bar.
+/// The capsule of one screen: shows it and opens it under the pointer. The window is only as big as
+/// what is drawn (closed: the notch or its ears, open: the panel), so it never catches clicks meant
+/// for the menu bar.
 final class CapsuleController {
     let model: CapsuleModel
+    let screenId: String
     private let panel = CapsulePanel()
     private let app: AppState
     private let preferences = Preferences.shared
@@ -221,12 +240,11 @@ final class CapsuleController {
     private var pending: DispatchWorkItem?
     private var cardTimer: DispatchWorkItem?
     private var observers: [AnyCancellable] = []
-    private var screenObserver: NSObjectProtocol?
     private var clickMonitor: Any?
 
-    init(app: AppState) {
+    init(app: AppState, screen: NSScreen) {
         self.app = app
-        let screen = NSScreen.screens.first ?? NSScreen.main!
+        screenId = CapsuleGeometry.id(of: screen)
         model = CapsuleModel(geometry: CapsuleGeometry(screen: screen))
         let tracking = HoverView { [weak self] inside in self?.pointer(inside: inside) }
         let root = CapsuleView()
@@ -257,10 +275,6 @@ final class CapsuleController {
         panel.onResignKey = { [weak self] in
             self?.model.isEditing = false
         }
-        screenObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
-        ) { [weak self] _ in self?.screensChanged() }
-
         // what keeps the capsule open, or changes its size
         model.$isEditing.dropFirst().sink { [weak self] _ in self?.scheduleUpdate() }.store(in: &observers)
         model.$isDropTarget.dropFirst().sink { [weak self] targeted in
@@ -278,21 +292,15 @@ final class CapsuleController {
         preferences.$widgetCells.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async { self?.layoutChanged() }
         }.store(in: &observers)
-        app.localSend.incomingPublisher.dropFirst().sink { [weak self] incoming in
-            self?.incomingChanged(incoming)
+        app.localSend.incomingPublisher.dropFirst().sink { [weak self] _ in
+            self?.scheduleUpdate()
         }.store(in: &observers)
+        // what runs shows beside the notch
+        app.nowPlaying.trackPublisher.sink { [weak self] _ in self?.activityChanged() }.store(in: &observers)
+        app.timer.statePublisher.sink { [weak self] _ in self?.activityChanged() }.store(in: &observers)
+        app.localSend.revisionPublisher.sink { [weak self] _ in self?.activityChanged() }.store(in: &observers)
+        preferences.$activitiesInCollapsed.sink { [weak self] _ in self?.activityChanged() }.store(in: &observers)
 
-        app.localSend.notify = { [weak self] title, details, ok in
-            self?.tell(title, details, symbol: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill", ok: ok)
-        }
-        app.localSend.onIncoming = { [weak self] in
-            self?.model.tab = .localSend
-            self?.openNow()
-        }
-        app.timer.onFinished = { [weak self] in
-            self?.tell("Time is up", "The timer ended", symbol: "timer", ok: true)
-        }
-        app.command.onDone = { [weak self] in self?.close() }
         model.onTap = { [weak self] in
             guard let self else { return }
             self.open(on: self.model.tab)
@@ -310,11 +318,41 @@ final class CapsuleController {
     func show() {
         placeClosed()
         panel.orderFrontRegardless()
-        // say where Muna is: it has no window and no Dock icon
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+    }
+
+    /// The screen went away (or no longer gets a capsule).
+    func remove() {
+        if let clickMonitor { NSEvent.removeMonitor(clickMonitor) }
+        clickMonitor = nil
+        observers = []
+        panel.orderOut(nil)
+    }
+
+    /// The screen moved or changed its size.
+    func update(screen: NSScreen) {
+        model.geometry = CapsuleGeometry(screen: screen)
+        model.refreshLayout()
+        if model.isOpen {
+            resizeOpen()
+        } else {
+            placeClosed()
+        }
+    }
+
+    /// Whether the screen of this capsule holds that point (where the pointer is).
+    func contains(_ point: NSPoint) -> Bool {
+        model.geometry.screenFrame.contains(point)
+    }
+
+    private func activityChanged() {
+        DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            let place = self.model.geometry.hasNotch ? "Point at the notch or click it" : "Point at the capsule or click it"
-            self.showCard(CapsuleCard(title: "Muna is here", details: place, symbol: "sparkles", ok: true))
+            let session = self.app.localSend.session
+            let active = self.preferences.activitiesInCollapsed
+                && (self.app.nowPlaying.track != nil || self.app.timer.active || session.phase == .sending)
+            guard active != self.model.hasActivity else { return }
+            withAnimation(CapsuleMetrics.animation) { self.model.hasActivity = active }
+            self.placeClosed()
         }
     }
 
@@ -344,12 +382,6 @@ final class CapsuleController {
         panel.makeKey()
     }
 
-    /// Something happened: a card in the closed capsule, and a line in the Alerts section.
-    func tell(_ title: String, _ details: String, symbol: String, ok: Bool) {
-        app.alerts.add(title, details, symbol: symbol, ok: ok)
-        showCard(CapsuleCard(title: title, details: details, symbol: symbol, ok: ok))
-    }
-
     /// A short message in the closed capsule (when it is open, the panel shows things itself).
     func showCard(_ card: CapsuleCard) {
         guard !model.isOpen else { return }
@@ -362,38 +394,9 @@ final class CapsuleController {
         DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.cardTime, execute: work)
     }
 
-    private var lastIncomingState: IncomingTransfer.State?
-
-    private func incomingChanged(_ incoming: IncomingSnapshot?) {
-        defer { lastIncomingState = incoming?.state }
-        scheduleUpdate()
-        guard let incoming, incoming.state != lastIncomingState else { return }
-        let count = incoming.fileNames.count
-        let files = "\(count) file\(count == 1 ? "" : "s")"
-        switch incoming.state {
-        case .done:
-            tell("Received from \(incoming.sender)", files, symbol: "checkmark.circle.fill", ok: true)
-        case .failed:
-            tell("From \(incoming.sender)", incoming.error ?? "The transfer stopped", symbol: "exclamationmark.triangle.fill", ok: false)
-        default:
-            break
-        }
-    }
-
     private var keepsOpen: Bool {
         (hovering && preferences.autoCollapse) || pinned || model.isEditing || model.isDropTarget
             || app.localSend.incoming?.state == .asking || (!preferences.autoCollapse && model.isOpen)
-    }
-
-    private func screensChanged() {
-        let screen = NSScreen.screens.first ?? NSScreen.main!
-        model.geometry = CapsuleGeometry(screen: screen)
-        model.refreshLayout()
-        if model.isOpen {
-            resizeOpen()
-        } else {
-            placeClosed()
-        }
     }
 
     private func layoutChanged() {
@@ -457,7 +460,7 @@ final class CapsuleController {
         DispatchQueue.main.asyncAfter(deadline: .now() + max(0.05, delay), execute: work)
     }
 
-    private func openNow() {
+    func openNow() {
         guard !model.isOpen else { return }
         cardTimer?.cancel()
         model.card = nil
@@ -468,7 +471,7 @@ final class CapsuleController {
         app.panelOpened(on: model.tab)
     }
 
-    private func close() {
+    func close() {
         guard model.isOpen else { return }
         if panel.isKeyWindow {
             // give the keyboard back to the app in front: out and in again, without becoming key

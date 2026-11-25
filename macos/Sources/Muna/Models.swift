@@ -260,8 +260,9 @@ final class TimerModel: ObservableObject {
     @Published private(set) var duration: TimeInterval = 5 * 60
     /// What is left (counts down while running).
     @Published private(set) var remaining: TimeInterval = 5 * 60
-    /// Time is up: (title, details).
+    /// Time is up.
     var onFinished: () -> Void = {}
+    var statePublisher: Published<State>.Publisher { $state }
 
     private var endAt: Date?
     private var ticker: Timer?

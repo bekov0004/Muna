@@ -24,6 +24,7 @@ final class LocalSendController: ObservableObject {
 
     let session: SendSession
     var incomingPublisher: Published<IncomingSnapshot?>.Publisher { $incoming }
+    var revisionPublisher: Published<Int>.Publisher { $revision }
     /// The capsule shows a short message (a sending ended while it was closed).
     var notify: (String, String, Bool) -> Void = { _, _, _ in }
     /// Someone wants to send: the capsule opens.

@@ -216,6 +216,15 @@ struct GeneralSettings: View {
                 Slider(value: $preferences.closeDelay, in: 0...2, step: 0.05)
             }
         }
+        SettingsCard("Screens") {
+            Picker("A capsule on", selection: $preferences.capsuleScreens) {
+                Text("Every screen").tag("all")
+                Text("The main screen (with the menu bar)").tag("main")
+                Text("The built-in screen (with the notch)").tag("notch")
+            }
+            .pickerStyle(.radioGroup)
+            .font(.system(size: 13))
+        }
         SettingsCard("Closed") {
             SettingsToggle(title: "Butterfly in the capsule",
                            detail: "On a screen without a notch: the butterfly between the date and the time (off: a small camera circle).",

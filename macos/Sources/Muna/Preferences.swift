@@ -45,6 +45,8 @@ final class Preferences: ObservableObject {
     /// Music, a timer ... take the sides of the closed capsule while they run.
     @Published var activitiesInCollapsed: Bool { didSet { defaults.set(activitiesInCollapsed, forKey: "activities-in-collapsed") } }
 
+    /// Which screens have a capsule: "all", "main" (the one with the menu bar), "notch" (the built-in one).
+    @Published var capsuleScreens: String { didSet { defaults.set(capsuleScreens, forKey: "capsule-screens") } }
     /// ⌥Space opens the Command Bar.
     @Published var commandHotKey: Bool { didSet { defaults.set(commandHotKey, forKey: "command-hotkey") } }
 
@@ -77,6 +79,7 @@ final class Preferences: ObservableObject {
         capsuleButterfly = bool("capsule-butterfly", true)
         activitiesInCollapsed = bool("activities-in-collapsed", true)
         commandHotKey = bool("command-hotkey", true)
+        capsuleScreens = defaults.string(forKey: "capsule-screens") ?? "all"
         menuBarReadings = bool("menu-bar-readings", false)
         let known = Set(WidgetCatalog.all.map(\.id))
         enabledWidgets = (defaults.stringArray(forKey: "enabled-widgets") ?? WidgetCatalog.defaultEnabled).filter { known.contains($0) }

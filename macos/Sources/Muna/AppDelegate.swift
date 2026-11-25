@@ -43,7 +43,7 @@ final class AppState {
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopoverDelegate {
     private let app = AppState()
-    private var capsule: CapsuleController?
+    private var capsules: CapsuleManager?
     private var settings: SettingsWindowController?
     private var statusItem: NSStatusItem?
     private var commandKey: HotKey?
@@ -58,9 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         app.start()
         let settings = SettingsWindowController(app: app)
         self.settings = settings
-        capsule = CapsuleController(app: app)
-        capsule?.model.onSettings = { [weak self] in self?.settings?.show() }
-        capsule?.show()
+        let capsules = CapsuleManager(app: app)
+        capsules.onSettings = { [weak self] in self?.settings?.show() }
+        self.capsules = capsules
+        capsules.show()
         setUpStatusItem()
         setCommandKey(Preferences.shared.commandHotKey)
         keyObserver = Preferences.shared.$commandHotKey.dropFirst().removeDuplicates().sink { [weak self] on in
@@ -71,14 +72,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private func setCommandKey(_ on: Bool) {
         commandKey = on
             ? HotKey(keyCode: HotKey.optionSpace.keyCode, modifiers: HotKey.optionSpace.modifiers, id: 1) { [weak self] in
-                self?.capsule?.openCommand()
+                self?.capsules?.openCommand()
             }
             : nil
     }
 
     /// Muna was started again (Finder, Launchpad, Spotlight) while it runs: open the panel.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        capsule?.open(on: .muna)
+        capsules?.open(on: .muna)
         return false
     }
 
@@ -115,7 +116,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             self?.settings?.show()
         }, onCommand: { [weak self] in
             self?.popover.performClose(nil)
-            self?.capsule?.openCommand()
+            self?.capsules?.openCommand()
         })
         .environmentObject(quickState)
         .environmentObject(app.monitor)
@@ -213,11 +214,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
 
     @objc private func openTab(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let tab = PanelTab(rawValue: raw) else { return }
-        capsule?.open(on: tab)
+        capsules?.open(on: tab)
     }
 
     @objc private func openCommand() {
-        capsule?.openCommand()
+        capsules?.openCommand()
     }
 
     @objc private func toggleReceiving() {

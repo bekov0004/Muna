@@ -8,14 +8,14 @@ Change this table together with the code.
 
 | Feature | Linux | macOS | Windows | Note |
 |---|---|---|---|---|
-| Closed capsule: date · butterfly · time | ✅ | ✅ | ⬜ | Mac with a notch: date and time beside the notch |
+| Closed capsule: date · butterfly · time | ✅ | ✅ | ⬜ | Mac with a notch: at rest just the notch (the menu bar stays free); date and time, or what runs, come out beside it on hover, activity or a card |
 | Live activities in the closed capsule (music, timer, sending) | ✅ | ✅ | ⬜ | Linux has more (downloads, calendar, files) |
 | Cards (a sending ended, time is up …) | ✅ | ✅ | ⬜ | |
 | Opens on hover / click, delays, collapse when the pointer leaves | ✅ | ✅ | ⬜ | |
 | Tabs Muna · Tray · LocalSend · Clipboard · Alerts, page dots, gear | ✅ | ✅ | ⬜ | |
 | Width in cells of 44, pages of widgets | ✅ | ✅ | ⬜ | same rules (`PanelLayout`, tested against Linux) |
 | Files dropped on the capsule | ✅ | ✅ | ⬜ | |
-| Capsule on several monitors | ✅ | ⬜ | ⬜ | |
+| Capsule on several monitors | ✅ | ✅ | ⬜ | Mac: every screen, the main one, or the built-in one with the notch (Settings → General → Screens) |
 | Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | 🟡 | ⬜ | Mac: apps, calculator, units, clipboard, web search (⌥Space); no snippets, kill, ports, clean, scratchpad yet |
 | Keyboard shortcuts for every section | ✅ | 🟡 | ⬜ | Mac: ⌥Space for the Command Bar (Carbon hot key); the sections not yet |
 | Two-finger pull makes lists taller | ✅ | ⬜ | ⬜ | |

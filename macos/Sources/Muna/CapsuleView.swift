@@ -166,6 +166,8 @@ struct ClosedContent: View {
             }
             .padding(.horizontal, geometry.hasNotch ? 8 : 16)
             .frame(height: geometry.barHeight)
+            // beside a notch at rest: nothing (the capsule is just the notch)
+            .opacity(model.showsEars ? 1 : 0)
             if let card = model.card {
                 HStack(spacing: 8) {
                     Image(systemName: card.symbol)

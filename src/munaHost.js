@@ -609,10 +609,11 @@ export class MunaHost {
     _destroyMenu() {
         this._readings?.destroy();
         this._readings = null;
-        this._menu?.destroy();
-        this._menu = null;
+        // the widgets first: their views live inside the menu, which would take them along
         this._menuWidgets.forEach(widget => widget.destroy());
         this._menuWidgets = [];
+        this._menu?.destroy();
+        this._menu = null;
     }
 
     /** Capsules for exactly the monitors that are chosen and connected right now. */

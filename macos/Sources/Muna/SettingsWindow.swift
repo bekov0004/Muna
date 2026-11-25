@@ -224,6 +224,11 @@ struct GeneralSettings: View {
                            detail: "The music, the timer and sendings take the sides of the closed capsule while they run.",
                            isOn: $preferences.activitiesInCollapsed)
         }
+        SettingsCard("Shortcuts") {
+            SettingsToggle(title: "Command Bar: ⌥Space",
+                           detail: "Option and Space open the Command Bar from any app: start apps, calculate, convert units, find what you copied, search the web.",
+                           isOn: $preferences.commandHotKey)
+        }
         SettingsCard("Start") {
             SettingsToggle(title: "Open at login", detail: "Muna starts when you log in.",
                            isOn: Binding(get: { state.openAtLogin }, set: { state.setOpenAtLogin($0) }))

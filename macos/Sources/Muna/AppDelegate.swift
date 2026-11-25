@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import ServiceManagement
 
 /// Everything the app has, made once.
@@ -13,6 +14,7 @@ final class AppState {
     let timer = TimerModel()
     let alerts = AlertsModel()
     let camera = CameraModel()
+    lazy var command = CommandModel(clipboard: clipboard)
 
     func start() {
         nowPlaying.start()
@@ -42,6 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var capsule: CapsuleController?
     private var settings: SettingsWindowController?
     private var statusItem: NSStatusItem?
+    private var commandKey: HotKey?
+    private var keyObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         app.start()
@@ -51,6 +55,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         capsule?.model.onSettings = { [weak self] in self?.settings?.show() }
         capsule?.show()
         setUpStatusItem()
+        setCommandKey(Preferences.shared.commandHotKey)
+        keyObserver = Preferences.shared.$commandHotKey.dropFirst().removeDuplicates().sink { [weak self] on in
+            self?.setCommandKey(on)
+        }
+    }
+
+    private func setCommandKey(_ on: Bool) {
+        commandKey = on
+            ? HotKey(keyCode: HotKey.optionSpace.keyCode, modifiers: HotKey.optionSpace.modifiers, id: 1) { [weak self] in
+                self?.capsule?.openCommand()
+            }
+            : nil
     }
 
     /// Muna was started again (Finder, Launchpad, Spotlight) while it runs: open the panel.
@@ -86,11 +102,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// The menu is built each time it opens, so the ticks show the current settings.
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        for tab in PanelTab.allCases {
+        for tab in PanelTab.visible {
             let entry = add(menu, "Open \(tab.title)", #selector(openTab(_:)))
             entry.representedObject = tab.rawValue
             entry.image = NSImage(systemSymbolName: tab.symbol, accessibilityDescription: nil)
         }
+        add(menu, "Command Bar", #selector(openCommand)).image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: nil)
         menu.addItem(.separator())
         let preferences = Preferences.shared
         add(menu, "Receive files (LocalSend)", #selector(toggleReceiving)).state = preferences.localSendReceive ? .on : .off
@@ -117,6 +134,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openTab(_ sender: NSMenuItem) {
         guard let raw = sender.representedObject as? String, let tab = PanelTab(rawValue: raw) else { return }
         capsule?.open(on: tab)
+    }
+
+    @objc private func openCommand() {
+        capsule?.openCommand()
     }
 
     @objc private func toggleReceiving() {

@@ -193,3 +193,41 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(PanelLayout(screenWidth: 1920, widgets: ["timer"], cells: { _ in 3 }, atLeast: 600).width, 600)
     }
 }
+
+final class CommandEngineTests: XCTestCase {
+    func testCalculator() {
+        XCTAssertEqual(CommandEngine.calculate("12*(3+4)"), 84)
+        XCTAssertEqual(CommandEngine.calculate("2^10"), 1024)
+        XCTAssertEqual(CommandEngine.calculate("2 x 3"), 6)
+        XCTAssertEqual(CommandEngine.calculate("sqrt(16) + 1"), 5)
+        XCTAssertEqual(CommandEngine.calculate("10 % 3"), 1)
+        XCTAssertEqual(CommandEngine.calculate("-2^2"), 4)      // as on Linux: the minus binds first
+        XCTAssertEqual(CommandEngine.calculate("1,5*2"), 3)
+        XCTAssertNil(CommandEngine.calculate("5"))           // a bare number is not a calculation
+        XCTAssertNil(CommandEngine.calculate("safari"))
+        XCTAssertNil(CommandEngine.calculate("1/0"))
+        XCTAssertNil(CommandEngine.calculate("2*(3"))
+        XCTAssertEqual(CommandEngine.format(0.1 + 0.2), "0.3")
+        XCTAssertEqual(CommandEngine.format(84), "84")
+    }
+
+    func testUnits() {
+        XCTAssertEqual(CommandEngine.convert("5 km to mi")?.text, "5 km = 3.106856 mi")
+        XCTAssertEqual(CommandEngine.convert("100 c to f")?.value, 212)
+        XCTAssertEqual(CommandEngine.convert("1 GB in MB")?.value, 1024)
+        XCTAssertNil(CommandEngine.convert("5 km to kg"))
+        XCTAssertNil(CommandEngine.convert("hello"))
+    }
+
+    func testMatchScore() {
+        XCTAssertEqual(CommandEngine.matchScore("Safari", "safari"), 100)
+        XCTAssertEqual(CommandEngine.matchScore("Safari", "saf"), 80)
+        XCTAssertEqual(CommandEngine.matchScore("Visual Studio Code", "stu"), 60)
+        XCTAssertEqual(CommandEngine.matchScore("Terminal", "rmi"), 40)
+        XCTAssertEqual(CommandEngine.matchScore("System Settings", "sysset"), 0)
+        XCTAssertEqual(CommandEngine.matchScore("Telegram", "tgm"), 0)
+        XCTAssertEqual(CommandEngine.matchScore("Notes", "nts"), 0)        // as on Linux
+        XCTAssertEqual(CommandEngine.matchScore("Finder", "fnd"), 20)
+        XCTAssertEqual(CommandEngine.matchScore("Anything", ""), 0)
+    }
+}

@@ -16,8 +16,8 @@ Change this table together with the code.
 | Width in cells of 44, pages of widgets | ✅ | ✅ | ⬜ | same rules (`PanelLayout`, tested against Linux) |
 | Files dropped on the capsule | ✅ | ✅ | ⬜ | |
 | Capsule on several monitors | ✅ | ⬜ | ⬜ | |
-| Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | ⬜ | ⬜ | |
-| Keyboard shortcuts for every section | ✅ | ⬜ | ⬜ | needs a global hot-key (Carbon RegisterEventHotKey) |
+| Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | 🟡 | ⬜ | Mac: apps, calculator, units, clipboard, web search (⌥Space); no snippets, kill, ports, clean, scratchpad yet |
+| Keyboard shortcuts for every section | ✅ | 🟡 | ⬜ | Mac: ⌥Space for the Command Bar (Carbon hot key); the sections not yet |
 | Two-finger pull makes lists taller | ✅ | ⬜ | ⬜ | |
 | Appearance: size, corner radius, colour, opacity | ✅ | ⬜ | ⬜ | |
 

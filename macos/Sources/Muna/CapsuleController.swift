@@ -75,7 +75,10 @@ struct CapsuleGeometry: Equatable {
 
 /// The sections of the open capsule, as on Linux.
 enum PanelTab: String, CaseIterable, Identifiable {
-    case muna, tray, localSend, clipboard, alerts
+    case muna, tray, localSend, clipboard, alerts, command
+
+    /// The tabs on top (the Command Bar has none: the capsule becomes its field).
+    static let visible: [PanelTab] = [.muna, .tray, .localSend, .clipboard, .alerts]
 
     var id: String { rawValue }
 
@@ -86,6 +89,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .localSend: return "LocalSend"
         case .clipboard: return "Clipboard"
         case .alerts: return "Alerts"
+        case .command: return "Command Bar"
         }
     }
 
@@ -97,6 +101,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .localSend: return "wifi"
         case .clipboard: return "doc.on.clipboard"
         case .alerts: return "bell"
+        case .command: return "magnifyingglass"
         }
     }
 
@@ -106,6 +111,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .muna, .tray: return PanelLayout.rowHeight
         case .localSend: return 138
         case .clipboard, .alerts: return 236
+        case .command: return 250
         }
     }
 }
@@ -153,6 +159,8 @@ final class CapsuleModel: ObservableObject {
     var onSettings: () -> Void = {}
 
     static let headerHeight: CGFloat = 36
+    /// The Command Bar has no tabs on top.
+    var headerHeight: CGFloat { tab == .command ? 8 : Self.headerHeight }
     static let bottomPadding: CGFloat = 12
     static let cardHeight: CGFloat = 34
 
@@ -186,7 +194,7 @@ final class CapsuleModel: ObservableObject {
 
     var openSize: CGSize {
         CGSize(width: layout.width,
-               height: geometry.topInset + Self.headerHeight + tab.bodyHeight + Self.bottomPadding)
+               height: geometry.topInset + headerHeight + tab.bodyHeight + Self.bottomPadding)
     }
 
     var size: CGSize { isOpen ? openSize : closedSize }
@@ -235,6 +243,7 @@ final class CapsuleController {
             .environmentObject(app.timer)
             .environmentObject(app.alerts)
             .environmentObject(app.camera)
+            .environmentObject(app.command)
         let host = NSHostingView(rootView: root)
         host.translatesAutoresizingMaskIntoConstraints = false
         tracking.addSubview(host)
@@ -283,6 +292,7 @@ final class CapsuleController {
         app.timer.onFinished = { [weak self] in
             self?.tell("Time is up", "The timer ended", symbol: "timer", ok: true)
         }
+        app.command.onDone = { [weak self] in self?.close() }
         model.onTap = { [weak self] in
             guard let self else { return }
             self.open(on: self.model.tab)
@@ -321,6 +331,17 @@ final class CapsuleController {
         pinTimer = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 8, execute: work)
         openNow()
+    }
+
+    /// The Command Bar: the capsule becomes one big field with the keyboard in it.
+    func openCommand() {
+        if model.isOpen && model.tab == .command {
+            close()
+            return
+        }
+        app.command.reset()
+        open(on: .command)
+        panel.makeKey()
     }
 
     /// Something happened: a card in the closed capsule, and a line in the Alerts section.
@@ -457,9 +478,11 @@ final class CapsuleController {
         }
         withAnimation(CapsuleMetrics.animation) { model.isOpen = false }
         app.panelClosed()
-        // the window shrinks when the drawing has
+        // the window shrinks when the drawing has; the Command Bar is not where the next opening goes
         DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.animationTime) { [weak self] in
-            self?.placeClosed()
+            guard let self else { return }
+            if !self.model.isOpen && self.model.tab == .command { self.model.tab = .muna }
+            self.placeClosed()
         }
     }
 }

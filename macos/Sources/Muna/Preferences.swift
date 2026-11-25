@@ -45,6 +45,9 @@ final class Preferences: ObservableObject {
     /// Music, a timer ... take the sides of the closed capsule while they run.
     @Published var activitiesInCollapsed: Bool { didSet { defaults.set(activitiesInCollapsed, forKey: "activities-in-collapsed") } }
 
+    /// ⌥Space opens the Command Bar.
+    @Published var commandHotKey: Bool { didSet { defaults.set(commandHotKey, forKey: "command-hotkey") } }
+
     // the Muna page
     @Published var enabledWidgets: [String] { didSet { defaults.set(enabledWidgets, forKey: "enabled-widgets") } }
     @Published var widgetCells: [String: Int] { didSet { defaults.set(widgetCells, forKey: "widget-cells") } }
@@ -70,6 +73,7 @@ final class Preferences: ObservableObject {
         closeDelay = double("close-delay", 0.3)
         capsuleButterfly = bool("capsule-butterfly", true)
         activitiesInCollapsed = bool("activities-in-collapsed", true)
+        commandHotKey = bool("command-hotkey", true)
         let known = Set(WidgetCatalog.all.map(\.id))
         enabledWidgets = (defaults.stringArray(forKey: "enabled-widgets") ?? WidgetCatalog.defaultEnabled).filter { known.contains($0) }
         widgetCells = (defaults.dictionary(forKey: "widget-cells") as? [String: Int]) ?? [:]

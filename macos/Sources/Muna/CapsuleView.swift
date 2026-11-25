@@ -241,8 +241,32 @@ struct OpenPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if model.tab == .command {
+                Spacer().frame(height: model.headerHeight)
+            } else {
+                header
+            }
+            Group {
+                switch model.tab {
+                case .muna: MunaPage()
+                case .tray: TrayPage()
+                case .localSend: LocalSendPage()
+                case .clipboard: ClipboardPage()
+                case .alerts: AlertsPage()
+                case .command: CommandView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .padding(.top, model.geometry.topInset)
+        .padding(.horizontal, PanelLayout.padding + 4)
+        .padding(.bottom, CapsuleModel.bottomPadding)
+        .foregroundColor(MunaColor.text)
+    }
+
+    private var header: some View {
             HStack(spacing: 4) {
-                ForEach(PanelTab.allCases) { tab in
+                ForEach(PanelTab.visible) { tab in
                     TabButton(tab: tab, selected: model.tab == tab) {
                         withAnimation(.easeOut(duration: 0.15)) { model.tab = tab }
                     }
@@ -273,21 +297,6 @@ struct OpenPanel: View {
             .frame(height: 24)
             .padding(.top, 6)
             .padding(.bottom, 6)
-            Group {
-                switch model.tab {
-                case .muna: MunaPage()
-                case .tray: TrayPage()
-                case .localSend: LocalSendPage()
-                case .clipboard: ClipboardPage()
-                case .alerts: AlertsPage()
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .padding(.top, model.geometry.topInset)
-        .padding(.horizontal, PanelLayout.padding + 4)
-        .padding(.bottom, CapsuleModel.bottomPadding)
-        .foregroundColor(MunaColor.text)
     }
 }
 

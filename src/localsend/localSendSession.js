@@ -212,29 +212,32 @@ export class LocalSendSession extends Signals.EventEmitter {
 
     // --- sending -------------------------------------------------------------
 
-    /** Sends the basket to every chosen device at once. */
+    /**
+     * Sends the basket to every chosen device at once.
+     * @returns {Promise<void>} resolves when every transfer has ended (the summary is there)
+     */
     send() {
         const devices = this.selectedDevices;
         if (this.busy || devices.length === 0 || this.basket.length === 0)
-            return;
+            return Promise.resolve();
         const group = this.activeGroup;
         this._uris = [...this.basket];
-        this._start(devices, group ? this.groupPresence(group).missing : []);
+        return this._start(devices, group ? this.groupPresence(group).missing : []);
     }
 
-    /** Sends the basket to this one device. */
+    /** Sends the basket to this one device. @returns {Promise<void>} as send() */
     sendTo(device) {
         if (this.busy)
-            return;
+            return Promise.resolve();
         this.selected = new Set([deviceKey(device)]);
         this.activeGroupId = null;
-        this.send();
+        return this.send();
     }
 
     /** After a sending: tries again for those that did not get the files (those not found are looked for again). */
     retryFailed() {
         if (this.busy || this.phase !== 'done')
-            return;
+            return Promise.resolve();
         const failed = this.transfers.filter(t => t.phase === 'failed').map(t => t.device);
         const missing = this.transfers.filter(t => t.phase === 'missing').map(t => t.device);
         // a member that was not found may be on the network now
@@ -242,8 +245,8 @@ export class LocalSendSession extends Signals.EventEmitter {
         const stillMissing = missing.filter(member => !this.devices.some(d => isMember(d, member)));
         const keep = this.transfers.filter(t => t.phase === 'done');
         if (failed.length + nowFound.length === 0)
-            return;
-        this._start([...failed, ...nowFound], stillMissing, keep);
+            return Promise.resolve();
+        return this._start([...failed, ...nowFound], stillMissing, keep);
     }
 
     _start(devices, missing, keep = []) {
@@ -263,7 +266,7 @@ export class LocalSendSession extends Signals.EventEmitter {
         ];
         this.emit('changed');
         const runs = this.transfers.filter(t => t.phase === 'waiting').map(t => this._run(t));
-        Promise.all(runs).then(() => this._finish());
+        return Promise.all(runs).then(() => this._finish());
     }
 
     async _run(transfer) {

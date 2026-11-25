@@ -49,15 +49,15 @@ Change this table together with the code.
 |---|---|---|---|---|
 | Top-bar readings (CPU, temperature, memory, network …) | ✅ | 🟡 | ⬜ | Mac: CPU and memory next to Muna's menu-bar item (setting); no temperature (macOS hides the sensors) |
 | System, Network, Disks, Power, Sound widgets | ✅ | ✅ | ⬜ | Mac quick panel: processor and memory with graphs, disk, battery, uptime, network; sound (volume, mute, output, microphone) |
-| Displays (brightness, arrangement) | ✅ | ⬜ | ⬜ | |
+| Displays (brightness, arrangement) | ✅ | ✅ | ⬜ | Mac: built-in screen's own brightness, other screens dimmed by Muna, the arrangement drawn; no Night Shift switch |
 | Keep awake | ✅ | ✅ | ⬜ | Mac: IOPMAssertion, for a while or until off, screen on or not (no "lid closed": needs admin rights) |
 | Quick toggles, Utilities, Controls | ✅ | 🟡 | ⬜ | Mac: dark mode, screenshot, colour picker, empty trash, screen off, eject disks |
 | Focus (Pomodoro, stopwatch) | ✅ | ✅ | ⬜ | same focus.json |
 | Downloads | ✅ | ✅ | ⬜ | |
 | Windows (snapping), Desktops | ✅ | 🟡 | ⬜ | Mac: halves, quarters, thirds, maximize, centre, next screen (Accessibility permission); desktops are macOS's own Spaces |
 | Reminders (the butterfly) | ✅ | ✅ | ⬜ | a card in the capsule and a sound |
-| AI agents (Claude Code, Codex) | ✅ | 🟡 | ⬜ | Mac: Claude Code tasks, questions in the capsule, agents window, plan limits; not yet: Codex, sessions run in a terminal |
-| Radial menu, colour picker, cleaning mode, scratchpad | ✅ | 🟡 | ⬜ | Mac: colour picker, cleaning mode, scratchpad; no radial menu yet |
+| AI agents (Claude Code, Codex) | ✅ | 🟡 | ⬜ | Mac: Claude Code tasks, questions in the capsule, agents window, plan limits, Claude Code and Codex sessions in terminals; not yet: starting Codex, token counts of the logs |
+| Radial menu, colour picker, cleaning mode, scratchpad | ✅ | ✅ | ⬜ | Mac: radial menu on ⌃⌥Space |
 
 ## The system
 

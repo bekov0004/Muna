@@ -28,6 +28,7 @@ final class AppState {
     let companion = CompanionModel()
     let scratchpad = ScratchpadModel()
     let windows = WindowsModel()
+    let displays = DisplaysModel()
 
     func start() {
         nowPlaying.start()
@@ -65,6 +66,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private var statusItem: NSStatusItem?
     private var commandKey: HotKey?
     private var sectionKeys: [HotKey] = []
+    private var radialKey: HotKey?
+    private var radial: RadialMenu?
     private var keyObserver: Any?
     private let menu = NSMenu()
     private let popover = NSPopover()
@@ -102,10 +105,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         keyObserver = Preferences.shared.$commandHotKey.dropFirst().removeDuplicates().sink { [weak self] on in
             self?.setCommandKey(on)
         }
+        setUpRadial()
         setSectionKeys(Preferences.shared.sectionHotKeys)
         Preferences.shared.$sectionHotKeys.dropFirst().removeDuplicates().sink { [weak self] on in
             self?.setSectionKeys(on)
         }.store(in: &readingsObservers)
+    }
+
+    /// ⌃⌥Space: a ring of actions around the pointer.
+    private func setUpRadial() {
+        radial = RadialMenu { [weak self] in
+            guard let self else { return [] }
+            return [
+                RadialAction(id: "shot", symbol: "camera.viewfinder", label: "Screenshot") { QuickTools.screenshot() },
+                RadialAction(id: "colour", symbol: "eyedropper", label: "Colour") { QuickTools.pickColor { _ in } },
+                RadialAction(id: "command", symbol: "magnifyingglass", label: "Command") { self.capsules?.openCommand() },
+                RadialAction(id: "scratch", symbol: "note.text", label: "Scratchpad") { self.scratchpadWindow?.show() },
+                RadialAction(id: "dark", symbol: "circle.lefthalf.filled", label: "Dark mode") { QuickTools.toggleDarkMode() },
+                RadialAction(id: "awake", symbol: self.app.awake.isOn ? "cup.and.saucer.fill" : "cup.and.saucer",
+                             label: self.app.awake.isOn ? "Sleep" : "Awake 1 h") {
+                    if self.app.awake.isOn { self.app.awake.stop() } else { self.app.awake.start(minutes: 60) }
+                },
+                RadialAction(id: "screen", symbol: "display", label: "Screen off") { QuickTools.displaySleep() },
+                RadialAction(id: "clip", symbol: "doc.on.clipboard", label: "Clipboard") { self.capsules?.open(on: .clipboard) },
+            ]
+        }
+        let apply: (Bool) -> Void = { [weak self] on in
+            self?.radialKey = on
+                ? HotKey(keyCode: UInt32(kVK_Space), modifiers: UInt32(controlKey | optionKey), id: 2) { [weak self] in self?.radial?.toggle() }
+                : nil
+        }
+        apply(Preferences.shared.radialHotKey)
+        Preferences.shared.$radialHotKey.dropFirst().removeDuplicates().sink { on in apply(on) }.store(in: &readingsObservers)
     }
 
     /// ⌃⌥1 … ⌃⌥5: the sections, in the order of the tabs.
@@ -140,6 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         app.awake.stop()
         app.agents.stopAll()
         app.scratchpad.save()
+        app.displays.restore()
         CleaningMode.shared.stop()
         app.localSend.shutdown()
     }
@@ -184,6 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         .environmentObject(app.sound)
         .environmentObject(app.agents)
         .environmentObject(app.windows)
+        .environmentObject(app.displays)
         popover.contentViewController = NSHostingController(rootView: panel)
         popover.behavior = .transient
         popover.appearance = NSAppearance(named: .darkAqua)

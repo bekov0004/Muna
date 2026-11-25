@@ -266,6 +266,9 @@ struct GeneralSettings: View {
             SettingsToggle(title: "Command Bar: ⌥Space",
                            detail: "Option and Space open the Command Bar from any app: start apps, calculate, convert units, find what you copied, search the web.",
                            isOn: $preferences.commandHotKey)
+            SettingsToggle(title: "Radial menu: ⌃⌥Space",
+                           detail: "A ring of actions around the pointer: screenshot, colour, Command Bar, scratchpad, dark mode, keep awake, screen off, clipboard.",
+                           isOn: $preferences.radialHotKey)
             SettingsToggle(title: "Sections: ⌃⌥1 to ⌃⌥5",
                            detail: "Control, Option and a number open Muna, Tray, LocalSend, Clipboard and Alerts.",
                            isOn: $preferences.sectionHotKeys)

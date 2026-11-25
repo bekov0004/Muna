@@ -32,6 +32,29 @@ final class AgentsModel: ObservableObject {
     let claudePath = ClaudeTask.findClaude()
     private var counter = 0
 
+    /// Claude Code and Codex sessions running in a terminal (from their logs), looked at while shown.
+    @Published private(set) var sessions: [AgentSession] = []
+    private var sessionTimer: Timer?
+
+    func watchSessions() {
+        scanSessions()
+        sessionTimer?.invalidate()
+        sessionTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in self?.scanSessions() }
+    }
+
+    func unwatchSessions() {
+        sessionTimer?.invalidate()
+        sessionTimer = nil
+    }
+
+    private func scanSessions() {
+        let ours = Set(tasks.map(\.sessionId).filter { !$0.isEmpty })
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let found = AgentSessions.scan(except: ours)
+            DispatchQueue.main.async { self?.sessions = found }
+        }
+    }
+
     var selected: ClaudeTask? { tasks.first { $0.id == selectedId } ?? tasks.first }
 
     /// The first question waiting for an answer.
@@ -210,8 +233,28 @@ struct AgentsPage: View {
                     openWindow()
                 }
             }
+            let recent = agents.sessions.filter { $0.working }.prefix(4) + agents.sessions.filter { !$0.working }.prefix(2)
+            if !recent.isEmpty {
+                QuickBlock {
+                    Text("IN TERMINALS").font(.system(size: 10, weight: .heavy)).foregroundColor(MunaColor.caption)
+                    ForEach(Array(recent.enumerated()), id: \.offset) { _, session in
+                        HStack(spacing: 8) {
+                            Circle().fill(session.working ? MunaColor.ok : Color.white.opacity(0.25)).frame(width: 7, height: 7)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("\(session.project) · \(session.agent)").font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                                Text(session.working ? "Working now" : "Last active \(session.modified.formatted(date: .omitted, time: .shortened))")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(MunaColor.secondary)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+            }
             LimitsBlock()
         }
+        .onAppear { agents.watchSessions() }
+        .onDisappear { agents.unwatchSessions() }
     }
 }
 

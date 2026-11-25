@@ -224,6 +224,11 @@ struct GeneralSettings: View {
                            detail: "The music, the timer and sendings take the sides of the closed capsule while they run.",
                            isOn: $preferences.activitiesInCollapsed)
         }
+        SettingsCard("Menu bar") {
+            SettingsToggle(title: "Readings next to Muna's item",
+                           detail: "The processor and the memory, written in the menu bar (Muna's item opens the quick panel; a right click, its menu).",
+                           isOn: $preferences.menuBarReadings)
+        }
         SettingsCard("Shortcuts") {
             SettingsToggle(title: "Command Bar: ⌥Space",
                            detail: "Option and Space open the Command Bar from any app: start apps, calculate, convert units, find what you copied, search the web.",

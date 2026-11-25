@@ -48,6 +48,9 @@ final class Preferences: ObservableObject {
     /// ⌥Space opens the Command Bar.
     @Published var commandHotKey: Bool { didSet { defaults.set(commandHotKey, forKey: "command-hotkey") } }
 
+    /// The processor and the memory written next to Muna's item in the menu bar.
+    @Published var menuBarReadings: Bool { didSet { defaults.set(menuBarReadings, forKey: "menu-bar-readings") } }
+
     // the Muna page
     @Published var enabledWidgets: [String] { didSet { defaults.set(enabledWidgets, forKey: "enabled-widgets") } }
     @Published var widgetCells: [String: Int] { didSet { defaults.set(widgetCells, forKey: "widget-cells") } }
@@ -74,6 +77,7 @@ final class Preferences: ObservableObject {
         capsuleButterfly = bool("capsule-butterfly", true)
         activitiesInCollapsed = bool("activities-in-collapsed", true)
         commandHotKey = bool("command-hotkey", true)
+        menuBarReadings = bool("menu-bar-readings", false)
         let known = Set(WidgetCatalog.all.map(\.id))
         enabledWidgets = (defaults.stringArray(forKey: "enabled-widgets") ?? WidgetCatalog.defaultEnabled).filter { known.contains($0) }
         widgetCells = (defaults.dictionary(forKey: "widget-cells") as? [String: Int]) ?? [:]

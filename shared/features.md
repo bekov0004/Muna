@@ -47,11 +47,11 @@ Change this table together with the code.
 
 | Feature | Linux | macOS | Windows | Note |
 |---|---|---|---|---|
-| Top-bar readings (CPU, temperature, memory, network …) | ✅ | ⬜ | ⬜ | |
-| System, Network, Disks, Power, Sound widgets | ✅ | ⬜ | ⬜ | |
+| Top-bar readings (CPU, temperature, memory, network …) | ✅ | 🟡 | ⬜ | Mac: CPU and memory next to Muna's menu-bar item (setting); no temperature (macOS hides the sensors) |
+| System, Network, Disks, Power, Sound widgets | ✅ | 🟡 | ⬜ | Mac quick panel: processor and memory with graphs, disk, battery, uptime, network speed and traffic; no Sound yet |
 | Displays (brightness, arrangement) | ✅ | ⬜ | ⬜ | |
-| Keep awake | ✅ | ⬜ | ⬜ | Mac: IOPMAssertion |
-| Quick toggles, Utilities, Controls | ✅ | ⬜ | ⬜ | |
+| Keep awake | ✅ | ✅ | ⬜ | Mac: IOPMAssertion, for a while or until off, screen on or not (no "lid closed": needs admin rights) |
+| Quick toggles, Utilities, Controls | ✅ | 🟡 | ⬜ | Mac: dark mode, screenshot, colour picker, empty trash, screen off, eject disks |
 | Focus (Pomodoro, stopwatch) | ✅ | ⬜ | ⬜ | |
 | Downloads | ✅ | ⬜ | ⬜ | |
 | Windows (snapping), Desktops | ✅ | ⬜ | ⬜ | Mac: Accessibility permission |

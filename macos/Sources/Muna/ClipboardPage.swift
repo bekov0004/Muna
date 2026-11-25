@@ -4,11 +4,10 @@ import SwiftUI
 /// The clipboard history: a click copies an item again (then Cmd+V pastes it); pinned items stay.
 struct ClipboardPage: View {
     @EnvironmentObject var clipboard: ClipboardModel
-    @State private var query = ""
-    @State private var copied: String?
+    @EnvironmentObject var ui: PanelState
 
     private var shown: [ClipItem] {
-        let words = query.lowercased().split(separator: " ").map(String.init)
+        let words = ui.clipboardQuery.lowercased().split(separator: " ").map(String.init)
         guard !words.isEmpty else { return clipboard.items }
         return clipboard.items.filter { item in
             let text = item.searchText.lowercased()
@@ -19,7 +18,7 @@ struct ClipboardPage: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                CapsuleField(placeholder: "Search what you copied", text: $query) {}
+                CapsuleField(placeholder: "Search what you copied", text: $ui.clipboardQuery) {}
                 if clipboard.items.contains(where: { !$0.saved }) {
                     Pill(label: "Clear") { clipboard.clear() }
                 }
@@ -33,11 +32,11 @@ struct ClipboardPage: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 4) {
                         ForEach(shown) { item in
-                            ClipRow(item: item, copied: copied == item.id) {
+                            ClipRow(item: item, copied: ui.copiedClip == item.id) {
                                 clipboard.copy(item)
-                                copied = item.id
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                                    if copied == item.id { copied = nil }
+                                ui.copiedClip = item.id
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [ui] in
+                                    if ui.copiedClip == item.id { ui.copiedClip = nil }
                                 }
                             }
                         }

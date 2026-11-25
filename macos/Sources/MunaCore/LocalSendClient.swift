@@ -7,20 +7,20 @@ import UniformTypeIdentifiers
 #endif
 
 /// How far a sending got: 'waiting' until the receiver accepts, then 'sending'.
-public struct SendProgress: Equatable {
+public struct SendProgress: Equatable, Sendable {
     public var phase: String
     public var sent: Int64
     public var total: Int64
     public var skipped: Int
 }
 
-public struct SendResult: Equatable {
+public struct SendResult: Equatable, Sendable {
     public var count: Int
     public var skipped: Int
 }
 
 /// A short, readable reason a sending failed.
-public struct SendError: Error, Equatable, CustomStringConvertible {
+public struct SendError: Error, Equatable, CustomStringConvertible, Sendable {
     public let message: String
     public init(_ message: String) { self.message = message }
     public var description: String { message }

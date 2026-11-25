@@ -18,7 +18,7 @@ public struct Transfer: Identifiable, Equatable {
 /// The LocalSend section's logic, like Muna on Linux (linux/src/localsend/localSendSession.js): the
 /// devices found, the files waiting (the basket), which devices are chosen, the groups, and the
 /// transfers, one per chosen device, all at once. Call it on `queue`; `onChange` comes on it too.
-public final class SendSession {
+public final class SendSession: @unchecked Sendable {   // its state is only touched on `queue`
     public enum Phase: String { case scan, pick, sending, done }
 
     public let queue: DispatchQueue

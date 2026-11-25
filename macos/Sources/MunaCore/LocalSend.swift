@@ -38,7 +38,7 @@ public struct DeviceInfo: Codable, Equatable {
 }
 
 /// A device found on the network.
-public struct Device: Codable, Hashable, Identifiable {
+public struct Device: Codable, Hashable, Identifiable, Sendable {
     public var ip: String
     public var port: Int
     public var `protocol`: String

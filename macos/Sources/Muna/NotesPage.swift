@@ -14,13 +14,13 @@ struct NotesPage: View {
 
 struct NotesColumn: View {
     @EnvironmentObject var notes: NotesModel
-    @State private var draft = ""
+    @EnvironmentObject var ui: PanelState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Caption(notes.notes.isEmpty ? "Notes" : "Notes · \(notes.notes.count)")
-            CapsuleField(placeholder: "Write a note, Enter saves it", text: $draft) {
-                if notes.add(draft) { draft = "" }
+            CapsuleField(placeholder: "Write a note, Enter saves it", text: $ui.noteDraft) {
+                if notes.add(ui.noteDraft) { ui.noteDraft = "" }
             }
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 4) {
@@ -52,7 +52,7 @@ struct NotesColumn: View {
 
 struct TodoColumn: View {
     @EnvironmentObject var todo: TodoModel
-    @State private var draft = ""
+    @EnvironmentObject var ui: PanelState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -61,8 +61,8 @@ struct TodoColumn: View {
                     Pill(label: "Clear done") { todo.clearDone() }
                 }
             }
-            CapsuleField(placeholder: "Add a to-do", text: $draft) {
-                if todo.add(draft) { draft = "" }
+            CapsuleField(placeholder: "Add a to-do", text: $ui.todoDraft) {
+                if todo.add(ui.todoDraft) { ui.todoDraft = "" }
             }
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 4) {

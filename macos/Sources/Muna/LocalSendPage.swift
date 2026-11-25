@@ -167,10 +167,7 @@ struct BasketSection: View {
 
 struct DevicesSection: View {
     @EnvironmentObject var localSend: LocalSendController
-    @State private var naming = false
-    @State private var groupName = ""
-    @State private var nameError = ""
-    @State private var confirmDelete: String?
+    @EnvironmentObject var ui: PanelState
 
     private var session: SendSession { localSend.session }
 
@@ -178,7 +175,7 @@ struct DevicesSection: View {
         VStack(alignment: .leading, spacing: 6) {
             if session.phase == .sending || session.phase == .done {
                 transfers
-            } else if naming {
+            } else if ui.namingGroup {
                 namingRow
             } else {
                 caption
@@ -196,19 +193,19 @@ struct DevicesSection: View {
             Caption(group.map { "\($0.name) · \(chosen) of \($0.members.count) here" } ?? "Send to · \(chosen) chosen") {
                 Pill(label: "Clear") { session.clearSelection() }
                 if let group {
-                    Pill(label: confirmDelete == group.id ? "Delete it?" : "Delete group", active: confirmDelete == group.id) {
-                        if confirmDelete == group.id {
-                            confirmDelete = nil
+                    Pill(label: ui.confirmDeleteGroup == group.id ? "Delete it?" : "Delete group", active: ui.confirmDeleteGroup == group.id) {
+                        if ui.confirmDeleteGroup == group.id {
+                            ui.confirmDeleteGroup = nil
                             session.deleteGroup(group.id)
                         } else {
-                            confirmDelete = group.id
+                            ui.confirmDeleteGroup = group.id
                         }
                     }
                 } else {
                     Pill(label: "Save as group") {
-                        groupName = ""
-                        nameError = ""
-                        naming = true
+                        ui.groupName = ""
+                        ui.groupNameError = ""
+                        ui.namingGroup = true
                     }
                 }
                 Pill(label: session.basket.isEmpty ? "Add files to send" : "Send to \(chosen)", accent: !session.basket.isEmpty,
@@ -246,7 +243,7 @@ struct DevicesSection: View {
                         let active = session.activeGroupId == group.id
                         Tile(symbol: active ? "checkmark" : "person.3.fill", name: group.name,
                              detail: "\(here) of \(group.members.count) here", selected: active, dashed: true) {
-                            confirmDelete = nil
+                            ui.confirmDeleteGroup = nil
                             session.selectGroup(group)
                         }
                     }
@@ -255,7 +252,7 @@ struct DevicesSection: View {
                         Tile(symbol: selected ? "checkmark" : Self.symbol(for: device), name: device.alias,
                              detail: device.deviceModel.isEmpty ? "LocalSend" : device.deviceModel,
                              selected: selected, muna: device.isMuna) {
-                            confirmDelete = nil
+                            ui.confirmDeleteGroup = nil
                             session.toggle(device)
                         }
                     }
@@ -279,27 +276,27 @@ struct DevicesSection: View {
     @ViewBuilder private var namingRow: some View {
         let names = session.selectedDevices.map(\.alias)
         Caption("New group · \(names.count) device\(names.count == 1 ? "" : "s")") {
-            Pill(label: "Cancel") { naming = false }
+            Pill(label: "Cancel") { ui.namingGroup = false }
             Pill(label: "Save", accent: true) { saveGroup() }
         }
-        CapsuleField(placeholder: "Name, for example: Office", text: $groupName) { saveGroup() }
+        CapsuleField(placeholder: "Name, for example: Office", text: $ui.groupName) { saveGroup() }
         Text(names.joined(separator: ", ")).font(.system(size: 11)).foregroundColor(MunaColor.secondary).lineLimit(1)
-        if !nameError.isEmpty {
-            Text(nameError).font(.system(size: 11)).foregroundColor(MunaColor.warning)
+        if !ui.groupNameError.isEmpty {
+            Text(ui.groupNameError).font(.system(size: 11)).foregroundColor(MunaColor.warning)
         }
     }
 
     private func saveGroup() {
-        let name = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = ui.groupName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
-            nameError = "Write a name first"
+            ui.groupNameError = "Write a name first"
             return
         }
         do {
             try session.saveGroup(named: name)
-            naming = false
+            ui.namingGroup = false
         } catch {
-            nameError = "\(error)"
+            ui.groupNameError = "\(error)"
         }
     }
 

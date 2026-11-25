@@ -47,7 +47,9 @@ struct TrayPage: View {
 struct TrayItem: View {
     let url: URL
     @EnvironmentObject var tray: TrayModel
-    @State private var hover = false
+    @EnvironmentObject var ui: PanelState
+
+    private var hover: Bool { ui.hoveredTrayFile == url }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -65,7 +67,13 @@ struct TrayItem: View {
                 .padding(5)
                 .opacity(hover ? 1 : 0.55)
         }
-        .onHover { hover = $0 }
+        .onHover { inside in
+            if inside {
+                ui.hoveredTrayFile = url
+            } else if ui.hoveredTrayFile == url {
+                ui.hoveredTrayFile = nil
+            }
+        }
         .onTapGesture { NSWorkspace.shared.open(url) }
         .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
         .help(url.path)

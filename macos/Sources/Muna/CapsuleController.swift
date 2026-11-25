@@ -85,6 +85,21 @@ enum PanelTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// What the pages remember while the panel is open: drafts, the search, the group being named ...
+/// (kept here, not in @State: with the command line tools alone, newer SDKs cannot build @State,
+/// which became a macro whose plugin only comes with Xcode).
+final class PanelState: ObservableObject {
+    @Published var noteDraft = ""
+    @Published var todoDraft = ""
+    @Published var clipboardQuery = ""
+    @Published var copiedClip: String?
+    @Published var namingGroup = false
+    @Published var groupName = ""
+    @Published var groupNameError = ""
+    @Published var confirmDeleteGroup: String?
+    @Published var hoveredTrayFile: URL?
+}
+
 /// A short message the closed capsule shows for a few seconds.
 struct CapsuleCard: Equatable {
     var title: String
@@ -154,6 +169,7 @@ final class CapsuleController {
         let tracking = HoverView { [weak self] inside in self?.pointer(inside: inside) }
         let root = CapsuleView()
             .environmentObject(model)
+            .environmentObject(PanelState())
             .environmentObject(app.nowPlaying)
             .environmentObject(app.notes)
             .environmentObject(app.todo)

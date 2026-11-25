@@ -1,19 +1,23 @@
 # Muna for macOS
 
-The capsule of Muna on a Mac: it sits under the camera notch (on a Mac without one, in the middle of
-the menu bar) and opens into a panel when the pointer comes to it.
+The capsule of Muna on a Mac, drawn like Muna for GNOME: closed it is the date · the butterfly ·
+the time (on a Mac with a notch, the date and the time beside it), and it opens under the pointer
+or a click into the same panel as on Linux.
 
-| Page | What it does |
+| Part | What it does |
 |---|---|
-| **Muna** | The time and date; the music of Music and Spotify (cover, progress, play/pause, next, previous); today's and tomorrow's events; the open to-dos |
-| **Tray** | Files dropped on the capsule wait here: drag them out somewhere else, open them, or send them with LocalSend |
+| **Muna** | A row of widgets, each some cells wide, on pages when they do not fit: media player (Music, Spotify), calendar, mirror (camera), timer, to-do, notes, shortcuts (apps) |
+| **Tray** | Files dropped on the capsule wait here: drag them out, open them, send them with LocalSend |
 | **LocalSend** | Send files to several devices at once or to a saved group (Muna on Linux and Mac, the LocalSend apps); receive files (you accept each sending) |
 | **Clipboard** | What you copied (text and files), with search; a click copies it again; pinned items stay |
-| **Notes** | Quick notes and the to-do list |
+| **Alerts** | What Muna told you lately (macOS lets no app read other apps' notifications) |
+| **Command Bar** (⌥Space) | Start apps, calculate, convert units, find what you copied, search the web |
+| **Quick panel** (Muna's menu-bar item) | Processor, memory, disk, battery, network with graphs; keep awake; dark mode, screenshot, colour picker, empty trash, screen off, eject |
+| **Settings** (the gear) | How the capsule opens and closes, the widgets and their order and width, LocalSend, clipboard, tray, open at login |
 
-While music plays, the closed capsule shows the cover and moving bars beside the notch; when a sending
-ends while it is closed, a short card says how it went. The menu-bar item opens any page and holds
-the settings: receiving files, keeping the clipboard history and the Tray, opening at login.
+While something runs, it takes the sides of the closed capsule (a sending, the timer, the music);
+when something ends while the capsule is closed, a short card says it and the Alerts section keeps it.
+[`../shared/features.md`](../shared/features.md) lists every feature of Linux and where the Mac stands.
 
 The data files are the same as Muna on Linux ([`../shared/formats`](../shared/formats)), so notes,
 to-dos, clipboard and groups can be copied between them.
@@ -40,6 +44,8 @@ will refuse to open it.
 - *Automation* for Music / Spotify: to show and steer the music. macOS gives other apps no common
   "now playing" any more, so music in a browser does not show.
 - *Calendars*: when you click "Show my calendar".
+- *Camera*: the first time the Mirror widget is shown.
+- *Automation* for System Events and Finder: the dark-mode and empty-trash tools.
 - *Local Network*: to find the other devices and to receive files (LocalSend). Receiving is off until
   you switch it on (menu-bar item → Receive files, or "Receiving" on the LocalSend page).
 

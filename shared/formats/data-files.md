@@ -70,3 +70,44 @@ the others only when the user keeps the history, up to their chosen count. `note
 a group with an existing name replaces it). At most 50 groups, 200 members each. A member is kept
 by who it is, not where it is (no address). How members are matched: see
 [`../protocols/localsend.md`](../protocols/localsend.md#groups).
+
+## reminders.json
+
+```json
+{"version": 1, "reminders": [
+  {"id": 1, "text": "Call mum", "at": 1764060000000, "done": false}
+]}
+```
+
+`at`: when the reminder is shown (ms since 1970): the chosen time today, or tomorrow if it has
+passed. A reminder is removed once shown; one whose time passed while Muna was closed is shown
+at the next start. A broken entry is skipped.
+
+## focus.json
+
+```json
+{"version": 1,
+ "stopwatch": {"state": "running", "since": 1764060000000, "elapsed": 12000, "laps": [5000, 9000]},
+ "pomo": {"state": "running", "phase": "work", "endAt": 1764061500000, "remaining": 1500000,
+          "round": 1, "done": 0, "config": {"work": 25, "short": 5, "long": 15, "every": 4}}}
+```
+
+`state`: `idle`, `running` or `paused`. Stopwatch: `since` is when it last started (ms since
+1970), `elapsed` the ms before that, `laps` the totals at each lap (at most 50). Focus timer:
+`phase` is `work`, `break` or `long`; `endAt` (ms since 1970) counts while running, `remaining`
+(ms) while paused or idle; `done`: work phases finished; a long break comes after every `every`
+of them. Minutes are kept within work 1–180, short 1–60, long 1–120, every 2–10. A timer that
+ran out while Muna was closed starts again idle.
+
+## snippets.json
+
+```json
+{"version": 1, "snippets": [
+  {"trigger": ";mail", "text": "me@example.com"},
+  {"trigger": ";today", "text": "Written on {date} at {time}"}
+]}
+```
+
+Newest first, at most 200. `trigger`: what is typed in the command bar, unique (saving one with an
+existing trigger replaces it). `text`: at most 5000 characters; when pasted, `{date}` (2026-11-25),
+`{time}` (14:05) and `{datetime}` (both) become the local date and time.

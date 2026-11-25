@@ -129,7 +129,15 @@ final class ClipboardModel: ObservableObject {
            !urls.isEmpty {
             history.add(files: urls)
         } else if let text = pasteboard.string(forType: .string) {
-            history.add(text: text)
+            var kept = text
+            // a copied link loses its tracking parameters (as on Linux, when chosen)
+            if Preferences.shared.clipboardCleanUrls, let clean = LinkCleaner.clean(text) {
+                pasteboard.clearContents()
+                pasteboard.setString(clean, forType: .string)
+                changeCount = pasteboard.changeCount
+                kept = clean
+            }
+            history.add(text: kept)
         } else {
             return
         }
@@ -168,6 +176,34 @@ final class ClipboardModel: ObservableObject {
     func clear() {
         history.clear()
         items = history.items
+    }
+}
+
+/// The text snippets (MunaCore's SnippetsStore): ";trigger" in the Command Bar.
+final class SnippetsModel: ObservableObject {
+    private let store = SnippetsStore()
+    @Published private(set) var snippets: [Snippet] = []
+    @Published var draftTrigger = ""
+    @Published var draftText = ""
+    @Published var error = ""
+
+    init() { snippets = store.snippets }
+
+    func addDraft() {
+        do {
+            try store.add(trigger: draftTrigger, text: draftText)
+            draftTrigger = ""
+            draftText = ""
+            error = ""
+        } catch {
+            self.error = "A snippet needs a trigger and a text"
+        }
+        snippets = store.snippets
+    }
+
+    func remove(_ snippet: Snippet) {
+        try? store.remove(trigger: snippet.trigger)
+        snippets = store.snippets
     }
 }
 

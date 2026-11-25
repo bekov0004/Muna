@@ -29,14 +29,16 @@ final class CommandModel: ObservableObject {
     var onDone: () -> Void = {}
 
     private let clipboard: ClipboardModel
+    private let snippets: SnippetsModel
     private var apps: [(name: String, path: String)] = []
 
-    static let examples = ["12*(3+4)", "5 km to mi", "100 c to f", "2^10"]
+    static let examples = ["12*(3+4)", "5 km to mi", "100 c to f", ";snippets"]
     static let maxApps = 5
     static let maxClips = 3
 
-    init(clipboard: ClipboardModel) {
+    init(clipboard: ClipboardModel, snippets: SnippetsModel) {
         self.clipboard = clipboard
+        self.snippets = snippets
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let found = Self.findApps()
             DispatchQueue.main.async { self?.apps = found }
@@ -89,6 +91,25 @@ final class CommandModel: ObservableObject {
             return
         }
         var list: [CommandResult] = []
+        // ";trigger": the snippets (";" alone: all of them); Enter copies the text, {date} and {time} filled in
+        if text.hasPrefix(";") {
+            let wanted = String(text.dropFirst()).lowercased()
+            for snippet in snippets.snippets where wanted.isEmpty || snippet.trigger.lowercased().hasPrefix(wanted) {
+                let body = snippet.text
+                list.append(CommandResult(id: "snippet:\(snippet.trigger)", icon: .symbol("text.insert"), title: ";\(snippet.trigger)",
+                                          subtitle: body.replacingOccurrences(of: "\n", with: " ")) { [weak self] in
+                    self?.copy(SnippetsStore.expand(body))
+                    self?.onDone()
+                })
+                if list.count >= 8 { break }
+            }
+            if list.isEmpty {
+                list.append(CommandResult(id: "snippets-none", icon: .symbol("text.insert"), title: "No snippet like that",
+                                          subtitle: "Add snippets in Settings → Snippets") { [weak self] in self?.onDone() })
+            }
+            results = list
+            return
+        }
         if let value = CommandEngine.calculate(text) {
             let answer = CommandEngine.format(value)
             list.append(CommandResult(id: "calc", icon: .symbol("equal.circle"), title: answer,

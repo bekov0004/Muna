@@ -64,6 +64,8 @@ final class Preferences: ObservableObject {
     @Published var localSendFolder: String { didSet { defaults.set(localSendFolder, forKey: "localsend-folder") } }
     @Published var clipboardKeepHistory: Bool { didSet { defaults.set(clipboardKeepHistory, forKey: "clipboard-keep-history") } }
     @Published var clipboardMaxItems: Int { didSet { defaults.set(clipboardMaxItems, forKey: "clipboard-max-items") } }
+    /// Tracking parameters (utm_…, fbclid …) are taken out of copied links.
+    @Published var clipboardCleanUrls: Bool { didSet { defaults.set(clipboardCleanUrls, forKey: "clipboard-clean-urls") } }
     @Published var trayKeepFiles: Bool { didSet { defaults.set(trayKeepFiles, forKey: "tray-keep-files") } }
 
     private init() {
@@ -89,6 +91,7 @@ final class Preferences: ObservableObject {
         localSendFolder = defaults.string(forKey: "localsend-folder") ?? ""
         clipboardKeepHistory = bool("clipboard-keep-history", true)
         clipboardMaxItems = int("clipboard-max-items", 50)
+        clipboardCleanUrls = bool("clipboard-clean-urls", false)
         // an earlier build of the Mac version called it "tray-keep"
         trayKeepFiles = defaults.object(forKey: "tray-keep-files") == nil ? bool("tray-keep", true) : defaults.bool(forKey: "tray-keep-files")
     }

@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 
 /// The pages of the settings window (a list on the left, as on Linux).
 enum SettingsPage: String, CaseIterable, Identifiable {
-    case general, widgets, localSend, clipboard, about
+    case general, widgets, localSend, clipboard, snippets, about
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .widgets: return "Muna page"
         case .localSend: return "LocalSend"
         case .clipboard: return "Clipboard and Tray"
+        case .snippets: return "Snippets"
         case .about: return "About"
         }
     }
@@ -26,6 +27,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .widgets: return "square.grid.3x1.below.line.grid.1x2"
         case .localSend: return "wifi"
         case .clipboard: return "doc.on.clipboard"
+        case .snippets: return "text.insert"
         case .about: return "info.circle"
         }
     }
@@ -36,6 +38,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
         case .widgets: return "The widgets of the Muna section: which, in what order, how wide."
         case .localSend: return "Sending files to other computers and phones, and receiving them."
         case .clipboard: return "What is kept of what you copy, and of the Tray."
+        case .snippets: return "Texts you use often: type ;trigger in the Command Bar (⌥Space), Enter copies the text."
         case .about: return "Muna for macOS."
         }
     }
@@ -79,6 +82,7 @@ final class SettingsWindowController {
                 .environmentObject(state)
                 .environmentObject(Preferences.shared)
                 .environmentObject(app.localSend)
+                .environmentObject(app.snippets)
             let window = NSWindow(contentViewController: NSHostingController(rootView: root))
             window.title = "Muna"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
@@ -141,6 +145,7 @@ struct SettingsView: View {
                     case .widgets: WidgetSettings()
                     case .localSend: LocalSendSettings()
                     case .clipboard: ClipboardSettings()
+                    case .snippets: SnippetSettings()
                     case .about: AboutSettings()
                     }
                 }
@@ -392,11 +397,50 @@ struct ClipboardSettings: View {
                            isOn: $preferences.clipboardKeepHistory)
             Stepper("Keep the last \(preferences.clipboardMaxItems) items", value: $preferences.clipboardMaxItems, in: 10...200, step: 10)
                 .font(.system(size: 13))
+            SettingsToggle(title: "Clean copied links",
+                           detail: "Tracking parameters (utm_…, fbclid, gclid …) are taken out of a link as you copy it.",
+                           isOn: $preferences.clipboardCleanUrls)
         }
         SettingsCard("Tray") {
             SettingsToggle(title: "Keep the files after a restart",
                            detail: "The Tray holds references to your files, not copies.",
                            isOn: $preferences.trayKeepFiles)
+        }
+    }
+}
+
+struct SnippetSettings: View {
+    @EnvironmentObject var snippets: SnippetsModel
+
+    var body: some View {
+        SettingsCard("New snippet") {
+            TextField("Trigger, for example: addr", text: $snippets.draftTrigger)
+                .textFieldStyle(.roundedBorder)
+            TextEditor(text: $snippets.draftText)
+                .font(.system(size: 13))
+                .frame(height: 80)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+            HStack {
+                Text("{date}, {time} and {datetime} are filled in.").font(.system(size: 11)).foregroundColor(.secondary)
+                Spacer()
+                Button("Add") { snippets.addDraft() }
+            }
+            if !snippets.error.isEmpty {
+                Text(snippets.error).font(.system(size: 11)).foregroundColor(.orange)
+            }
+        }
+        SettingsCard("Snippets") {
+            if snippets.snippets.isEmpty {
+                Text("None yet.").font(.system(size: 12)).foregroundColor(.secondary)
+            }
+            ForEach(snippets.snippets) { snippet in
+                HStack(alignment: .top) {
+                    Text(";\(snippet.trigger)").font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    Text(snippet.text).font(.system(size: 12)).foregroundColor(.secondary).lineLimit(2)
+                    Spacer()
+                    Button("Remove") { snippets.remove(snippet) }
+                }
+            }
         }
     }
 }

@@ -243,7 +243,7 @@ struct OpenPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if model.tab == .command {
+            if model.tab == .command || model.tab == .agent {
                 Spacer().frame(height: model.headerHeight)
             } else {
                 header
@@ -256,6 +256,7 @@ struct OpenPanel: View {
                 case .clipboard: ClipboardPage()
                 case .alerts: AlertsPage()
                 case .command: CommandView()
+                case .agent: AgentPermissionView(openWindow: { model.onAgents() })
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

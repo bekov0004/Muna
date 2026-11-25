@@ -16,7 +16,7 @@ Change this table together with the code.
 | Width in cells of 44, pages of widgets | ✅ | ✅ | ⬜ | same rules (`PanelLayout`, tested against Linux) |
 | Files dropped on the capsule | ✅ | ✅ | ⬜ | |
 | Capsule on several monitors | ✅ | ✅ | ⬜ | Mac: every screen, the main one, or the built-in one with the notch (Settings → General → Screens) |
-| Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | 🟡 | ⬜ | Mac: apps, calculator, units, clipboard, web search (⌥Space); no snippets, kill, ports, clean, scratchpad yet |
+| Command Bar (apps, calculator, converter, clipboard search, snippets …) | ✅ | 🟡 | ⬜ | Mac: apps, calculator, units, clipboard, web search, ;snippets (⌥Space); no kill, ports, clean yet |
 | Keyboard shortcuts for every section | ✅ | 🟡 | ⬜ | Mac: ⌥Space for the Command Bar (Carbon hot key); the sections not yet |
 | Two-finger pull makes lists taller | ✅ | ⬜ | ⬜ | |
 | Appearance: size, corner radius, colour, opacity | ✅ | ⬜ | ⬜ | |
@@ -40,7 +40,7 @@ Change this table together with the code.
 |---|---|---|---|---|
 | Tray | ✅ | ✅ | ⬜ | |
 | LocalSend: send, several devices, groups, receive | ✅ | ✅ | ⬜ | Mac ↔ Linux to be tried on real machines |
-| Clipboard history, pin, search | ✅ | ✅ | ⬜ | Linux also: notes on items, drag an item out, clean links |
+| Clipboard history, pin, search, clean links | ✅ | ✅ | ⬜ | Linux also: notes on items, drag an item out |
 | Alerts | ✅ | 🟡 | ⬜ | macOS lets no app read other apps' notifications: Muna's own events only |
 
 ## The top-bar window (quick panel) and tools
@@ -48,15 +48,15 @@ Change this table together with the code.
 | Feature | Linux | macOS | Windows | Note |
 |---|---|---|---|---|
 | Top-bar readings (CPU, temperature, memory, network …) | ✅ | 🟡 | ⬜ | Mac: CPU and memory next to Muna's menu-bar item (setting); no temperature (macOS hides the sensors) |
-| System, Network, Disks, Power, Sound widgets | ✅ | 🟡 | ⬜ | Mac quick panel: processor and memory with graphs, disk, battery, uptime, network speed and traffic; no Sound yet |
+| System, Network, Disks, Power, Sound widgets | ✅ | ✅ | ⬜ | Mac quick panel: processor and memory with graphs, disk, battery, uptime, network; sound (volume, mute, output, microphone) |
 | Displays (brightness, arrangement) | ✅ | ⬜ | ⬜ | |
 | Keep awake | ✅ | ✅ | ⬜ | Mac: IOPMAssertion, for a while or until off, screen on or not (no "lid closed": needs admin rights) |
 | Quick toggles, Utilities, Controls | ✅ | 🟡 | ⬜ | Mac: dark mode, screenshot, colour picker, empty trash, screen off, eject disks |
-| Focus (Pomodoro, stopwatch) | ✅ | ⬜ | ⬜ | |
-| Downloads | ✅ | ⬜ | ⬜ | |
+| Focus (Pomodoro, stopwatch) | ✅ | ✅ | ⬜ | same focus.json |
+| Downloads | ✅ | ✅ | ⬜ | |
 | Windows (snapping), Desktops | ✅ | ⬜ | ⬜ | Mac: Accessibility permission |
-| Reminders (the butterfly) | ✅ | ⬜ | ⬜ | |
-| AI agents (Claude Code, Codex) | ✅ | ⬜ | ⬜ | |
+| Reminders (the butterfly) | ✅ | ✅ | ⬜ | a card in the capsule and a sound |
+| AI agents (Claude Code, Codex) | ✅ | 🟡 | ⬜ | Mac: Claude Code tasks, questions in the capsule, agents window, plan limits; not yet: Codex, sessions run in a terminal |
 | Radial menu, colour picker, cleaning mode, scratchpad | ✅ | ⬜ | ⬜ | |
 
 ## The system

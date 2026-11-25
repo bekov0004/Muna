@@ -19,6 +19,7 @@ final class SystemMonitor: ObservableObject {
     }
 
     @Published private(set) var cpu: Double = 0                 // 0…1
+    var cpuPublisher: Published<Double>.Publisher { $cpu }
     @Published private(set) var cpuHistory: [Double] = []
     @Published private(set) var memoryUsed: UInt64 = 0
     @Published private(set) var memoryTotal: UInt64 = ProcessInfo.processInfo.physicalMemory
@@ -277,7 +278,7 @@ enum QuickTools {
 // --- the window -----------------------------------------------------------------------------------
 
 enum QuickPage: String, CaseIterable, Identifiable {
-    case system, network, awake, tools
+    case system, network, sound, awake, focus, reminders, downloads, agents, tools
 
     var id: String { rawValue }
 
@@ -285,7 +286,12 @@ enum QuickPage: String, CaseIterable, Identifiable {
         switch self {
         case .system: return "System"
         case .network: return "Network"
+        case .sound: return "Sound"
         case .awake: return "Keep awake"
+        case .focus: return "Focus"
+        case .reminders: return "Reminders"
+        case .downloads: return "Downloads"
+        case .agents: return "AI agents"
         case .tools: return "Tools"
         }
     }
@@ -294,7 +300,12 @@ enum QuickPage: String, CaseIterable, Identifiable {
         switch self {
         case .system: return "waveform.path.ecg"
         case .network: return "network"
+        case .sound: return "speaker.wave.2"
         case .awake: return "cup.and.saucer"
+        case .focus: return "target"
+        case .reminders: return "bell.badge"
+        case .downloads: return "arrow.down.circle"
+        case .agents: return "sparkles"
         case .tools: return "wrench.and.screwdriver"
         }
     }
@@ -309,18 +320,19 @@ struct QuickPanelView: View {
     @EnvironmentObject var state: QuickPanelState
     let onSettings: () -> Void
     let onCommand: () -> Void
+    let onAgents: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
             ButterflyImage(height: 22).padding(.top, 4)
-            HStack(spacing: 4) {
+            HStack(spacing: 2) {
                 ForEach(QuickPage.allCases) { page in
                     Button { state.page = page } label: {
                         Image(systemName: page.symbol)
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(state.page == page ? MunaColor.accent : Color.white.opacity(0.75))
                             .frame(maxWidth: .infinity)
-                            .frame(height: 34)
+                            .frame(height: 30)
                             .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(state.page == page ? 0.1 : 0)))
                             .contentShape(Rectangle())
                     }
@@ -338,7 +350,12 @@ struct QuickPanelView: View {
                 switch state.page {
                 case .system: SystemPage()
                 case .network: NetworkPage()
+                case .sound: SoundPage()
                 case .awake: AwakePage()
+                case .focus: FocusPage()
+                case .reminders: RemindersPage()
+                case .downloads: DownloadsPage()
+                case .agents: AgentsPage(openWindow: onAgents)
                 case .tools: ToolsPage()
                 }
             }

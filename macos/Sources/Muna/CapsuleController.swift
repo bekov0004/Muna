@@ -85,7 +85,7 @@ struct CapsuleGeometry: Equatable {
 
 /// The sections of the open capsule, as on Linux.
 enum PanelTab: String, CaseIterable, Identifiable {
-    case muna, tray, localSend, clipboard, alerts, command
+    case muna, tray, localSend, clipboard, alerts, command, agent
 
     /// The tabs on top (the Command Bar has none: the capsule becomes its field).
     static let visible: [PanelTab] = [.muna, .tray, .localSend, .clipboard, .alerts]
@@ -100,6 +100,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .clipboard: return "Clipboard"
         case .alerts: return "Alerts"
         case .command: return "Command Bar"
+        case .agent: return "Agent"
         }
     }
 
@@ -112,6 +113,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .clipboard: return "doc.on.clipboard"
         case .alerts: return "bell"
         case .command: return "magnifyingglass"
+        case .agent: return "sparkles"
         }
     }
 
@@ -122,6 +124,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
         case .localSend: return 138
         case .clipboard, .alerts: return 236
         case .command: return 250
+        case .agent: return 120
         }
     }
 }
@@ -169,10 +172,12 @@ final class CapsuleModel: ObservableObject {
     /// A click on the closed capsule; the gear.
     var onTap: () -> Void = {}
     var onSettings: () -> Void = {}
+    /// Open the agents window.
+    var onAgents: () -> Void = {}
 
     static let headerHeight: CGFloat = 36
     /// The Command Bar has no tabs on top.
-    var headerHeight: CGFloat { tab == .command ? 8 : Self.headerHeight }
+    var headerHeight: CGFloat { tab == .command || tab == .agent ? 8 : Self.headerHeight }
     static let bottomPadding: CGFloat = 12
     static let cardHeight: CGFloat = 34
 
@@ -262,6 +267,7 @@ final class CapsuleController {
             .environmentObject(app.alerts)
             .environmentObject(app.camera)
             .environmentObject(app.command)
+            .environmentObject(app.agents)
         let host = NSHostingView(rootView: root)
         host.translatesAutoresizingMaskIntoConstraints = false
         tracking.addSubview(host)
@@ -294,6 +300,10 @@ final class CapsuleController {
         }.store(in: &observers)
         app.localSend.incomingPublisher.dropFirst().sink { [weak self] _ in
             self?.scheduleUpdate()
+        }.store(in: &observers)
+        // an agent's question answered: the capsule may close
+        app.agents.revisionPublisher.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.agentsChanged() }
         }.store(in: &observers)
         // what runs shows beside the notch
         app.nowPlaying.trackPublisher.sink { [weak self] _ in self?.activityChanged() }.store(in: &observers)
@@ -342,6 +352,12 @@ final class CapsuleController {
     /// Whether the screen of this capsule holds that point (where the pointer is).
     func contains(_ point: NSPoint) -> Bool {
         model.geometry.screenFrame.contains(point)
+    }
+
+    private func agentsChanged() {
+        guard model.isOpen, model.tab == .agent, app.agents.waiting == nil else { return }
+        pinned = false
+        scheduleUpdate()
     }
 
     private func activityChanged() {
@@ -397,6 +413,7 @@ final class CapsuleController {
     private var keepsOpen: Bool {
         (hovering && preferences.autoCollapse) || pinned || model.isEditing || model.isDropTarget
             || app.localSend.incoming?.state == .asking || (!preferences.autoCollapse && model.isOpen)
+            || (model.tab == .agent && app.agents.waiting != nil)
     }
 
     private func layoutChanged() {
@@ -484,7 +501,7 @@ final class CapsuleController {
         // the window shrinks when the drawing has; the Command Bar is not where the next opening goes
         DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.animationTime) { [weak self] in
             guard let self else { return }
-            if !self.model.isOpen && self.model.tab == .command { self.model.tab = .muna }
+            if !self.model.isOpen && (self.model.tab == .command || self.model.tab == .agent) { self.model.tab = .muna }
             self.placeClosed()
         }
     }

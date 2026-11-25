@@ -14,15 +14,22 @@ final class AppState {
     let timer = TimerModel()
     let alerts = AlertsModel()
     let camera = CameraModel()
-    lazy var command = CommandModel(clipboard: clipboard)
+    let snippets = SnippetsModel()
+    lazy var command = CommandModel(clipboard: clipboard, snippets: snippets)
     let monitor = SystemMonitor()
     let awake = KeepAwake()
+    let focus = FocusModel()
+    let reminders = RemindersModel()
+    let downloads = DownloadsModel()
+    let sound = SoundModel()
+    let agents = AgentsModel()
 
     func start() {
         nowPlaying.start()
         clipboard.start()
         calendar.start()
         localSend.start()
+        downloads.start()
     }
 
     /// The panel opened on a section: bring what it shows up to date.
@@ -45,6 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private let app = AppState()
     private var capsules: CapsuleManager?
     private var settings: SettingsWindowController?
+    private var agentsWindow: AgentsWindowController?
     private var statusItem: NSStatusItem?
     private var commandKey: HotKey?
     private var keyObserver: Any?
@@ -58,8 +66,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         app.start()
         let settings = SettingsWindowController(app: app)
         self.settings = settings
+        let agentsWindow = AgentsWindowController(agents: app.agents)
+        self.agentsWindow = agentsWindow
         let capsules = CapsuleManager(app: app)
         capsules.onSettings = { [weak self] in self?.settings?.show() }
+        capsules.onAgents = { [weak self] in self?.agentsWindow?.show() }
         self.capsules = capsules
         capsules.show()
         setUpStatusItem()
@@ -87,6 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         app.nowPlaying.stop()
         app.camera.stop()
         app.awake.stop()
+        app.agents.stopAll()
         app.localSend.shutdown()
     }
 
@@ -117,10 +129,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         }, onCommand: { [weak self] in
             self?.popover.performClose(nil)
             self?.capsules?.openCommand()
+        }, onAgents: { [weak self] in
+            self?.popover.performClose(nil)
+            self?.agentsWindow?.show()
         })
         .environmentObject(quickState)
         .environmentObject(app.monitor)
         .environmentObject(app.awake)
+        .environmentObject(app.focus)
+        .environmentObject(app.reminders)
+        .environmentObject(app.downloads)
+        .environmentObject(app.sound)
+        .environmentObject(app.agents)
         popover.contentViewController = NSHostingController(rootView: panel)
         popover.behavior = .transient
         popover.appearance = NSAppearance(named: .darkAqua)
@@ -130,7 +150,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         Preferences.shared.$menuBarReadings.dropFirst().removeDuplicates().sink { [weak self] on in
             self?.setReadings(on)
         }.store(in: &readingsObservers)
-        app.monitor.$cpu.sink { [weak self] _ in
+        app.monitor.cpuPublisher.sink { [weak self] _ in
             DispatchQueue.main.async { self?.updateReadings() }
         }.store(in: &readingsObservers)
     }
@@ -146,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         } else {
             quickState.message = nil
             app.monitor.watch()
+            app.sound.watch()
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
@@ -153,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
 
     func popoverDidClose(_ notification: Notification) {
         app.monitor.unwatch()
+        app.sound.unwatch()
     }
 
     private func setReadings(_ on: Bool) {

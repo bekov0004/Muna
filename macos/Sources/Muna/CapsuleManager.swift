@@ -18,6 +18,9 @@ final class CapsuleManager {
     var onSettings: () -> Void = {} {
         didSet { controllers.forEach { $0.model.onSettings = onSettings } }
     }
+    var onAgents: () -> Void = {} {
+        didSet { controllers.forEach { $0.model.onAgents = onAgents } }
+    }
 
     init(app: AppState) {
         self.app = app
@@ -41,6 +44,25 @@ final class CapsuleManager {
         }.store(in: &observers)
         app.timer.onFinished = { [weak self] in
             self?.tell("Time is up", "The timer ended", symbol: "timer", ok: true)
+        }
+        app.focus.onPhaseEnd = { [weak self] title, details in
+            self?.tell(title, details, symbol: "target", ok: true)
+        }
+        app.reminders.onDue = { [weak self] text in
+            NSSound(named: "Glass")?.play()
+            self?.tell("Reminder", text, symbol: "bell.badge.fill", ok: true)
+        }
+        app.downloads.onFinished = { [weak self] url in
+            self?.tell("Downloaded", url.lastPathComponent, symbol: "arrow.down.circle.fill", ok: true)
+        }
+        app.agents.onPermission = { [weak self] _, _ in
+            guard let capsule = self?.current else { return }
+            capsule.model.tab = .agent
+            capsule.openNow()
+        }
+        app.agents.onFinished = { [weak self] task, ok in
+            self?.tell(ok ? "\(task.project) is done" : "\(task.project) stopped", ok ? task.current : task.error,
+                       symbol: ok ? "sparkles" : "exclamationmark.triangle.fill", ok: ok)
         }
         app.command.onDone = { [weak self] in
             self?.controllers.filter { $0.model.isOpen && $0.model.tab == .command }.forEach { $0.close() }
@@ -86,6 +108,7 @@ final class CapsuleManager {
             } else {
                 let controller = CapsuleController(app: app, screen: screen)
                 controller.model.onSettings = onSettings
+                controller.model.onAgents = onAgents
                 controller.show()
                 kept.append(controller)
             }

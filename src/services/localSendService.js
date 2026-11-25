@@ -5,8 +5,9 @@ import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
  * transfers. The work is done by the Muna service (service/localsend); this mirrors its state and
  * forwards the calls.
  *
- * Signals: 'basket-changed'; 'found' (device) while scanning. A device is
- * {ip, port, protocol, alias, deviceModel, deviceType}.
+ * Signals: 'basket-changed'; 'groups-changed'; 'found' (device) while scanning. A device is
+ * {ip, port, protocol, alias, deviceModel, deviceType, fingerprint}; another Muna has
+ * deviceModel 'Muna'. A group is {id, name, members: [{fingerprint, alias, deviceModel, deviceType}]}.
  */
 export class LocalSendService extends Signals.EventEmitter {
     /** @param {ModuleClient} module */
@@ -14,6 +15,7 @@ export class LocalSendService extends Signals.EventEmitter {
         super();
         this._module = module;
         this._basketKey = '[]';
+        this._groupsKey = '[]';
         this._scanWaiters = [];
         this._sends = new Map(); // id -> {onState, resolve, reject}
         module.connect('state-changed', () => this._onState());
@@ -34,11 +36,30 @@ export class LocalSendService extends Signals.EventEmitter {
         this._module.call('removeFromBasket', {uris}).catch(e => console.warn(`[muna] ${e.message}`));
     }
 
+    /** the saved groups of devices */
+    get groups() {
+        return this._module.state.groups ?? [];
+    }
+
+    /** @returns {Promise<{id: string}>} rejects with a readable Error (no name, no device ...) */
+    saveGroup({id = null, name, members}) {
+        return this._module.call('saveGroup', {id, name, members});
+    }
+
+    deleteGroup(id) {
+        this._module.call('deleteGroup', {id}).catch(e => console.warn(`[muna] ${e.message}`));
+    }
+
     _onState() {
         const key = JSON.stringify(this.basket);
         if (key !== this._basketKey) {
             this._basketKey = key;
             this.emit('basket-changed');
+        }
+        const groupsKey = JSON.stringify(this.groups);
+        if (groupsKey !== this._groupsKey) {
+            this._groupsKey = groupsKey;
+            this.emit('groups-changed');
         }
     }
 

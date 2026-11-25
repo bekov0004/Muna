@@ -1525,6 +1525,105 @@
     background-color: rgba(53, 132, 228, 0.6);
 }
 
+/* LocalSend: choosing several devices, groups, sending to all at once */
+.muna-tray-clear.muna-lsv-send {
+    color: white;
+    background-color: #4d8dff;
+}
+
+.muna-tray-clear.muna-lsv-send:hover {
+    background-color: #6a9fff;
+}
+
+.muna-lsv-tile.muna-lsv-tile-selected {
+    background-color: rgba(77, 141, 255, 0.34);
+}
+
+.muna-lsv-tile-selected .muna-lsv-badge {
+    background-color: #4d8dff;
+}
+
+.muna-lsv-tile-selected .muna-lsv-badge-icon {
+    color: white;
+}
+
+.muna-lsv-badge.muna-lsv-badge-muna {
+    background-color: rgba(160, 120, 255, 0.26);
+}
+
+.muna-lsv-badge-muna .muna-lsv-badge-icon {
+    color: #b39aff;
+}
+
+.muna-lsv-tile-selected .muna-lsv-badge.muna-lsv-badge-muna {
+    background-color: #4d8dff;
+}
+
+.muna-lsv-tile-selected .muna-lsv-badge-muna .muna-lsv-badge-icon {
+    color: white;
+}
+
+.muna-ls-device-model.muna-lsv-muna {
+    color: #b39aff;
+}
+
+.muna-lsv-group {
+    border: 1px dashed rgba(255, 255, 255, 0.18);
+}
+
+.muna-lsv-badge.muna-lsv-badge-group {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.muna-lsv-badge-group .muna-lsv-badge-icon {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.muna-lsv-transfer {
+    padding-right: 14px;
+}
+
+.muna-lsv-badge.muna-lsv-badge-done {
+    background-color: rgba(87, 227, 137, 0.22);
+}
+
+.muna-lsv-badge-done .muna-lsv-badge-icon {
+    color: #57e389;
+}
+
+.muna-lsv-badge.muna-lsv-badge-failed,
+.muna-lsv-badge.muna-lsv-badge-missing {
+    background-color: rgba(255, 163, 72, 0.2);
+}
+
+.muna-lsv-badge-failed .muna-lsv-badge-icon,
+.muna-lsv-badge-missing .muna-lsv-badge-icon {
+    color: #ffa348;
+}
+
+.muna-lsv-mini {
+    margin-top: 3px;
+}
+
+.muna-lsv-mini-bar {
+    height: 3px;
+    border-radius: 2px;
+}
+
+.muna-lsv-naming {
+    spacing: 4px;
+}
+
+.muna-lsv-entry {
+    height: 26px;
+    font-size: 12px;
+}
+
+.muna-lsv-error {
+    color: #ffa348;
+    font-size: 11px;
+}
+
 /* Quick toggles */
 .muna-tools {
     spacing: 4px;

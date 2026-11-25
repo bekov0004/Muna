@@ -55,7 +55,7 @@ extension off brings the stock GNOME clock back.
 | **Calendar** | A strip of days and the events from your GNOME calendars; a bigger month view |
 | **Clipboard** | History of what you copied, pinned items, quick notes, drag an item into any app |
 | **File tray** | Drop files on the top of the screen to park them; drag them out later |
-| **LocalSend** | Send files to phones and computers running [LocalSend](https://localsend.org), or receive them |
+| **LocalSend** | Send files to phones and computers running Muna or [LocalSend](https://localsend.org), to several at once or to a saved group ("Office"), or receive them |
 | **Search bar** | Launch apps, calculate, convert units, `kill` a process, see open `ports`, text snippets |
 | **Quick toggles** | Keep awake, dark mode, night light, lock, screenshot, screen recording, colour picker, brightness |
 | **Phone** | See an Android phone's screen on the computer and control it. Scan the QR code in Developer options > Wireless debugging > Pair device with QR code. Shown in the capsule as a card like the enlarged calendar (330 wide, as tall as the phone, round corners, thin frame) or in a window of its own, and moved between the two with one click. Needs only `adb` (`sudo apt install adb`); the picture and the control are Muna's own |
@@ -148,7 +148,7 @@ undo button puts all of them back.
 |---|---|
 | **Muna** | The widgets: music, calendar, mirror and the ones you added |
 | **Tray** | A shelf for files. Drag a file to the top of the screen, release it on the capsule. Files are only referenced, never copied |
-| **LocalSend** | Drop files on the second target, then click a device to send. Receiving is off by default (Settings → General → LocalSend) |
+| **LocalSend** | Drop files on the second target, click the devices to send to (or a saved group), then "Send to N". "Save as group" keeps the chosen devices under a name. Other computers with Muna are marked "Muna". Everyone on the other side needs receiving on (off by default: Settings → General → LocalSend) and the same network, and accepts each sending |
 | **Clipboard** | Text you copied. Click an item to paste it into the app you were using. The first card is for notes |
 | **Alerts** | Notifications and Do Not Disturb |
 

@@ -2,13 +2,27 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
 import {Module} from '../module.js';
+import {JsonStore} from '../lib/jsonStore.js';
 import {LocalSendService} from './localSendService.js';
 import {LocalSendServer} from './localSendServer.js';
 
+const MAX_GROUPS = 50;
+const MAX_MEMBERS = 200;
+
+/** A group member as saved: who the device is, not where it is (its address changes). */
+const cleanMember = m => ({
+    fingerprint: String(m?.fingerprint ?? '').slice(0, 128),
+    alias: String(m?.alias ?? '').slice(0, 100),
+    deviceModel: String(m?.deviceModel ?? '').slice(0, 50),
+    deviceType: String(m?.deviceType ?? 'desktop').slice(0, 20),
+});
+
 /**
- * LocalSend for the extension: finding devices, sending the basket, receiving files.
+ * LocalSend for the extension: finding devices, sending the basket, receiving files, and the
+ * groups of devices to send to at once (saved in ~/.local/share/muna/localsend-groups.json).
  *
- * state:   {basket: [uri], receiving: bool, receiveError: string|null}
+ * state:   {basket: [uri], receiving: bool, receiveError: string|null,
+ *           groups: [{id, name, members: [{fingerprint, alias, deviceModel, deviceType}]}]}
  * events:  found {device}, scanDone {}, sendState {id, phase, sent, total, skipped},
  *          sendDone {id, ok, message, count, skipped}, incoming {id, sender, files, total, folder},
  *          incomingState {id, state, received, total, error, paths}
@@ -23,6 +37,10 @@ export class LocalSendModule extends Module {
         this._nextSend = 1;
         this._receiving = false;
         this._receiveError = null;
+        this._groupsStore = new JsonStore('localsend-groups.json');
+        this._groups = (this._groupsStore.load()?.groups ?? [])
+            .filter(g => typeof g?.id === 'string' && typeof g?.name === 'string' && Array.isArray(g.members))
+            .map(g => ({id: g.id, name: g.name, members: g.members.map(cleanMember)}));
 
         this._service.connect('basket-changed', () => this.emitState());
         this._service.connect('found', (_s, device) => this.emitEvent('found', {device}));
@@ -30,7 +48,7 @@ export class LocalSendModule extends Module {
     }
 
     get state() {
-        return {basket: this._service.basket, receiving: this._receiving, receiveError: this._receiveError};
+        return {basket: this._service.basket, receiving: this._receiving, receiveError: this._receiveError, groups: this._groups};
     }
 
     stop() {
@@ -86,6 +104,40 @@ export class LocalSendModule extends Module {
 
     async rpc_cancelSend({id}) {
         this._sends.get(id)?.cancel();
+    }
+
+    // --- groups ----------------------------------------------------------------
+
+    /** Saves a group (a new one without `id`); a group with the same name is replaced. */
+    async rpc_saveGroup({id = null, name, members = []}) {
+        name = String(name ?? '').trim().slice(0, 60);
+        if (!name)
+            throw new Error('A group needs a name');
+        const clean = (Array.isArray(members) ? members : []).slice(0, MAX_MEMBERS).map(cleanMember)
+            .filter(m => m.fingerprint || m.alias);
+        if (clean.length === 0)
+            throw new Error('A group needs at least one device');
+        const others = this._groups.filter(g => g.id !== id && g.name.toLowerCase() !== name.toLowerCase());
+        if (others.length >= MAX_GROUPS)
+            throw new Error(`At most ${MAX_GROUPS} groups`);
+        const group = {id: id ?? `g${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`, name, members: clean};
+        const at = this._groups.findIndex(g => g.id === id || g.name.toLowerCase() === name.toLowerCase());
+        this._groups = [...others];
+        this._groups.splice(at < 0 ? others.length : Math.min(at, others.length), 0, group);
+        this._saveGroups();
+        return {id: group.id};
+    }
+
+    async rpc_deleteGroup({id}) {
+        const before = this._groups.length;
+        this._groups = this._groups.filter(g => g.id !== id);
+        if (this._groups.length !== before)
+            this._saveGroups();
+    }
+
+    _saveGroups() {
+        this._groupsStore.save({version: 1, groups: this._groups});
+        this.emitState();
     }
 
     // --- receiving -------------------------------------------------------------

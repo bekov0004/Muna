@@ -28,7 +28,9 @@ const decode = bytes => new TextDecoder().decode(bytes.get_data());
  * them on the LocalSend target or from the tray), so several can be collected first.
  *
  * Signals: 'basket-changed'; 'found' (device) while scanning. A device is
- * {ip, port, protocol, alias, deviceModel, deviceType}.
+ * {ip, port, protocol, alias, deviceModel, deviceType, fingerprint}. Another Muna says
+ * deviceModel 'Muna'; its fingerprint (the hash of its certificate) stays the same across
+ * restarts and address changes, so groups keep their members by it.
  */
 export class LocalSendService extends EventEmitter {
     constructor() {
@@ -104,7 +106,7 @@ export class LocalSendService extends EventEmitter {
         return {
             alias: GLib.get_host_name(),
             version: PROTOCOL_VERSION,
-            deviceModel: 'Linux',
+            deviceModel: 'Muna',
             deviceType: 'desktop',
             fingerprint: this._fingerprint,
             port: PORT,
@@ -204,6 +206,7 @@ export class LocalSendService extends EventEmitter {
                     alias: info.alias,
                     deviceModel: info.deviceModel ?? '',
                     deviceType: info.deviceType ?? 'desktop',
+                    fingerprint: typeof info.fingerprint === 'string' ? info.fingerprint : '',
                 };
             } catch (e) {
                 // Nobody there: no need to try the other protocol. A refusal to talk TLS (or plain HTTP) is.

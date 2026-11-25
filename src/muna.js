@@ -205,6 +205,10 @@ export class Muna {
                 get: () => this._settings.get('localsend-receive'),
                 set: on => this._settings.gsettings?.set_boolean('localsend-receive', on),
             },
+            ui: {
+                beginTextInput: onEnd => this._beginTextInput(onEnd),
+                endTextInput: () => this._endTextInput(),
+            },
         });
         this._localSendView.onContentChanged = () => this._onListChanged();
         this._widgets = this._createWidgets();

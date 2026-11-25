@@ -5,9 +5,11 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {createButton} from '../ui/button.js';
+import {isMuna} from './localSendSession.js';
 import {scaled} from '../utils/scale.js';
 
 const BAR_WIDTH = 300;
+const TILE_BAR_WIDTH = 80;
 
 const DEVICE_ICONS = {
     mobile: 'phone-symbolic',
@@ -56,23 +58,36 @@ function createSideScroll(content) {
 
 /**
  * The LocalSend section of the panel, built like the Tray: a row of chips for the files that wait
- * to be sent, and below it a row of tiles for the devices on the network (a click sends). While a
- * transfer runs the devices row shows its progress. Receiving is switched on and off at the end of
- * the "Send to" line.
+ * to be sent, and below it a row of tiles: the saved groups, then the devices on the network
+ * (other computers with Muna first). A click chooses a device (a group: its members that are
+ * here); "Send to N" sends to all of them at once. While sending, the row shows a tile per device
+ * with how far it got, and at the end who got the files, with "Try again" for the others.
+ * Receiving is switched on and off at the end of the "Send to" line.
  */
 export class LocalSendView extends St.BoxLayout {
     static {
         GObject.registerClass({GTypeName: 'MunaLocalSendView'}, this);
     }
 
-    /** @param {{session: LocalSendSession, getTrayUris: () => string[], receiving: {get: () => boolean, set: (on: boolean) => void}}} params */
-    constructor({session, getTrayUris, receiving}) {
+    /**
+     * @param {{session: LocalSendSession, getTrayUris: () => string[],
+     *   receiving: {get: () => boolean, set: (on: boolean) => void},
+     *   ui?: {beginTextInput: (onEnd: Function) => void, endTextInput: () => void}}} params
+     */
+    constructor({session, getTrayUris, receiving, ui = null}) {
         super({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-lsv', x_expand: true, y_expand: true});
         this._session = session;
         this._getTrayUris = getTrayUris;
         this._receiving = receiving;
+        this._ui = ui;
+        this._naming = false;      // writing the name of a new group
+        this._confirmDelete = null;
 
-        session.connectObject('changed', () => this._render(), this);
+        // While a group name is being written the row stays as it is (devices still arrive).
+        session.connectObject('changed', () => {
+            if (!this._naming)
+                this._render();
+        }, this);
         this.connect('notify::mapped', () => {
             if (this.mapped)
                 session.refresh();
@@ -100,8 +115,10 @@ export class LocalSendView extends St.BoxLayout {
         for (const action of actions) {
             const button = new St.Button({
                 label: action.label,
-                style_class: `muna-tray-clear${action.active ? ' muna-lsv-on' : ''}`,
-                can_focus: true,
+                style_class: `muna-tray-clear${action.active ? ' muna-lsv-on' : ''}${action.accent ? ' muna-lsv-send' : ''}`,
+                can_focus: !action.disabled,
+                reactive: !action.disabled,
+                opacity: action.disabled ? 120 : 255,
             });
             button.connect('clicked', () => action.onClick());
             row.add_child(button);
@@ -163,90 +180,296 @@ export class LocalSendView extends St.BoxLayout {
         this.add_child(createSideScroll(chips));
     }
 
-    // --- devices / transfer -----------------------------------------------------
+    // --- devices / groups / transfers ---------------------------------------------
 
     _buildDevices() {
         const s = this._session;
-        const receiving = this._receiving.get();
-        const receive = {
-            label: receiving ? 'Receiving: on' : 'Receiving: off',
-            active: receiving,
-            onClick: () => {
-                this._receiving.set(!this._receiving.get());
-                this._render();
-            },
-        };
-        switch (s.phase) {
-        case 'waiting':
-        case 'sending':
-            this.add_child(this._caption(`SENDING TO ${(s.device?.alias ?? '').toUpperCase()}`));
-            this.add_child(this._createProgress());
+        if (s.phase === 'sending' || s.phase === 'done') {
+            if (s.transfers.length === 1)
+                this._buildOneTransfer(s.transfers[0]);
+            else
+                this._buildTransfers();
             return;
-        case 'done':
-            this.add_child(this._caption('DONE'));
-            this.add_child(this._createNote('emblem-ok-symbolic', s.message, {label: 'OK', onClick: () => s.refresh()}));
-            return;
-        case 'error':
-            this.add_child(this._caption('LOCALSEND'));
-            this.add_child(this._createNote('dialog-warning-symbolic', s.message, {label: 'Try again', onClick: () => s.refresh({force: true})}));
-            return;
-        default:
-            this.add_child(this._caption(s.phase === 'scan' ? 'LOOKING FOR DEVICES…' : 'SEND TO', [
-                {label: 'Refresh', onClick: () => s.refresh({force: true})},
-                receive,
-            ]));
-            this.add_child(this._createDevices());
         }
+        if (this._naming) {
+            this._buildNaming();
+            return;
+        }
+        const chosen = s.selectedDevices.length;
+        const group = s.activeGroup;
+        if (this._confirmDelete && this._confirmDelete !== group?.id)
+            this._confirmDelete = null;
+        if (chosen > 0) {
+            const empty = s.basket.length === 0;
+            const title = group
+                ? `${group.name.toUpperCase()} · ${chosen} OF ${group.members.length} HERE`
+                : `SEND TO · ${chosen} CHOSEN`;
+            const groupAction = group
+                ? {
+                    label: this._confirmDelete ? 'Delete it?' : 'Delete group',
+                    active: !!this._confirmDelete,
+                    onClick: () => {
+                        if (this._confirmDelete) {
+                            this._confirmDelete = null;
+                            s.deleteGroup(group.id);
+                        } else {
+                            this._confirmDelete = group.id;
+                            this._render();
+                        }
+                    },
+                }
+                : {label: 'Save as group', onClick: () => this._startNaming()};
+            this.add_child(this._caption(title, [
+                {label: 'Clear', onClick: () => s.clearSelection()},
+                groupAction,
+                {
+                    label: empty ? 'Add files to send' : `Send to ${chosen}`,
+                    accent: !empty,
+                    disabled: empty,
+                    onClick: () => s.send(),
+                },
+            ]));
+        } else {
+            const receiving = this._receiving.get();
+            this.add_child(this._caption(s.phase === 'scan' ? 'LOOKING FOR DEVICES…' : 'SEND TO', [
+                ...(s.devices.length >= 2 ? [{label: 'All', onClick: () => s.selectAll()}] : []),
+                {label: 'Refresh', onClick: () => s.refresh({force: true})},
+                {
+                    label: receiving ? 'Receiving: on' : 'Receiving: off',
+                    active: receiving,
+                    onClick: () => {
+                        this._receiving.set(!this._receiving.get());
+                        this._render();
+                    },
+                },
+            ]));
+        }
+        this.add_child(this._createDevices());
+    }
+
+    /** A round badge with an icon, the start of every tile. */
+    _badge(iconName, extraClass = '') {
+        const badge = new St.Bin({style_class: `muna-lsv-badge ${extraClass}`, y_align: Clutter.ActorAlign.CENTER});
+        badge.set_child(new St.Icon({icon_name: iconName, style_class: 'muna-lsv-badge-icon'}));
+        return badge;
+    }
+
+    /** The two lines of a tile: a name and a small line under it. */
+    _tileTexts(name, detail, detailClass = 'muna-ls-device-model') {
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-tile-texts'});
+        const title = new St.Label({text: name, style_class: 'muna-ls-device-name'});
+        title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        texts.add_child(title);
+        const line = new St.Label({text: detail, style_class: detailClass});
+        line.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        texts.add_child(line);
+        return texts;
     }
 
     _createDevices() {
         const s = this._session;
         if (s.devices.length === 0) {
             return new St.Label({
-                text: s.phase === 'scan' ? 'Open LocalSend on the other device (same network)' : 'No devices found',
+                text: s.phase === 'scan'
+                    ? 'Looking on this network… (on the other side: Muna or LocalSend, with receiving on)'
+                    : 'No devices found. The others need receiving on and the same network',
                 style_class: 'muna-lsv-hint',
                 y_align: Clutter.ActorAlign.CENTER,
                 y_expand: true,
             });
         }
         const tiles = new St.BoxLayout({style_class: 'muna-lsv-tiles', y_align: Clutter.ActorAlign.CENTER});
-        const empty = s.basket.length === 0;
-        for (const device of s.devices) {
-            const tile = new St.Button({
-                style_class: 'muna-lsv-tile',
+        // the saved groups first: a click chooses the members that are here
+        for (const group of s.groups) {
+            const here = s.groupPresence(group).found.length;
+            const active = s.activeGroupId === group.id;
+            const chip = new St.Button({
+                style_class: `muna-lsv-tile muna-lsv-group${active ? ' muna-lsv-tile-selected' : ''}`,
                 can_focus: true,
-                reactive: !empty,
-                opacity: empty ? 110 : 255,
+                accessible_name: `Group ${group.name}`,
             });
             const box = new St.BoxLayout({y_align: Clutter.ActorAlign.CENTER});
-            const badge = new St.Bin({style_class: 'muna-lsv-badge', y_align: Clutter.ActorAlign.CENTER});
-            badge.set_child(new St.Icon({icon_name: DEVICE_ICONS[device.deviceType] ?? 'computer-symbolic', style_class: 'muna-lsv-badge-icon'}));
-            box.add_child(badge);
-            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-tile-texts'});
-            const name = new St.Label({text: device.alias, style_class: 'muna-ls-device-name'});
-            name.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-            texts.add_child(name);
-            texts.add_child(new St.Label({text: device.deviceModel || 'LocalSend', style_class: 'muna-ls-device-model'}));
-            box.add_child(texts);
+            box.add_child(this._badge(active ? 'object-select-symbolic' : 'system-users-symbolic', 'muna-lsv-badge-group'));
+            box.add_child(this._tileTexts(group.name, `${here} of ${group.members.length} here`));
+            chip.set_child(box);
+            chip.connect('clicked', () => s.selectGroup(group));
+            tiles.add_child(chip);
+        }
+        for (const device of s.devices) {
+            const selected = s.isSelected(device);
+            const muna = isMuna(device);
+            const tile = new St.Button({
+                style_class: `muna-lsv-tile${selected ? ' muna-lsv-tile-selected' : ''}`,
+                can_focus: true,
+                accessible_name: device.alias,
+            });
+            const box = new St.BoxLayout({y_align: Clutter.ActorAlign.CENTER});
+            box.add_child(this._badge(
+                selected ? 'object-select-symbolic' : DEVICE_ICONS[device.deviceType] ?? 'computer-symbolic',
+                muna ? 'muna-lsv-badge-muna' : ''));
+            box.add_child(this._tileTexts(device.alias, device.deviceModel || 'LocalSend',
+                muna ? 'muna-ls-device-model muna-lsv-muna' : 'muna-ls-device-model'));
             tile.set_child(box);
-            tile.connect('clicked', () => s.sendTo(device));
+            tile.connect('clicked', () => s.toggle(device));
             tiles.add_child(tile);
         }
         return createSideScroll(tiles);
     }
 
-    _createProgress() {
+    // --- naming a group -------------------------------------------------------------
+
+    _startNaming() {
+        this._naming = true;
+        this._nameError = '';
+        this._render();
+        this._ui?.beginTextInput(() => this._stopNaming());
+        this._nameEntry?.grab_key_focus();
+    }
+
+    _stopNaming() {
+        if (!this._naming)
+            return;
+        this._naming = false;
+        this._nameEntry = null;
+        this._ui?.endTextInput();
+        this._render();
+    }
+
+    async _saveName() {
+        const name = this._nameEntry?.text.trim() ?? '';
+        if (!name) {
+            this._nameError = 'Write a name first';
+            this._showNameError();
+            return;
+        }
+        try {
+            await this._session.saveGroup(name);
+            this._stopNaming();
+        } catch (e) {
+            this._nameError = e.message;
+            this._showNameError();
+        }
+    }
+
+    _showNameError() {
+        if (this._nameErrorLabel) {
+            this._nameErrorLabel.text = this._nameError;
+            this._nameErrorLabel.visible = !!this._nameError;
+        }
+    }
+
+    _buildNaming() {
+        const s = this._session;
+        const names = s.selectedDevices.map(d => d.alias);
+        this.add_child(this._caption(`NEW GROUP · ${names.length} DEVICE${names.length === 1 ? '' : 'S'}`, [
+            {label: 'Cancel', onClick: () => this._stopNaming()},
+            {label: 'Save', accent: true, onClick: () => this._saveName()},
+        ]));
+        const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-naming'});
+        const entry = new St.Entry({
+            hint_text: 'Name, for example: Office',
+            style_class: 'muna-todo-entry muna-lsv-entry',
+            can_focus: true,
+            x_expand: true,
+        });
+        entry.clutter_text.max_length = 60;
+        entry.clutter_text.connect('activate', () => this._saveName());
+        entry.clutter_text.connect('key-press-event', (_actor, event) => {
+            if (event.get_key_symbol() === Clutter.KEY_Escape) {
+                this._stopNaming();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._nameEntry = entry;
+        column.add_child(entry);
+        const detail = new St.Label({text: names.join(', '), style_class: 'muna-lsv-hint'});
+        detail.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        column.add_child(detail);
+        this._nameErrorLabel = new St.Label({text: this._nameError, style_class: 'muna-lsv-error', visible: !!this._nameError});
+        column.add_child(this._nameErrorLabel);
+        this.add_child(column);
+    }
+
+    // --- transfers ------------------------------------------------------------------
+
+    /** Sending to one device: one big bar, as it always was. */
+    _buildOneTransfer(transfer) {
+        const s = this._session;
+        const alias = transfer.device.alias ?? '';
+        if (s.phase === 'sending') {
+            this.add_child(this._caption(`SENDING TO ${alias.toUpperCase()}`));
+            this.add_child(this._createProgress(transfer));
+            return;
+        }
+        if (transfer.phase === 'done') {
+            this.add_child(this._caption('DONE'));
+            const skipped = transfer.skipped > 0 ? ` (${transfer.skipped} folder skipped)` : '';
+            this.add_child(this._createNote('object-select-symbolic', `Sent to ${alias}${skipped}`, {label: 'OK', onClick: () => s.dismiss()}));
+            return;
+        }
+        this.add_child(this._caption('LOCALSEND', [{label: 'OK', onClick: () => s.dismiss()}]));
+        this.add_child(this._createNote('dialog-warning-symbolic', transfer.message, {label: 'Try again', onClick: () => s.retryFailed()}));
+    }
+
+    /** Sending to several devices: a tile for each, with how far it got. */
+    _buildTransfers() {
+        const s = this._session;
+        const all = s.transfers;
+        const sent = all.filter(t => t.phase !== 'missing');   // those not on the network are not counted while sending
+        const finished = sent.filter(t => !['waiting', 'sending'].includes(t.phase)).length;
+        const left = all.filter(t => t.phase === 'failed' || t.phase === 'missing').length;
+        if (s.phase === 'sending') {
+            this.add_child(this._caption(`SENDING · ${finished} OF ${sent.length} DONE`, [
+                {label: 'Cancel', onClick: () => s.cancel()},
+            ]));
+        } else {
+            this.add_child(this._caption(s.message.toUpperCase(), [
+                ...(left > 0 ? [{label: `Try again (${left})`, accent: true, onClick: () => s.retryFailed()}] : []),
+                {label: 'OK', onClick: () => s.dismiss()},
+            ]));
+        }
+        const tiles = new St.BoxLayout({style_class: 'muna-lsv-tiles', y_align: Clutter.ActorAlign.CENTER});
+        for (const t of all) {
+            const tile = new St.BoxLayout({style_class: `muna-lsv-tile muna-lsv-transfer muna-lsv-transfer-${t.phase}`, y_align: Clutter.ActorAlign.CENTER});
+            const [icon, detail] = {
+                waiting: ['content-loading-symbolic', 'Waiting to accept…'],
+                sending: ['send-to-symbolic', `${t.total > 0 ? Math.floor(100 * t.sent / t.total) : 0}% · ${sizeText(t.sent)}`],
+                done: ['object-select-symbolic', 'Received'],
+                failed: ['dialog-warning-symbolic', t.message],
+                missing: ['network-offline-symbolic', 'Not on the network'],
+            }[t.phase] ?? ['computer-symbolic', ''];
+            tile.add_child(this._badge(icon, `muna-lsv-badge-${t.phase}`));
+            const texts = this._tileTexts(t.device.alias ?? '', detail);
+            if (t.phase === 'sending' || t.phase === 'waiting') {
+                const width = scaled(TILE_BAR_WIDTH);
+                const stack = new St.Widget({layout_manager: new Clutter.BinLayout(), style_class: 'muna-lsv-mini'});
+                stack.add_child(new St.Widget({style_class: 'muna-ls-bar muna-lsv-mini-bar', width, x_align: Clutter.ActorAlign.START}));
+                stack.add_child(new St.Widget({
+                    style_class: 'muna-ls-bar-fill muna-lsv-mini-bar',
+                    width: width * (t.total > 0 ? t.sent / t.total : 0),
+                    x_align: Clutter.ActorAlign.START,
+                }));
+                texts.add_child(stack);
+            }
+            tile.add_child(texts);
+            tiles.add_child(tile);
+        }
+        this.add_child(createSideScroll(tiles));
+    }
+
+    _createProgress(transfer) {
         const s = this._session;
         const box = new St.BoxLayout({style_class: 'muna-ls-progress', x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER});
         const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-ls-progress'});
         column.add_child(new St.Label({
-            text: s.phase === 'waiting' ? `Waiting for ${s.device?.alias ?? 'the device'} to accept…` : `${sizeText(s.sent)} of ${sizeText(s.total)}`,
+            text: transfer.phase === 'waiting' ? `Waiting for ${transfer.device.alias ?? 'the device'} to accept…` : `${sizeText(transfer.sent)} of ${sizeText(transfer.total)}`,
             style_class: 'muna-ls-status',
         }));
         const track = new St.Widget({style_class: 'muna-ls-bar', width: scaled(BAR_WIDTH), x_align: Clutter.ActorAlign.START});
         const fill = new St.Widget({
             style_class: 'muna-ls-bar-fill',
-            width: scaled(BAR_WIDTH) * (s.total > 0 ? s.sent / s.total : 0),
+            width: scaled(BAR_WIDTH) * (transfer.total > 0 ? transfer.sent / transfer.total : 0),
             x_align: Clutter.ActorAlign.START,
         });
         const stack = new St.Widget({layout_manager: new Clutter.BinLayout()});
@@ -273,6 +496,10 @@ export class LocalSendView extends St.BoxLayout {
     }
 
     destroy() {
+        if (this._naming) {
+            this._naming = false;
+            this._ui?.endTextInput();
+        }
         this._session.disconnectObject(this);
         super.destroy();
     }

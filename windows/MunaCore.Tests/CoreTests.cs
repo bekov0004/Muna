@@ -487,3 +487,43 @@ public class ClaudeTaskTests
         Assert.Equal(AgentStatus.Stopped, task.Status);
     }
 }
+
+public class CalendarTests
+{
+    const string Ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\n" +
+        "BEGIN:VEVENT\r\nUID:a\r\nDTSTART;VALUE=DATE:20261125\r\nDTEND;VALUE=DATE:20261126\r\nSUMMARY:Holiday\\, all day\r\nEND:VEVENT\r\n" +
+        "BEGIN:VEVENT\r\nUID:b\r\nDTSTART:20261125T090000\r\nDURATION:PT1H30M\r\nSUMMARY:Stand-up with a very long\r\n  title\r\nEND:VEVENT\r\n" +
+        "BEGIN:VEVENT\r\nUID:c\r\nDTSTART:20261102T140000\r\nDTEND:20261102T150000\r\nRRULE:FREQ=WEEKLY;BYDAY=MO,WE;COUNT=8\r\nEXDATE:20261111T140000\r\nSUMMARY:Gym\r\nEND:VEVENT\r\n" +
+        "BEGIN:VEVENT\r\nUID:c\r\nRECURRENCE-ID:20261118T140000\r\nDTSTART:20261119T180000\r\nDTEND:20261119T190000\r\nSUMMARY:Gym (moved)\r\nEND:VEVENT\r\n" +
+        "BEGIN:VEVENT\r\nUID:d\r\nDTSTART:20261125T100000\r\nSTATUS:CANCELLED\r\nSUMMARY:Gone\r\nEND:VEVENT\r\n" +
+        "END:VCALENDAR\r\n";
+
+    static List<string> On(List<CalendarEvent> events, int day) =>
+        IcsCalendar.Occurrences(events, new DateTime(2026, 11, day), new DateTime(2026, 11, day).AddDays(1)).OrderBy(e => e.Start).Select(e => $"{e.Start:HH:mm} {e.Title}").ToList();
+
+    [Fact]
+    public void ReadsEventsAndRepeats()
+    {
+        var events = IcsCalendar.Parse(Ics);
+        // the 8th Gym (11th skipped still counts) is on the 25th
+        Assert.Equal(new[] { "00:00 Holiday, all day", "09:00 Stand-up with a very long title", "14:00 Gym" }, On(events, 25));
+        Assert.Empty(On(events, 26));
+        Assert.Equal(new[] { "14:00 Gym" }, On(events, 2));
+        Assert.Equal(new[] { "14:00 Gym" }, On(events, 4));
+        Assert.Empty(On(events, 11));                       // skipped
+        Assert.Empty(On(events, 18));                       // moved …
+        Assert.Equal(new[] { "18:00 Gym (moved)" }, On(events, 19));
+        Assert.Equal(new[] { "14:00 Gym" }, On(events, 23));
+        Assert.Empty(On(events, 30));                       // the 8 occurrences ended on the 25th
+    }
+
+    [Fact]
+    public void UtcAndUntil()
+    {
+        var events = IcsCalendar.Parse("BEGIN:VEVENT\nUID:x\nDTSTART:20261125T120000Z\nDTEND:20261125T130000Z\nRRULE:FREQ=DAILY;UNTIL=20261127T120000Z\nSUMMARY:Daily\nEND:VEVENT\n");
+        var local = new DateTime(2026, 11, 25, 12, 0, 0, DateTimeKind.Utc).ToLocalTime();
+        var all = IcsCalendar.Occurrences(events, new DateTime(2026, 11, 20), new DateTime(2026, 12, 5));
+        Assert.Equal(3, all.Count);
+        Assert.Equal(local, all[0].Start);
+    }
+}

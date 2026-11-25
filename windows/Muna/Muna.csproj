@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Muna</RootNamespace>
+    <AssemblyName>Muna</AssemblyName>
+    <ApplicationIcon>Assets\Muna.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.1.0</Version>
+    <Product>Muna</Product>
+    <Company>Muna</Company>
+    <Description>A Dynamic Island for the desktop</Description>
+    <NoWarn>CA1416;WFAC010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MunaCore\MunaCore.csproj" />
+    <Resource Include="Assets\butterfly.png" />
+    <Resource Include="Assets\Tray.ico" />
+    <Resource Include="Assets\Muna.ico" />
+  </ItemGroup>
+</Project>

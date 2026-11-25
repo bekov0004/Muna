@@ -73,7 +73,7 @@ export class TimerWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-widget muna-timer',
             x_expand: true,
             y_expand: true,

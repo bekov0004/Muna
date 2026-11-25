@@ -28,11 +28,11 @@ export class PhoneWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-phone muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-phone muna-menu-page', x_expand: true});
         this._card = menuCard();
         this._card.add_style_class_name('muna-bigcard');
         root.add_child(this._card);
-        this._body = new St.BoxLayout({vertical: true, x_expand: true});
+        this._body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         this._card.add_child(this._body);
         this._phone?.connectObject('state-changed', () => this._draw(), this);
         this._draw();

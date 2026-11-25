@@ -41,7 +41,7 @@ class NotificationRow extends St.Widget {
         else
             icon.icon_name = 'dialog-information-symbolic';
         row.add_child(icon);
-        const text = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
         const head = new St.Label({
             text: [item.app, ago(item.time)].filter(Boolean).join(' · '),
             style_class: 'muna-notif-app',
@@ -84,7 +84,7 @@ export class NotificationsView extends St.BoxLayout {
 
     /** @param {{service: NotificationsService, onActivate?: Function}} params */
     constructor({service, onActivate}) {
-        super({vertical: true, style_class: 'muna-tray muna-notifications', x_expand: true, y_expand: true});
+        super({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-tray muna-notifications', x_expand: true, y_expand: true});
         this._service = service;
         this._onActivate = onActivate;
 
@@ -119,7 +119,7 @@ export class NotificationsView extends St.BoxLayout {
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
         });
-        this._list = new St.BoxLayout({vertical: true, style_class: 'muna-notif-list', x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-notif-list', x_expand: true});
         this._scroll.add_child(this._list);
         this.add_child(this._scroll);
 

@@ -48,7 +48,7 @@ export class TimerActivity extends LiveActivity {
             child: new St.Icon({icon_name: 'alarm-symbolic', style_class: 'muna-peek-badge-icon'}),
         }));
         const texts = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'muna-peek-texts',

@@ -19,7 +19,7 @@ export class TodoWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-widget muna-todo',
             x_expand: true,
             y_expand: true,
@@ -59,7 +59,7 @@ export class TodoWidget extends MunaWidget {
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
         });
-        this._list = new St.BoxLayout({vertical: true, style_class: 'muna-todo-list', x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-todo-list', x_expand: true});
         this._scroll.add_child(this._list);
         root.add_child(this._scroll);
 

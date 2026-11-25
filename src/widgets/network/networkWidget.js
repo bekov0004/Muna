@@ -19,7 +19,7 @@ export class NetworkWidget extends MonitorWidget {
     static iconName = 'network-wireless-symbolic';
 
     createPage() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-network muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-network muna-menu-page', x_expand: true});
         const card = menuCard();
         card.add_style_class_name('muna-bigcard');
         root.add_child(card);
@@ -56,7 +56,7 @@ export class NetworkWidget extends MonitorWidget {
     _speedTile(icon, label, tone) {
         const actor = new St.BoxLayout({style_class: 'muna-speed', x_expand: true});
         actor.add_child(new St.Label({text: icon === 'go-down-symbolic' ? '↓' : '↑', style_class: `muna-speed-icon ${tone}`, y_align: Clutter.ActorAlign.START}));
-        const texts = new St.BoxLayout({vertical: true});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL});
         const value = new St.Label({text: '–', style_class: 'muna-speed-value'});
         texts.add_child(value);
         texts.add_child(new St.Label({text: label, style_class: 'muna-speed-label'}));

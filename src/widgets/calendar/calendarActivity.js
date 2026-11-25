@@ -56,7 +56,7 @@ export class CalendarActivity extends LiveActivity {
             }),
         }));
         const texts = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'muna-peek-texts',

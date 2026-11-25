@@ -43,15 +43,15 @@ export class DisplaysWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-displays muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-displays muna-menu-page', x_expand: true});
         const card = menuCard();
         card.add_style_class_name('muna-bigcard');
         root.add_child(card);
 
-        this._list = new St.BoxLayout({vertical: true, x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         card.add_child(this._list);
 
-        this._kbdBox = new St.BoxLayout({vertical: true, x_expand: true, visible: false});
+        this._kbdBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, visible: false});
         this._kbdBox.add_child(menuDivider());
         this._kbd = this._sliderRow('input-keyboard-symbolic', 'Keyboard light', value => this._setKeyboard(value));
         this._kbdBox.add_child(this._kbd.actor);
@@ -90,7 +90,7 @@ export class DisplaysWidget extends MunaWidget {
             options.body.add_child(this._dim.row);
         }
 
-        this._arrangeBox = new St.BoxLayout({vertical: true, x_expand: true});
+        this._arrangeBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         this._arrangeBox.add_child(menuHeader('Arrangement'));
         const arrange = menuCard();
         this._arrangeBox.add_child(arrange);
@@ -117,7 +117,7 @@ export class DisplaysWidget extends MunaWidget {
         mainRow.add_child(this._mainChip);
         arrange.add_child(mainRow);
         arrange.add_child(menuDivider());
-        this._modes = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'muna-card-pad'});
+        this._modes = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-card-pad'});
         arrange.add_child(this._modes);
         this._arrangeNote = new St.Label({style_class: 'muna-hint', visible: false});
         this._arrangeNote.clutter_text.line_wrap = true;
@@ -152,7 +152,7 @@ export class DisplaysWidget extends MunaWidget {
 
     /** A named slider with the percent on the right (and a note under it). */
     _sliderRow(icon, name, onChange, note = '') {
-        const actor = new St.BoxLayout({vertical: true, x_expand: true});
+        const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         const head = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true});
         head.add_child(new St.Icon({icon_name: icon, style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER}));
         head.add_child(new St.Label({text: name, style_class: 'muna-value-label muna-value-strong', x_expand: true, y_align: Clutter.ActorAlign.CENTER}));

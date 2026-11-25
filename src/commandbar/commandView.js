@@ -47,7 +47,7 @@ export class CommandView extends St.BoxLayout {
      *          onPaste: (item) => void}} params
      */
     constructor({clipboard, ui, onDone, onPaste, onPasteText = null, processes = null, service = null, snippets = null, cleaner = null, fingerprint = null}) {
-        super({vertical: true, style_class: 'muna-cmd', x_expand: true, y_expand: true});
+        super({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-cmd', x_expand: true, y_expand: true});
         this._clipboardService = clipboard;
         this._fingerprint = fingerprint;
         this._ui = ui;
@@ -83,9 +83,9 @@ export class CommandView extends St.BoxLayout {
         this.add_child(this._separator);
 
         // empty field: what can be typed
-        this._suggestions = new St.BoxLayout({vertical: true, style_class: 'muna-cmd-suggestions', x_expand: true});
+        this._suggestions = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-cmd-suggestions', x_expand: true});
         this._suggestions.add_child(new St.Label({text: 'Try', style_class: 'muna-cmd-group'}));
-        const chips = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'muna-cmd-chips'});
+        const chips = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-cmd-chips'});
         let line = null;
         SUGGESTIONS.forEach((suggestion, i) => {
             if (i % 4 === 0) {
@@ -115,7 +115,7 @@ export class CommandView extends St.BoxLayout {
             x_expand: true,
             y_expand: true,
         });
-        this._list = new St.BoxLayout({vertical: true, style_class: 'muna-cmd-list', x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-cmd-list', x_expand: true});
         this._scroll.add_child(this._list);
         this.add_child(this._scroll);
 
@@ -443,7 +443,7 @@ export class CommandView extends St.BoxLayout {
             else
                 icon.icon_name = result.icon;
             box.add_child(icon);
-            const texts = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
             const title = new St.Label({text: result.title, style_class: 'muna-cmd-title'});
             title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
             texts.add_child(title);

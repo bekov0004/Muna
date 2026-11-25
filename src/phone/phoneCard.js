@@ -10,7 +10,7 @@ import {scaled} from '../utils/scale.js';
 import {PhoneLink, defaultAddress, randomToken} from './phoneLink.js';
 import {seekPhone} from './phoneFinder.js';
 import {PhoneStream, StreamState} from './phoneStream.js';
-import {ScreenEffect} from './screenEffect.js';
+import {screenEffect} from './screenEffect.js';
 
 const WIDTH = 330;            // css px, like the enlarged calendar
 const INSET = 20;             // card width minus the picture's: 10 px on each side, a thin frame
@@ -404,7 +404,7 @@ export class PhoneCardActivity extends LiveActivity {
 
     _buildPhone(root, stream, {width, height}, state) {
         const holder = new St.Widget({layout_manager: new Clutter.BinLayout(), x_expand: true, y_expand: true});
-        holder.add_effect(new ScreenEffect(width, height, scaled(RADIUS)));
+        holder.add_effect(screenEffect(width, height, scaled(RADIUS)));
         const screen = new St.Widget({reactive: true, can_focus: true, x_expand: true, y_expand: true, content_gravity: Clutter.ContentGravity.RESIZE_FILL});
         holder.add_child(screen);
         root.add_child(holder);
@@ -665,7 +665,7 @@ export class PhoneCardActivity extends LiveActivity {
     _buildMessage(root) {
         root.destroy_all_children();
         const state = this._phone?.state ?? {};
-        const box = new St.BoxLayout({vertical: true, x_expand: true, y_expand: true, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-phone-center'});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-phone-center'});
         root.add_child(box);
         const close = createButton({iconName: 'go-up-symbolic', styleClass: 'muna-phone-control', onClick: () => this._onDismiss()});
         close.set({x_expand: true, y_expand: true, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.START});

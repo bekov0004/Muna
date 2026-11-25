@@ -30,7 +30,7 @@ export class FileItem extends St.Widget {
             y_expand: true,
             can_focus: true,
         });
-        const box = new St.BoxLayout({vertical: true, x_align: Clutter.ActorAlign.CENTER});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER});
         box.add_child(new St.Icon({
             gicon: item.thumbnail ?? item.icon,
             style_class: 'muna-file-icon',

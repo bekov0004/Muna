@@ -46,7 +46,7 @@ export class PhoneCardWidget extends MunaWidget {
 
     createView() {
         const root = new St.Widget({layout_manager: new Clutter.BinLayout(), style_class: 'muna-widget muna-phonecard', x_expand: true, y_expand: true, reactive: true, track_hover: true});
-        const column = new St.BoxLayout({vertical: true, x_expand: true, y_expand: true, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+        const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
         column.add_child(new St.Icon({icon_name: 'phone-symbolic', style_class: 'muna-phonecard-icon', x_align: Clutter.ActorAlign.CENTER}));
         this._title = new St.Label({style_class: 'muna-phonecard-title', x_align: Clutter.ActorAlign.CENTER});
         this._subtitle = new St.Label({style_class: 'muna-phonecard-subtitle', x_align: Clutter.ActorAlign.CENTER});

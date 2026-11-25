@@ -15,7 +15,7 @@ const HOLD_ESC_MS = 3000;   // holding Escape ends it earlier
 export function startCleaningMode({onEnd = () => {}, indicatorOnly = false} = {}) {
     const overlay = new St.BoxLayout({
         reactive: true,
-        vertical: true,
+        orientation: Clutter.Orientation.VERTICAL,
         x: 0,
         y: 0,
         width: global.stage.width,

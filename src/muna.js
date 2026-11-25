@@ -713,7 +713,7 @@ export class Muna {
             reactive: true,
             track_hover: true,
             can_focus: false,
-            button_mask: St.ButtonMask.ONE,
+            button_mask: St.ButtonMask.PRIMARY ?? St.ButtonMask.ONE,   // PRIMARY since GNOME 51
         });
 
         this._content = new St.Widget({

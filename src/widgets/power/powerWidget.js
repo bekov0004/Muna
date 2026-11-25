@@ -15,7 +15,7 @@ export class PowerWidget extends MonitorWidget {
     static iconName = 'battery-full-symbolic';
 
     createPage() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-power muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-power muna-menu-page', x_expand: true});
         this._none = new St.Label({text: 'There is no battery in this computer.', style_class: 'muna-monitor-note'});
         root.add_child(this._none);
 
@@ -58,7 +58,7 @@ export class PowerWidget extends MonitorWidget {
         this._health = this._iconRow('Battery health', 'emblem-favorite-symbolic', ' ');
         card.add_child(this._health.actor);
 
-        this._devicesBox = new St.BoxLayout({vertical: true, x_expand: true});
+        this._devicesBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         card.add_child(this._devicesBox);
         return root;
     }
@@ -67,7 +67,7 @@ export class PowerWidget extends MonitorWidget {
     _iconRow(title, icon, subtitle = '') {
         const actor = new St.BoxLayout({style_class: 'muna-icon-row', x_expand: true});
         actor.add_child(new St.Icon({icon_name: icon, style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER}));
-        const texts = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
         const name = new St.Label({text: title, style_class: 'muna-value-label'});
         texts.add_child(name);
         let sub = null;

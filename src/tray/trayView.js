@@ -18,7 +18,7 @@ export class TrayView extends St.BoxLayout {
     /** @param {FileService} files */
     constructor(files, drag = null, onSend = null) {
         super({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-tray',
             x_expand: true,
             y_expand: true,
@@ -78,7 +78,7 @@ export class TrayView extends St.BoxLayout {
         this._outline.connect('repaint', area => this._paintOutline(area));
         this._target.add_child(this._outline);
         const targetBox = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-tray-target-box',
             x_expand: true,
             y_expand: true,
@@ -100,7 +100,7 @@ export class TrayView extends St.BoxLayout {
 
         // Second drop target (like AirDrop on the Mac): hand the files to LocalSend.
         this._localsend = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-tray-localsend',
             x_expand: true,
             y_expand: true,
@@ -108,7 +108,7 @@ export class TrayView extends St.BoxLayout {
             visible: false,
         });
         const btBox = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-tray-target-box',
             x_expand: true,
             y_expand: true,

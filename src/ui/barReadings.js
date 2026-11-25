@@ -209,7 +209,7 @@ export class BarReadings {
         button.menu.actor.add_style_class_name('muna-reading-menu');
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false, activate: false});
         item.add_style_class_name('muna-menu-item');
-        const body = new St.BoxLayout({vertical: true, style_class: 'muna-reading-root', width: WIDTH});
+        const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-reading-root', width: WIDTH});
         item.add_child(body);
         button.menu.addMenuItem(item);
         // Not added with addToStatusArea: these are placed beside the Muna button by sync(); the panel still has
@@ -233,7 +233,7 @@ export class BarReadings {
 
         const head = new St.BoxLayout({style_class: 'muna-reading-head', x_expand: true});
         head.add_child(new St.Icon({icon_name: reading.icon, style_class: 'muna-reading-icon', y_align: Clutter.ActorAlign.CENTER}));
-        const titles = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        const titles = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
         titles.add_child(new St.Label({text: reading.title.toUpperCase(), style_class: 'muna-reading-title'}));
         const big = new St.BoxLayout({style_class: 'muna-reading-big-line'});
         big.add_child(new St.Label({text: detail.value, style_class: 'muna-reading-value', y_align: Clutter.ActorAlign.END}));
@@ -243,7 +243,7 @@ export class BarReadings {
         head.add_child(titles);
         body.add_child(head);
 
-        const card = new St.BoxLayout({vertical: true, style_class: 'muna-card muna-reading-card', x_expand: true});
+        const card = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-card muna-reading-card', x_expand: true});
         if (detail.graph) {
             const graph = new Sparkline({color: detail.graph.series[0].color, max: detail.graph.max, height: 56,
                 label: detail.graph.max ? null : max => formatRate(max)});

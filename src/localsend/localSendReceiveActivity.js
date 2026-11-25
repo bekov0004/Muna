@@ -66,7 +66,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
     }
 
     createPeekView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-ls', x_expand: true, y_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-ls', x_expand: true, y_expand: true});
 
         const header = new St.BoxLayout({style_class: 'muna-ls-header'});
         const title = new St.Label({style_class: 'muna-ls-title', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
@@ -86,7 +86,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
         header.add_child(close);
         root.add_child(header);
 
-        const body = new St.BoxLayout({vertical: true, x_expand: true, y_expand: true});
+        const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true});
         root.add_child(body);
 
         const render = () => {
@@ -124,7 +124,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
 
     _createQuestion() {
         const t = this._transfer;
-        const box = new St.BoxLayout({vertical: true, x_expand: true, y_expand: true, style_class: 'muna-ls-progress'});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true, style_class: 'muna-ls-progress'});
         box.add_child(new St.Label({
             text: `wants to send you ${countText(t.files.length)} · ${sizeText(t.total)}`,
             style_class: 'muna-ls-status',
@@ -152,7 +152,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
 
     _createProgress() {
         const t = this._transfer;
-        const box = new St.BoxLayout({vertical: true, style_class: 'muna-ls-progress', x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-ls-progress', x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER});
         box.add_child(new St.Label({text: `${sizeText(t.received)} of ${sizeText(t.total)}`, style_class: 'muna-ls-status'}));
         const track = new St.Widget({style_class: 'muna-ls-bar', width: scaled(BAR_WIDTH), x_align: Clutter.ActorAlign.START});
         const fill = new St.Widget({
@@ -171,7 +171,7 @@ export class LocalSendReceiveActivity extends LiveActivity {
     }
 
     _createNote(iconName, text, action = null) {
-        const box = new St.BoxLayout({vertical: true, x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-ls-note'});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-ls-note'});
         const line = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER});
         line.add_child(new St.Icon({icon_name: iconName, style_class: 'muna-ls-note-icon', y_align: Clutter.ActorAlign.CENTER}));
         line.add_child(new St.Label({text, style_class: 'muna-ls-status', y_align: Clutter.ActorAlign.CENTER}));

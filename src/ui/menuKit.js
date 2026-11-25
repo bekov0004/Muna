@@ -13,7 +13,7 @@ export function menuHeader(text) {
 
 /** A rounded card; rows and other things go inside it. */
 export function menuCard() {
-    return new St.BoxLayout({vertical: true, style_class: 'muna-card', x_expand: true});
+    return new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-card', x_expand: true});
 }
 
 /** A thin line between two rows of a card. */
@@ -29,7 +29,7 @@ export function menuDivider() {
 export function menuRow({title, subtitle = '', control = null, onClick = null}) {
     const row = new St.Button({style_class: 'muna-card-row', x_expand: true, reactive: !!onClick, can_focus: !!onClick, track_hover: !!onClick});
     const box = new St.BoxLayout({x_expand: true});
-    const text = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+    const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
     const titleLabel = new St.Label({text: title, style_class: 'muna-card-title'});
     text.add_child(titleLabel);
     let subtitleLabel = null;
@@ -84,7 +84,7 @@ export function menuChip({label, icon = null, primary = false, onClick}) {
  * @returns {{actor: St.Widget, buttons: Map<string, St.Button>}}
  */
 export function menuChips(items, onPick, {perRow = 4} = {}) {
-    const box = new St.BoxLayout({vertical: true, style_class: 'muna-chips', x_expand: true});
+    const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-chips', x_expand: true});
     const buttons = new Map();
     let row = null;
     items.forEach(({id, label, icon}, index) => {
@@ -154,7 +154,7 @@ export function usageBar() {
 
 /** A number with a small label above it: "CPU" / "45°C". @returns {{actor: St.BoxLayout, set: (text: string) => void}} */
 export function statTile(label, value = '–') {
-    const actor = new St.BoxLayout({vertical: true, style_class: 'muna-stat', x_expand: true});
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-stat', x_expand: true});
     actor.add_child(new St.Label({text: label, style_class: 'muna-stat-label'}));
     const valueLabel = new St.Label({text: value, style_class: 'muna-stat-value'});
     actor.add_child(valueLabel);
@@ -190,7 +190,7 @@ export function valueRow(label, value = '–', {strong = false} = {}) {
 
 /** A tile with an icon and a label over a big number, for the temperatures. */
 export function bigTile(label, icon = null) {
-    const actor = new St.BoxLayout({vertical: true, style_class: 'muna-big-tile', x_expand: true});
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-big-tile', x_expand: true});
     const head = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER, style_class: 'muna-big-tile-head'});
     if (icon)
         head.add_child(new St.Icon({icon_name: icon, style_class: 'muna-big-tile-icon'}));
@@ -218,9 +218,9 @@ export function pillButton({label, icon = null, onClick}) {
  * @returns {{actor: St.BoxLayout, detail: St.BoxLayout, set: (percent: number, warn?: boolean) => void, setLabel: (text: string) => void}}
  */
 export function meterRow(label, {icon = null, expandable = false} = {}) {
-    const actor = new St.BoxLayout({vertical: true, x_expand: true});
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
     const line = new St.BoxLayout({style_class: 'muna-meter-row', x_expand: true});
-    const detail = new St.BoxLayout({vertical: true, style_class: 'muna-meter-detail', x_expand: true, visible: false});
+    const detail = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-meter-detail', x_expand: true, visible: false});
     const chevron = new St.Icon({icon_name: 'pan-end-symbolic', style_class: 'muna-meter-chevron', y_align: Clutter.ActorAlign.CENTER});
     const lead = new St.Button({style_class: 'muna-meter-lead', reactive: expandable, can_focus: expandable, track_hover: expandable});
     const leadBox = new St.BoxLayout();
@@ -258,7 +258,7 @@ export function meterRow(label, {icon = null, expandable = false} = {}) {
 
 /** A line that folds: a chevron and a title; the body shows when it is open. @returns {{actor, body, setOpen}} */
 export function collapsible(title, {open = false, count = null} = {}) {
-    const actor = new St.BoxLayout({vertical: true, x_expand: true});
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
     const head = new St.Button({style_class: 'muna-collapse-head', reactive: true, can_focus: true, track_hover: true, x_expand: true});
     const line = new St.BoxLayout({x_expand: true});
     const chevron = new St.Icon({icon_name: 'pan-end-symbolic', style_class: 'muna-meter-chevron', y_align: Clutter.ActorAlign.CENTER});
@@ -268,7 +268,7 @@ export function collapsible(title, {open = false, count = null} = {}) {
     const counter = new St.Label({text: count ?? '', style_class: 'muna-collapse-count', y_align: Clutter.ActorAlign.CENTER, visible: count !== null});
     line.add_child(counter);
     head.set_child(line);
-    const body = new St.BoxLayout({vertical: true, x_expand: true, visible: open});
+    const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, visible: open});
     const setOpen = value => {
         body.visible = value;
         chevron.icon_name = value ? 'pan-down-symbolic' : 'pan-end-symbolic';
@@ -300,7 +300,7 @@ export function checkRow({title, subtitle = '', state = false, onToggle}) {
     const row = new St.Button({style_class: 'muna-check-row', reactive: true, can_focus: true, track_hover: true, x_expand: true});
     const line = new St.BoxLayout({x_expand: true});
     line.add_child(box);
-    const texts = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'muna-check-texts'});
+    const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-check-texts'});
     texts.add_child(new St.Label({text: title, style_class: 'muna-card-title'}));
     if (subtitle) {
         const sub = new St.Label({text: subtitle, style_class: 'muna-card-subtitle'});
@@ -327,7 +327,7 @@ export function iconRow({icon, title, subtitle = '', control = null, chevron = f
     const square = new St.Bin({style_class: 'muna-icon-square', y_align: Clutter.ActorAlign.CENTER});
     square.set_child(new St.Icon({icon_name: icon, style_class: 'muna-icon-square-icon'}));
     line.add_child(square);
-    const texts = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+    const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
     const titleLabel = new St.Label({text: title, style_class: 'muna-card-title'});
     texts.add_child(titleLabel);
     let sub = null;
@@ -358,7 +358,7 @@ export function iconRow({icon, title, subtitle = '', control = null, chevron = f
  * @returns {{actor: St.BoxLayout, button: St.Button, setItems: Function, setCurrent: Function}}
  */
 export function dropdown({items = [], current = null, onPick}) {
-    const actor = new St.BoxLayout({vertical: true, x_expand: true});
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
     const button = new St.Button({style_class: 'muna-dropdown', reactive: true, can_focus: true, track_hover: true, x_expand: true});
     const line = new St.BoxLayout({x_expand: true});
     const label = new St.Label({text: '', style_class: 'muna-dropdown-label', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
@@ -366,7 +366,7 @@ export function dropdown({items = [], current = null, onPick}) {
     line.add_child(label);
     line.add_child(new St.Icon({icon_name: 'pan-down-symbolic', style_class: 'muna-dropdown-arrow'}));
     button.set_child(line);
-    const list = new St.BoxLayout({vertical: true, style_class: 'muna-dropdown-list', visible: false, x_expand: true});
+    const list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-dropdown-list', visible: false, x_expand: true});
     actor.add_child(button);
     actor.add_child(list);
     let entries = [];

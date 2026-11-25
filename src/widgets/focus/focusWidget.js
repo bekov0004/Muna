@@ -82,7 +82,7 @@ export class FocusWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-focus muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-focus muna-menu-page', x_expand: true});
         root.add_child(menuHeader('Timer'));
         const card = menuCard();
         const modes = menuChips([{id: 'focus', label: 'Focus'}, {id: 'stopwatch', label: 'Stopwatch'}], mode => {

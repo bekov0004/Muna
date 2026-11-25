@@ -20,12 +20,14 @@ if ((${#missing[@]})); then
     echo "Missing: ${missing[*]}"
     echo "On Ubuntu / Debian: sudo apt install gjs libglib2.0-bin"
     echo "On Fedora:          sudo dnf install gjs glib2"
+    echo "On Arch:            sudo pacman -S gjs glib2"
     exit 1
 fi
 if command -v gnome-shell >/dev/null; then
     version="$(gnome-shell --version 2>/dev/null | grep -oE '[0-9]+' | head -1 || true)"
-    if [[ -n "$version" && "$version" != "50" ]]; then
-        echo "Warning: this Muna is made for GNOME Shell 50; you have $version. It may not load."
+    supported="$(tr -d ' \n' < "$SRC/metadata.json" | grep -oP '"shell-version":\[\K[^]]*' | tr -d '"' | tr ',' ' ')"
+    if [[ -n "$version" && " $supported " != *" $version "* ]]; then
+        echo "Warning: this Muna is made for GNOME Shell $supported; you have $version. It may not load."
     fi
 fi
 

@@ -77,7 +77,7 @@ export class AgentsWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-agents muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-agents muna-menu-page', x_expand: true});
 
         // the plan's limits
         this._usageCard = menuCard();
@@ -106,7 +106,7 @@ export class AgentsWidget extends MunaWidget {
         // the tasks
         this._tasksHeader = menuHeader('Tasks');
         root.add_child(this._tasksHeader);
-        this._tasks = new St.BoxLayout({vertical: true, x_expand: true});
+        this._tasks = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         root.add_child(this._tasks);
 
         // agents elsewhere (a terminal)
@@ -236,7 +236,7 @@ export class AgentsWidget extends MunaWidget {
         const row = new St.BoxLayout({style_class: 'muna-agent muna-card-row', x_expand: true});
         const dot = new St.Widget({style_class: `muna-agent-dot ${task.status}${task.running ? ' working' : ''}`, y_align: Clutter.ActorAlign.START});
         row.add_child(dot);
-        const texts = new St.BoxLayout({vertical: true, x_expand: true});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         const title = new St.Label({text: `${task.project} · ${STATUS_TEXT[task.status] ?? task.status}`, style_class: 'muna-agent-name'});
         texts.add_child(title);
         const prompt = new St.Label({text: task.prompt, style_class: 'muna-agent-status'});
@@ -252,7 +252,7 @@ export class AgentsWidget extends MunaWidget {
 
         for (const request of task.pending ?? []) {
             card.add_child(menuDivider());
-            const ask = new St.BoxLayout({vertical: true, style_class: 'muna-card-pad muna-agent-ask', x_expand: true});
+            const ask = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-card-pad muna-agent-ask', x_expand: true});
             const what = new St.Label({text: `Wants to: ${request.verb} ${request.detail}`.trim(), style_class: 'muna-agent-ask-text'});
             what.clutter_text.line_wrap = true;
             ask.add_child(what);
@@ -281,7 +281,7 @@ export class AgentsWidget extends MunaWidget {
         for (const agent of working) {
             const row = new St.BoxLayout({style_class: 'muna-agent muna-card-row', x_expand: true});
             row.add_child(new St.Widget({style_class: 'muna-agent-dot working', y_align: Clutter.ActorAlign.CENTER}));
-            const texts = new St.BoxLayout({vertical: true, x_expand: true});
+            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
             texts.add_child(new St.Label({text: agent.name, style_class: 'muna-agent-name'}));
             texts.add_child(new St.Label({text: `Working · ${agent.working.map(w => w.project).join(', ')}`, style_class: 'muna-agent-status'}));
             row.add_child(texts);

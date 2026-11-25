@@ -30,7 +30,7 @@ export class MirrorWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-widget muna-mirror',
             x_expand: true,
             y_expand: true,
@@ -93,7 +93,7 @@ export class MirrorWidget extends MunaWidget {
         this._stage.add_child(this._video);
 
         this._face = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-mirror-face',
             x_expand: true,
             y_expand: true,

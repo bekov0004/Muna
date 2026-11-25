@@ -51,7 +51,7 @@ export class CalendarBigActivity extends LiveActivity {
         let month = new Date(selected.getFullYear(), selected.getMonth(), 1);
 
         const root = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-cal-big',
             x_expand: true,
             y_expand: true,
@@ -106,12 +106,12 @@ export class CalendarBigActivity extends LiveActivity {
         }
         root.add_child(weekdays);
 
-        const grid = new St.BoxLayout({vertical: true, x_expand: true});
+        const grid = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         root.add_child(grid);
 
         root.add_child(new St.Widget({style_class: 'muna-cal-big-sep'}));
 
-        const agenda = new St.BoxLayout({vertical: true, style_class: 'muna-cal-agenda', x_expand: true});
+        const agenda = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-cal-agenda', x_expand: true});
         const scroll = new St.ScrollView({
             style_class: 'muna-cal-big-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -176,7 +176,7 @@ export class CalendarBigActivity extends LiveActivity {
             if (day.getDay() === 0 || day.getDay() === 6)
                 classes.push('muna-cal-weekend');
             const button = new St.Button({style_class: classes.join(' '), x_expand: true, can_focus: true});
-            const box = new St.BoxLayout({vertical: true, x_align: Clutter.ActorAlign.CENTER});
+            const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER});
             box.add_child(new St.Label({
                 text: String(day.getDate()),
                 style_class: 'muna-cal-number',

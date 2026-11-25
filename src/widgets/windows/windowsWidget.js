@@ -17,7 +17,7 @@ const RIGHT = [['main', 'Main + side'], ['undo', 'Undo']];
 function glyph(kind) {
     const cell = () => new St.Widget({style_class: 'muna-glyph-cell', x_expand: true, y_expand: true});
     const box = (vertical, children, extra = {}) => {
-        const b = new St.BoxLayout({vertical, x_expand: true, y_expand: true, style_class: 'muna-glyph-box', ...extra});
+        const b = new St.BoxLayout({orientation: vertical ? Clutter.Orientation.VERTICAL : Clutter.Orientation.HORIZONTAL, x_expand: true, y_expand: true, style_class: 'muna-glyph-box', ...extra});
         children.forEach(c => b.add_child(c));
         return b;
     };
@@ -69,9 +69,9 @@ export class WindowsWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-windows muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-windows muna-menu-page', x_expand: true});
 
-        this._monitorRow = new St.BoxLayout({vertical: true, x_expand: true});
+        this._monitorRow = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         root.add_child(this._monitorRow);
 
         const card = menuCard();
@@ -102,9 +102,9 @@ export class WindowsWidget extends MunaWidget {
     }
 
     _column(buttons) {
-        const column = new St.BoxLayout({vertical: true, style_class: 'muna-winmap-side', y_align: Clutter.ActorAlign.CENTER});
+        const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-winmap-side', y_align: Clutter.ActorAlign.CENTER});
         for (const [id, label] of buttons) {
-            const content = new St.BoxLayout({vertical: true, x_align: Clutter.ActorAlign.CENTER});
+            const content = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER});
             content.add_child(glyph(id));
             content.add_child(new St.Label({text: label, style_class: 'muna-winmap-side-label', x_align: Clutter.ActorAlign.CENTER}));
             const button = new St.Button({style_class: 'muna-winmap-side-button', child: content, can_focus: true, reactive: true, track_hover: true, accessible_name: label});

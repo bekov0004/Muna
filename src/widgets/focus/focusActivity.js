@@ -45,7 +45,7 @@ export class FocusActivity extends LiveActivity {
             y_align: Clutter.ActorAlign.CENTER,
             child: new St.Icon({icon_name: 'alarm-symbolic', style_class: 'muna-peek-badge-icon'}),
         }));
-        const texts = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-peek-texts'});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-peek-texts'});
         const title = new St.Label({style_class: 'muna-peek-title'});
         const subtitle = new St.Label({style_class: 'muna-peek-subtitle'});
         texts.add_child(title);

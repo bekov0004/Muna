@@ -136,7 +136,7 @@ export class MediaWidget extends MunaWidget {
 
     _buildEmpty() {
         const box = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
@@ -158,7 +158,7 @@ export class MediaWidget extends MunaWidget {
 
     _buildCard() {
         const card = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
@@ -193,7 +193,7 @@ export class MediaWidget extends MunaWidget {
         top.add_child(this._art);
 
         const texts = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_align: Clutter.ActorAlign.START,
             style_class: 'muna-media-texts',

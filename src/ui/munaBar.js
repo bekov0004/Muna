@@ -16,7 +16,7 @@ import {SignalTracker} from '../utils/signals.js';
  *    copies; pressing one opens its own menu under it, on this monitor.
  * It hides like GNOME's bar (ui/barHider.js, its own setting).
  */
-export const MunaBar = GObject.registerClass(class MunaBar extends St.Widget {
+export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaBar extends St.Widget {
     /** @param {{monitorIndex: number, desktops: MonitorDesktops, hasCapsule: () => boolean}} options */
     _init({monitorIndex, desktops, hasCapsule}) {
         super._init({style_class: 'muna-bar', reactive: true, layout_manager: new Clutter.BinLayout()});

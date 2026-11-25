@@ -7,7 +7,7 @@ import {MunaWidget} from './widget.js';
 export class PlaceholderWidget extends MunaWidget {
     createView() {
         const box = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-widget muna-placeholder',
             x_expand: true,
             y_expand: true,

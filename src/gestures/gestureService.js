@@ -350,7 +350,7 @@ export class GestureService {
             console.warn(`[muna] gestures: unknown keys ${accel}`);
             return;
         }
-        this._keyboard ??= Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        this._keyboard ??= global.stage.context.get_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         let t = GLib.get_monotonic_time();
         const send = (keyval, state) => this._keyboard.notify_keyval(t++, keyval, state);
         keys.mods.forEach(m => send(m, Clutter.KeyState.PRESSED));

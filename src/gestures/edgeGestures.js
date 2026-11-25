@@ -71,7 +71,7 @@ export class EdgeGestures {
         }
         if (type === 'end') {
             if (this._pointer)
-                Clutter.get_default_backend().get_default_seat().warp_pointer(...this._pointer);
+                global.stage.context.get_backend().get_default_seat().warp_pointer(...this._pointer);
             this._pointer = null;
             this._done.clear();
             return;

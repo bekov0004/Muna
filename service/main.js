@@ -70,7 +70,7 @@ class ServiceModule extends Module {
  * never freeze the desktop and can be restarted without logging out. It is started by D-Bus
  * activation the first time the extension asks for it and ends when no client is left.
  */
-const MunaService = GObject.registerClass(class MunaService extends Gio.Application {
+const MunaService = GObject.registerClass({GTypeName: 'MunaService'}, class MunaService extends Gio.Application {
     constructor() {
         super({application_id: APPLICATION_ID, flags: Gio.ApplicationFlags.DEFAULT_FLAGS});
         // Started by the extension (MUNA_SERVICE=1): no window at the first activation.

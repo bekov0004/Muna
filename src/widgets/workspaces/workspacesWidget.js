@@ -51,12 +51,12 @@ export class WorkspacesWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-workspaces muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-workspaces muna-menu-page', x_expand: true});
 
-        this._monitorChips = new St.BoxLayout({vertical: true, x_expand: true});
+        this._monitorChips = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         root.add_child(this._monitorChips);
         const card = menuCard();
-        this._list = new St.BoxLayout({vertical: true, x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         card.add_child(this._list);
         card.add_child(menuDivider());
         const actions = new St.BoxLayout({style_class: 'muna-chips-row muna-card-pad', x_expand: true});

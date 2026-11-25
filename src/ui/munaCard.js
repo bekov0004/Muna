@@ -33,7 +33,7 @@ export class MunaCard extends St.BoxLayout {
         }));
 
         const texts = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-card-texts',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,

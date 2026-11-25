@@ -42,12 +42,12 @@ export class SystemWidget extends MonitorWidget {
     }
 
     createPage() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-system muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-system muna-menu-page', x_expand: true});
         const card = menuCard();
         card.add_style_class_name('muna-bigcard');
         root.add_child(card);
 
-        this._tempBlock = new St.BoxLayout({vertical: true, x_expand: true});
+        this._tempBlock = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         this._tempBlock.add_child(sectionLabel('Temperatures'));
         const tiles = new St.BoxLayout({style_class: 'muna-tile-row', x_expand: true});
         this._tempA = bigTile('CPU', 'computer-symbolic');
@@ -70,13 +70,13 @@ export class SystemWidget extends MonitorWidget {
         this._gpu = meterRow('GPU', {expandable: false});
         this._gpuGraph = this.graphBlock({color: [0.04, 0.52, 1], max: 100});
         this._gpuGraph.scale.text = '100%';
-        this._gpuBox = new St.BoxLayout({vertical: true, x_expand: true, visible: false});
+        this._gpuBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, visible: false});
         this._gpuBox.add_child(this._gpu.actor);
         this._gpuBox.add_child(this._gpuGraph.actor);
         card.add_child(this._gpuBox);
         card.add_child(menuDivider());
 
-        this._memBlock = new St.BoxLayout({vertical: true, x_expand: true});
+        this._memBlock = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         const memCard = this._memBlock;
         memCard.add_child(sectionLabel('Memory'));
         this._pressure = statusPill('Normal');
@@ -99,7 +99,7 @@ export class SystemWidget extends MonitorWidget {
 
         card.add_child(this._memBlock);
 
-        this._upBlock = new St.BoxLayout({vertical: true, x_expand: true});
+        this._upBlock = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         this._upBlock.add_child(menuDivider());
         const up = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true});
         up.add_child(new St.Icon({icon_name: 'preferences-system-time-symbolic', style_class: 'muna-meter-icon'}));

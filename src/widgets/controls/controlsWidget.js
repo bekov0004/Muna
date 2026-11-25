@@ -1,3 +1,4 @@
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -76,7 +77,7 @@ export class ControlsWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-controls muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-controls muna-menu-page', x_expand: true});
         const pill = (label, action) => () => pillButton({label, icon: 'adw-external-link-symbolic', onClick: action});
 
         this._addGroup(root, 'windows', 'Windows', [

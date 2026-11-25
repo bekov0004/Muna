@@ -35,7 +35,7 @@ export class AwakeWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-awake muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-awake muna-menu-page', x_expand: true});
         const card = menuCard();
         card.add_style_class_name('muna-bigcard');
         root.add_child(card);
@@ -60,7 +60,7 @@ export class AwakeWidget extends MunaWidget {
 
         const options = collapsible('Options', {open: true});
         card.add_child(options.actor);
-        const sub = new St.BoxLayout({vertical: true, style_class: 'muna-subcard', x_expand: true});
+        const sub = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-subcard', x_expand: true});
         const iconLine = new St.BoxLayout({x_expand: true, style_class: 'muna-value-row'});
         iconLine.add_child(new St.Label({text: 'Active icon', style_class: 'muna-value-label', x_expand: true}));
         iconLine.add_child(new St.Label({text: 'Top bar icon', style_class: 'muna-value-muted'}));

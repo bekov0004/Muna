@@ -8,7 +8,7 @@ export function createButton({label = null, iconName = null, gicon = null, style
         reactive: true,
         can_focus: true,
         track_hover: true,
-        button_mask: St.ButtonMask.ONE,
+        button_mask: St.ButtonMask.PRIMARY ?? St.ButtonMask.ONE,   // PRIMARY since GNOME 51
         x_expand: expand,
     });
 

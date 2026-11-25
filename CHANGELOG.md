@@ -6,6 +6,10 @@ follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- GNOME Shell 51 (for example on Arch Linux): the same Muna runs on GNOME 50 and 51. Before, GNOME 51 refused to load it ("incompatible"), and even when allowed it stopped at start. The installer now names the GNOME versions Muna is made for and tells how to get what it needs on Arch too.
+
 ### Changed
 
 - Settings: the features have their own part of the left list: an overview (the bundles, and how many features are on in each topic; a topic opens with a click) and a page for each topic: music and media, system, windows and desktops, work, files and sharing, capsule. The search field finds them all at once.

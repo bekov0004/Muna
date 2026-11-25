@@ -22,7 +22,7 @@ export function iconFor(name) {
 }
 
 /** The butterfly of the logo on its own (no app-icon square), shown at the top of the quick panel. */
-export const Logo = GObject.registerClass(class Logo extends St.Icon {
+export const Logo = GObject.registerClass({GTypeName: 'MunaLogo'}, class Logo extends St.Icon {
     _init({size = 40} = {}) {
         super._init({
             style_class: 'muna-logo', icon_size: size, x_align: Clutter.ActorAlign.CENTER,

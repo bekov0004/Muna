@@ -64,14 +64,14 @@ export class DownloadsWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-downloads muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-downloads muna-menu-page', x_expand: true});
         root.add_child(menuHeader('Downloads folder'));
         const card = menuCard();
         this._empty = new St.Label({text: 'Nothing downloaded yet', style_class: 'muna-card-hint', x_align: Clutter.ActorAlign.CENTER});
         this._empty.style = 'padding-top: 14px;';
         card.add_child(this._empty);
         this._scroll = new St.ScrollView({hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC, overlay_scrollbars: true, x_expand: true, style: 'max-height: 360px;'});
-        this._list = new St.BoxLayout({vertical: true, x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         this._scroll.add_child(this._list);
         card.add_child(this._scroll);
         root.add_child(card);

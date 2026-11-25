@@ -97,7 +97,7 @@ export class CalendarWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-widget muna-calendar',
             x_expand: true,
             y_expand: true,
@@ -146,7 +146,7 @@ export class CalendarWidget extends MunaWidget {
         this._strip = new St.BoxLayout({style_class: 'muna-cal-strip', x_expand: true});
         root.add_child(this._strip);
 
-        this._agenda = new St.BoxLayout({vertical: true, style_class: 'muna-cal-agenda', x_expand: true});
+        this._agenda = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-cal-agenda', x_expand: true});
         root.add_child(this._agenda);
 
         return root;
@@ -237,7 +237,7 @@ export class CalendarWidget extends MunaWidget {
             classes.push('muna-cal-weekend');
 
         const button = new St.Button({style_class: classes.join(' '), x_expand: true, can_focus: true});
-        const box = new St.BoxLayout({vertical: true, x_align: Clutter.ActorAlign.CENTER});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER});
         box.add_child(new St.Label({
             text: local(day).format('%a').slice(0, 1).toUpperCase(),
             style_class: 'muna-cal-weekday',

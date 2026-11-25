@@ -64,7 +64,7 @@ export function showRadialMenu(actions, run) {
         style: `border-radius: 5px; background-color: ${ACCENT}; box-shadow: 0 0 10px ${ACCENT};`});
     wheel.add_child(orbit);
 
-    const hub = new St.BoxLayout({vertical: true, width: HUB, height: HUB, x: c - HUB / 2, y: c - HUB / 2,
+    const hub = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, width: HUB, height: HUB, x: c - HUB / 2, y: c - HUB / 2,
         style: `border-radius: ${HUB / 2}px; background-color: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.08);`});
     const hubIcon = new St.Icon({icon_name: 'view-app-grid-symbolic', icon_size: 22, style: 'color: rgba(255,255,255,0.75);',
         x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.END});

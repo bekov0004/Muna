@@ -67,7 +67,7 @@ export class LocalSendView extends St.BoxLayout {
 
     /** @param {{session: LocalSendSession, getTrayUris: () => string[], receiving: {get: () => boolean, set: (on: boolean) => void}}} params */
     constructor({session, getTrayUris, receiving}) {
-        super({vertical: true, style_class: 'muna-lsv', x_expand: true, y_expand: true});
+        super({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-lsv', x_expand: true, y_expand: true});
         this._session = session;
         this._getTrayUris = getTrayUris;
         this._receiving = receiving;
@@ -222,7 +222,7 @@ export class LocalSendView extends St.BoxLayout {
             const badge = new St.Bin({style_class: 'muna-lsv-badge', y_align: Clutter.ActorAlign.CENTER});
             badge.set_child(new St.Icon({icon_name: DEVICE_ICONS[device.deviceType] ?? 'computer-symbolic', style_class: 'muna-lsv-badge-icon'}));
             box.add_child(badge);
-            const texts = new St.BoxLayout({vertical: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-tile-texts'});
+            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-tile-texts'});
             const name = new St.Label({text: device.alias, style_class: 'muna-ls-device-name'});
             name.clutter_text.ellipsize = Pango.EllipsizeMode.END;
             texts.add_child(name);
@@ -238,7 +238,7 @@ export class LocalSendView extends St.BoxLayout {
     _createProgress() {
         const s = this._session;
         const box = new St.BoxLayout({style_class: 'muna-ls-progress', x_expand: true, y_expand: true, y_align: Clutter.ActorAlign.CENTER});
-        const column = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-ls-progress'});
+        const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-ls-progress'});
         column.add_child(new St.Label({
             text: s.phase === 'waiting' ? `Waiting for ${s.device?.alias ?? 'the device'} to accept…` : `${sizeText(s.sent)} of ${sizeText(s.total)}`,
             style_class: 'muna-ls-status',

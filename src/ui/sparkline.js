@@ -5,7 +5,7 @@ import St from 'gi://St';
  * A small graph of the last readings: a filled line, and optionally a dotted line at the top with
  * its label ("100%", "5.0 MB/s"). Set the numbers with setValues().
  */
-export const Sparkline = GObject.registerClass(class Sparkline extends St.DrawingArea {
+export const Sparkline = GObject.registerClass({GTypeName: 'MunaSparkline'}, class Sparkline extends St.DrawingArea {
     /**
      * @param {{color?: number[], max?: number|null, height?: number, label?: (max: number) => string}} options
      *   color: [r, g, b] 0..1; max: fixed top of the scale, or null to fit the data

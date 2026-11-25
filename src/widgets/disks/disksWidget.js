@@ -27,13 +27,13 @@ export class DisksWidget extends MonitorWidget {
     }
 
     createPage() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-disks muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-disks muna-menu-page', x_expand: true});
         const card = menuCard();
         card.add_style_class_name('muna-bigcard');
         root.add_child(card);
 
         card.add_child(sectionLabel('Select disk'));
-        this._tiles = new St.BoxLayout({vertical: true, style_class: 'muna-disk-tiles', x_expand: true});
+        this._tiles = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-disk-tiles', x_expand: true});
         card.add_child(this._tiles);
         card.add_child(menuDivider());
 
@@ -107,7 +107,7 @@ export class DisksWidget extends MonitorWidget {
     _speedTile(icon, label, tone) {
         const actor = new St.BoxLayout({style_class: 'muna-speed', x_expand: true});
         actor.add_child(new St.Label({text: icon === 'go-down-symbolic' ? '↓' : '↑', style_class: `muna-speed-icon ${tone}`, y_align: Clutter.ActorAlign.START}));
-        const texts = new St.BoxLayout({vertical: true});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL});
         const value = new St.Label({text: '–', style_class: 'muna-speed-value'});
         texts.add_child(value);
         texts.add_child(new St.Label({text: label, style_class: 'muna-speed-label'}));
@@ -171,7 +171,7 @@ export class DisksWidget extends MonitorWidget {
             const tile = new St.Button({style_class: 'muna-disk-tile', x_expand: true, reactive: true, can_focus: true, track_hover: true});
             const box = new St.BoxLayout({x_expand: true});
             box.add_child(new St.Icon({icon_name: disk.removable ? 'media-removable-symbolic' : 'drive-harddisk-symbolic', style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER}));
-            const texts = new St.BoxLayout({vertical: true, x_expand: true});
+            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
             texts.add_child(new St.Label({text: disk.name, style_class: 'muna-value-label muna-value-strong'}));
             texts.add_child(new St.Label({text: `${disk.percent}% used`, style_class: 'muna-card-subtitle'}));
             box.add_child(texts);

@@ -242,7 +242,7 @@ export class MonitorDesktops {
         const count = this.count(monitor);
         const now = this.current(monitor);
         const box = new St.BoxLayout({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style: 'background-color: rgba(30,30,30,0.92); border-radius: 18px; padding: 14px 22px; spacing: 10px;',
             opacity: 0,
         });

@@ -44,7 +44,7 @@ export class ArrangeMap extends St.Widget {
                 style_class: 'muna-arrange-tile', reactive: true, track_hover: true,
                 layout_manager: new Clutter.BinLayout(),
             });
-            const box = new St.BoxLayout({vertical: true, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+            const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
             box.add_child(new St.Label({text: String(i + 1), style_class: 'muna-arrange-number', x_align: Clutter.ActorAlign.CENTER}));
             const name = new St.Label({text: rect.names.join(' + '), style_class: 'muna-arrange-name', x_align: Clutter.ActorAlign.CENTER});
             name.clutter_text.ellipsize = 3;     // Pango.EllipsizeMode.END

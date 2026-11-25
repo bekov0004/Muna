@@ -30,7 +30,7 @@ export class MunaPanel extends St.BoxLayout {
     /** @param {{widgets: MunaWidget[], tray: TrayView, clipboard: ClipboardView, notifications: NotificationsView, onOpenSettings: Function}} params */
     constructor({widgets, tray, localsend, clipboard, notifications, command, onOpenSettings, onModeChanged = () => {}}) {
         super({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-panel',
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.START,

@@ -11,7 +11,7 @@
 
 <p align="center">
   <img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue">
-  <img alt="GNOME Shell 50" src="https://img.shields.io/badge/GNOME%20Shell-50-4a86cf">
+  <img alt="GNOME Shell 50 | 51" src="https://img.shields.io/badge/GNOME%20Shell-50%20%7C%2051-4a86cf">
   <img alt="Wayland" src="https://img.shields.io/badge/session-Wayland-informational">
 </p>
 
@@ -77,9 +77,9 @@ Everything is optional: pick the widgets you want in the settings.
 
 ## Requirements
 
-- **GNOME Shell 50** (for example Ubuntu 26.04) on a **Wayland** session
+- **GNOME Shell 50 or 51** (for example Ubuntu 26.04, Fedora, Arch) on a **Wayland** session
 - `gjs` and `glib-compile-schemas`
-  (Ubuntu / Debian: `sudo apt install gjs libglib2.0-bin`, Fedora: `sudo dnf install gjs glib2`)
+  (Ubuntu / Debian: `sudo apt install gjs libglib2.0-bin`, Fedora: `sudo dnf install gjs glib2`, Arch: `sudo pacman -S gjs glib2`)
 - Normally already installed: GStreamer with PipeWire / V4L2 plugins (for Mirror) and `openssl` (for LocalSend)
 
 ## Installation
@@ -212,7 +212,7 @@ Changes apply immediately.
 | Problem | What to do |
 |---|---|
 | Nothing appears after enabling | Log out and in once after the first install. Check `gnome-extensions info muna@muna.dev` (`ACTIVE`, `ERROR`, ...) |
-| "Extension is incompatible" | Muna needs GNOME Shell 50. Check `gnome-shell --version` |
+| "Extension is incompatible" | Muna needs GNOME Shell 50 or 51. Check `gnome-shell --version` |
 | Some widgets are empty or say "unavailable" | The background service is not running. Look at `~/.cache/muna/service.log` and check that `gjs` is installed |
 | LocalSend receiving does not start | Port 53317 is taken, for example by the LocalSend app. Close it |
 | The camera does not open | Your user needs access to the camera (a normal desktop user has it) |

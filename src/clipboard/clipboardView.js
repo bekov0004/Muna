@@ -148,7 +148,7 @@ export class ClipboardView extends St.BoxLayout {
      */
     constructor({service, ui, onPaste, drag = null, fingerprint = null}) {
         super({
-            vertical: true,
+            orientation: Clutter.Orientation.VERTICAL,
             style_class: 'muna-tray muna-clipboard',
             x_expand: true,
             y_expand: true,
@@ -173,7 +173,7 @@ export class ClipboardView extends St.BoxLayout {
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
         });
-        this._list = new St.BoxLayout({vertical: true, style_class: 'muna-clip-list', x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-clip-list', x_expand: true});
         this._scroll.add_child(this._list);
         this._empty = new St.Label({
             text: 'Copied text shows up here',

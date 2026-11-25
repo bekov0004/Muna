@@ -40,7 +40,7 @@ export class SoundWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-sound muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-sound muna-menu-page', x_expand: true});
         const card = menuCard();
         card.add_style_class_name('muna-bigcard');
         root.add_child(card);
@@ -84,7 +84,7 @@ export class SoundWidget extends MunaWidget {
 
         this._appsDivider = menuDivider();
         card.add_child(this._appsDivider);
-        this._list = new St.BoxLayout({vertical: true, x_expand: true});
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         card.add_child(this._list);
         this._note = new St.Label({text: '', style_class: 'muna-hint'});
         card.add_child(this._note);
@@ -210,7 +210,7 @@ export class SoundWidget extends MunaWidget {
         const row = new St.BoxLayout({style_class: 'muna-app-line', x_expand: true});
         const icon = new St.Icon({icon_name: stream.icon_name || 'audio-x-generic-symbolic', style_class: 'muna-app-icon', y_align: Clutter.ActorAlign.CENTER});
         row.add_child(icon);
-        const body = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'muna-app-body'});
+        const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-app-body'});
         const head = new St.BoxLayout({x_expand: true});
         const name = new St.Label({text: stream.name || 'Application', style_class: 'muna-value-label muna-value-strong', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
         name.clutter_text.ellipsize = Pango.EllipsizeMode.END;

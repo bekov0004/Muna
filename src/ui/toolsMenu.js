@@ -77,7 +77,7 @@ export class ToolsMenu {
 
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false, activate: false});
         item.add_style_class_name('muna-menu-item');
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-menu-root', width: MENU_WIDTH});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-menu-root', width: MENU_WIDTH});
         item.add_child(root);
         this._button.menu.addMenuItem(item);
 
@@ -144,14 +144,14 @@ export class ToolsMenu {
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
             overlay_scrollbars: true,
         });
-        const pages = new St.BoxLayout({vertical: true, x_expand: true, y_expand: false, y_align: Clutter.ActorAlign.START});
+        const pages = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: false, y_align: Clutter.ActorAlign.START});
         this._scroll.set_child(pages);
         root.add_child(this._scroll);
         // A widget laid out with the menu kit is a page as it is; any other is put in a card under its title.
         this._pages = this._widgets.map(widget => {
             let page = widget.view;
             if (!widget.constructor.menuNative) {
-                page = new St.BoxLayout({vertical: true, style_class: 'muna-menu-page', x_expand: true});
+                page = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-menu-page', x_expand: true});
                 page.add_child(menuHeader(widget.constructor.title));
                 const card = menuCard();
                 card.add_style_class_name('muna-card-wrap');

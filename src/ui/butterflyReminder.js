@@ -96,7 +96,7 @@ export class ButterflyReminder {
     }
 
     _makeCard() {
-        const card = new St.BoxLayout({vertical: true, style_class: 'muna-bfr-card', reactive: true});
+        const card = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-bfr-card', reactive: true});
         const time = new St.Label({text: this._reminder.time ?? '', style_class: 'muna-bfr-time', x_align: Clutter.ActorAlign.CENTER});
         card.add_child(time);
         const text = new St.Label({text: this._reminder.text || 'Reminder', style_class: 'muna-bfr-text', x_align: Clutter.ActorAlign.CENTER});

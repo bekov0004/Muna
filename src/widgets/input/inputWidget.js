@@ -1,3 +1,4 @@
+import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 
@@ -47,7 +48,7 @@ export class InputWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-input muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-input muna-menu-page', x_expand: true});
         root.add_child(menuHeader('Mouse and touchpad'));
         const pointer = menuCard();
         const keys = menuCard();

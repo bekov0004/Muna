@@ -61,7 +61,7 @@ export class ShortcutsWidget extends MunaWidget {
 
         if (apps.length === 0) {
             const empty = new St.BoxLayout({
-                vertical: true,
+                orientation: Clutter.Orientation.VERTICAL,
                 x_expand: true,
                 x_align: Clutter.ActorAlign.CENTER,
                 y_align: Clutter.ActorAlign.CENTER,
@@ -87,7 +87,7 @@ export class ShortcutsWidget extends MunaWidget {
         }
 
         for (let c = 0; c < columns; c++) {
-            const column = new St.BoxLayout({vertical: true, x_expand: true, style_class: 'muna-shortcuts-column'});
+            const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-shortcuts-column'});
             for (const app of apps.slice(c * ROWS, (c + 1) * ROWS))
                 column.add_child(this._tile(app, columns > 1));
             if (column.get_n_children() > 0)
@@ -105,7 +105,7 @@ export class ShortcutsWidget extends MunaWidget {
             y_expand: true,
         });
         const row = new St.BoxLayout({
-            vertical: stacked,
+            orientation: stacked ? Clutter.Orientation.VERTICAL : Clutter.Orientation.HORIZONTAL,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
             style_class: stacked ? 'muna-shortcut-row muna-shortcut-stacked' : 'muna-shortcut-row',

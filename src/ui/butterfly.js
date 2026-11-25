@@ -22,7 +22,7 @@ const BLINK_MS = 150;
  * (flap()): they fold towards the body and open again, twice; a moment later it blinks. Its wings turn warm while
  * something happened.
  */
-export const Butterfly = GObject.registerClass(class MunaButterfly extends St.DrawingArea {
+export const Butterfly = GObject.registerClass({GTypeName: 'MunaButterfly'}, class MunaButterfly extends St.DrawingArea {
     _init() {
         super._init({style_class: 'muna-butterfly', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER, x_expand: true, y_expand: true});
         this._open = 1;         // 1: wings spread, 0: folded against the body

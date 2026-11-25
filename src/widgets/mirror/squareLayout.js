@@ -7,7 +7,7 @@ import GObject from 'gi://GObject';
  * size of the column it lives in (sizing the circle from its own parent made it
  * shrink a little every time the panel was opened).
  */
-export const SquareLayout = GObject.registerClass(
+export const SquareLayout = GObject.registerClass({GTypeName: 'MunaSquareLayout'},
 class MunaSquareLayout extends Clutter.LayoutManager {
     constructor(margin = 4) {
         super();

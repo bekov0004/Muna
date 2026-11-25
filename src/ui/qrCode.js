@@ -6,7 +6,7 @@ import {encodeQr} from '../utils/qr.js';
 const QUIET = 2; // modules of white around the code
 
 /** A QR code drawn on a white rounded square. setText() makes it, clear() empties it. */
-export const QrCode = GObject.registerClass(class QrCode extends St.DrawingArea {
+export const QrCode = GObject.registerClass({GTypeName: 'MunaQrCode'}, class QrCode extends St.DrawingArea {
     _init(size = 196) {
         super._init({style_class: 'muna-qr', width: size, height: size, x_align: 3 /* CENTER */});
         this._qr = null;

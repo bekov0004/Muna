@@ -62,7 +62,7 @@ export class AgentPermissionActivity extends LiveActivity {
 
     createPeekView() {
         const r = this._request;
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-ls muna-agent-card', x_expand: true, y_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-ls muna-agent-card', x_expand: true, y_expand: true});
         const header = new St.BoxLayout({style_class: 'muna-ls-header'});
         header.add_child(new St.Icon({icon_name: 'dialog-question-symbolic', style_class: 'muna-agent-card-icon', y_align: Clutter.ActorAlign.CENTER}));
         const title = new St.Label({text: `Claude · ${r.project}`, style_class: 'muna-ls-title', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
@@ -76,7 +76,7 @@ export class AgentPermissionActivity extends LiveActivity {
         header.add_child(open);
         root.add_child(header);
 
-        const body = new St.BoxLayout({vertical: true, x_expand: true, y_expand: true, style_class: 'muna-ls-progress'});
+        const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: true, style_class: 'muna-ls-progress'});
         body.add_child(new St.Label({text: `wants to: ${r.verb}`, style_class: 'muna-ls-status'}));
         if (r.detail) {
             const detail = new St.Label({text: r.detail, style_class: 'muna-agent-card-detail'});

@@ -33,7 +33,7 @@ export class RemindersWidget extends MunaWidget {
     }
 
     createView() {
-        const root = new St.BoxLayout({vertical: true, style_class: 'muna-widget muna-reminders muna-menu-page', x_expand: true});
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-reminders muna-menu-page', x_expand: true});
 
         const card = menuCard();
         const timeRow = new St.BoxLayout({style_class: 'muna-card-pad muna-rem-row', x_expand: true});
@@ -128,7 +128,7 @@ export class RemindersWidget extends MunaWidget {
             const row = new St.BoxLayout({style_class: 'muna-card-row muna-rem-item', x_expand: true});
             const time = new St.Label({text: reminder.time, style_class: `muna-rem-item-time${reminder.enabled ? '' : ' off'}`, y_align: Clutter.ActorAlign.CENTER});
             row.add_child(time);
-            const texts = new St.BoxLayout({vertical: true, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
             const text = new St.Label({text: reminder.text || 'Reminder', style_class: 'muna-card-title'});
             text.clutter_text.ellipsize = Pango.EllipsizeMode.END;
             texts.add_child(text);

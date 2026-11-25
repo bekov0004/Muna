@@ -29,6 +29,7 @@ final class AppState {
     let scratchpad = ScratchpadModel()
     let windows = WindowsModel()
     let displays = DisplaysModel()
+    let phone = PhoneModel()
 
     func start() {
         nowPlaying.start()
@@ -217,6 +218,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         .environmentObject(app.agents)
         .environmentObject(app.windows)
         .environmentObject(app.displays)
+        .environmentObject(app.phone)
         popover.contentViewController = NSHostingController(rootView: panel)
         popover.behavior = .transient
         popover.appearance = NSAppearance(named: .darkAqua)

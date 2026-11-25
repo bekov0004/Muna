@@ -278,7 +278,7 @@ enum QuickTools {
 // --- the window -----------------------------------------------------------------------------------
 
 enum QuickPage: String, CaseIterable, Identifiable {
-    case system, network, sound, displays, awake, focus, reminders, downloads, windows, agents, tools
+    case system, network, sound, displays, awake, focus, reminders, downloads, windows, phone, agents, tools
 
     var id: String { rawValue }
 
@@ -288,6 +288,7 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .network: return "Network"
         case .sound: return "Sound"
         case .displays: return "Displays"
+        case .phone: return "Phone"
         case .awake: return "Keep awake"
         case .focus: return "Focus"
         case .reminders: return "Reminders"
@@ -304,6 +305,7 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .network: return "network"
         case .sound: return "speaker.wave.2"
         case .displays: return "sun.max"
+        case .phone: return "iphone"
         case .awake: return "cup.and.saucer"
         case .focus: return "target"
         case .reminders: return "bell.badge"
@@ -360,6 +362,7 @@ struct QuickPanelView: View {
                 case .network: NetworkPage()
                 case .sound: SoundPage()
                 case .displays: DisplaysPage()
+                case .phone: PhonePage()
                 case .awake: AwakePage()
                 case .focus: FocusPage()
                 case .reminders: RemindersPage()

@@ -31,7 +31,7 @@ Change this table together with the code.
 | Timer | ✅ | ✅ | ⬜ | |
 | To-do, Notes | ✅ | ✅ | ⬜ | same files (`formats/data-files.md`) |
 | Shortcuts (apps) | ✅ | ✅ | ⬜ | |
-| Phone card | ✅ | ⬜ | ⬜ | adb works on a Mac too |
+| Phone card | ✅ | 🟡 | ⬜ | Mac (quick panel): adb phones, battery, the screen as a picture every second, taps, swipes, keys, typing; not yet: the live picture, pairing over Wi-Fi, the Muna Phone app's link |
 | Companion | ✅ | ✅ | ⬜ | |
 
 ## Sections

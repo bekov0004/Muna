@@ -322,7 +322,14 @@ public sealed class QuickPanel : Window
             column.Children.Add(Block(Ui.Row(6, Ui.Semi(display.Name, 12).Grow(), Ui.Digits($"{(int)Math.Round(display.Brightness * 100)}%", 12, color: C.Secondary)),
                                       Ui.Row(8, Ui.Icon(Glyph.Brightness, 12, C.Secondary), slider.Grow()), Ui.Text(how, 10, color: C.Secondary)));
         }
-        column.Children.Add(Ui.Row(6, Ui.Pill("Night light", () => CapsuleViews.Launch("ms-settings:nightlight")), Ui.Pill("Display settings", () => CapsuleViews.Launch("ms-settings:display"))));
+        var night = SystemSwitches.NightLight;
+        column.Children.Add(Block(Ui.Row(8, Ui.Icon(Glyph.Moon, 13, C.Amber), Ui.Column(1, Ui.Semi("Night light", 12), Ui.Text("Warmer colours at night", 10, color: C.Secondary)).Grow(),
+            DarkWindow.Toggle(night ?? false, on =>
+            {
+                if (!SystemSwitches.SetNightLight(on)) { Say("Turn night light on once in Windows' settings, then Muna can switch it"); CapsuleViews.Launch("ms-settings:nightlight"); }
+                else Render();
+            }))));
+        column.Children.Add(Ui.Row(6, Ui.Pill("Night light settings", () => CapsuleViews.Launch("ms-settings:nightlight")), Ui.Pill("Display settings", () => CapsuleViews.Launch("ms-settings:display"))));
         return column;
     }
 
@@ -761,6 +768,7 @@ public sealed class QuickPanel : Window
         Tile(Glyph.Screenshot, "Screenshot", () => { HidePanel(); QuickTools.Screenshot(); });
         Tile(Glyph.Eyedropper, "Colour", () => { HidePanel(); ColorPicker.Pick(hex => _app.Capsules.Tell("Colour copied", hex, Glyph.Eyedropper, true)); });
         Tile(Glyph.Delete, "Empty bin", () => Say(QuickTools.EmptyRecycleBin() ? "The recycle bin is empty" : "The recycle bin was empty"));
+        Tile(Glyph.Up, "Eject disks", () => Say(QuickTools.EjectDisks() is var n and > 0 ? $"{n} disk{(n == 1 ? "" : "s")} ejected" : "No disk to eject"));
         Tile(Glyph.Monitor, "Screen off", () => { HidePanel(); QuickTools.ScreenOff(); });
         Tile(Glyph.Lock, "Lock", () => { HidePanel(); Native.LockWorkStation(); });
         Tile(Glyph.Note, "Scratchpad", () => { HidePanel(); _app.ShowScratchpad(); });
@@ -819,6 +827,32 @@ public static class QuickTools
     }
 
     public static void Screenshot() => CapsuleViews.Launch("ms-screenclip:");
+
+    /// <summary>Ejects the removable drives and discs (Explorer's own "Eject"); how many.</summary>
+    public static int EjectDisks()
+    {
+        var drives = System.IO.DriveInfo.GetDrives().Where(d => d.DriveType is System.IO.DriveType.Removable or System.IO.DriveType.CDRom && d.IsReady).ToList();
+        if (drives.Count == 0 || Type.GetTypeFromProgID("Shell.Application") is not { } type) return 0;
+        var count = 0;
+        try
+        {
+            dynamic shell = Activator.CreateInstance(type)!;
+            dynamic computer = shell.Namespace(17);   // This PC
+            foreach (var drive in drives)
+            {
+                try
+                {
+                    dynamic? item = computer.ParseName(drive.Name);
+                    if (item is null) continue;
+                    item.InvokeVerb("Eject");
+                    count++;
+                }
+                catch { /* in use */ }
+            }
+        }
+        catch { /* no shell */ }
+        return count;
+    }
 
     public static bool EmptyRecycleBin() => Native.SHEmptyRecycleBin(IntPtr.Zero, null, 0x7) == 0;
 

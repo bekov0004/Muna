@@ -213,7 +213,7 @@ struct ClosedContent: View {
                 .font(.system(size: 12, weight: .bold).monospacedDigit())
                 .foregroundColor(timer.state == .done ? MunaColor.amber : .white)
         case .some(.music):
-            Bars(playing: nowPlaying.isPlaying)
+            MediaEffect(playing: nowPlaying.isPlaying, artwork: nowPlaying.track?.artworkURL)
         case .none:
             TimelineView(.everyMinute) { context in
                 Text(context.date.formatted(date: .omitted, time: .shortened))
@@ -227,7 +227,7 @@ struct ClosedContent: View {
     /// The butterfly, or the small "camera" circle when it is switched off.
     @ViewBuilder private var middle: some View {
         if preferences.capsuleButterfly {
-            ButterflyImage(height: max(12, model.geometry.barHeight - 9))
+            FlappingButterfly(height: max(12, model.geometry.barHeight - 9))
         } else {
             Circle()
                 .fill(Color(red: 8 / 255, green: 8 / 255, blue: 12 / 255))
@@ -526,6 +526,78 @@ struct Artwork: View {
 }
 
 /// Three bars that move while the music plays.
+/// Settings → Live Activities → Effect type and Colored effects: Linux's spectrum (bars) or waves,
+/// white or in the album's colour.
+struct MediaEffect: View {
+    @EnvironmentObject var preferences: Preferences
+    let playing: Bool
+    let artwork: URL?
+    var fallback = MunaColor.accent
+
+    var body: some View {
+        let color = preferences.bool("colored-effects") ? (AlbumColor.color(artwork) ?? fallback) : fallback
+        if preferences.string("media-effect") == "waves" {
+            TimelineView(.animation(minimumInterval: 0.08, paused: !playing)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                HStack(alignment: .bottom, spacing: 1) {
+                    ForEach(0..<7) { i in
+                        Circle().fill(color).frame(width: 3, height: 3)
+                            .offset(y: playing ? -5 * (0.5 + 0.5 * sin(t * 4 - Double(i) * 0.9)) : 0)
+                    }
+                }
+                .frame(height: 14, alignment: .bottom)
+            }
+        } else {
+            Bars(playing: playing, color: color)
+        }
+    }
+}
+
+/// The average colour of a cover (lightened to show on black), read once in the background.
+enum AlbumColor {
+    private static var cache: [URL: Color] = [:]
+    private static var loading: Set<URL> = []
+
+    static func color(_ url: URL?) -> Color? {
+        guard let url else { return nil }
+        if let known = cache[url] { return known }
+        if loading.insert(url).inserted {
+            DispatchQueue.global(qos: .utility).async {
+                guard let image = NSImage(contentsOf: url), let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return }
+                var pixel = [UInt8](repeating: 0, count: 4)
+                guard let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
+                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+                context.interpolationQuality = .medium
+                context.draw(cg, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+                let (r, g, b) = (Double(pixel[0]), Double(pixel[1]), Double(pixel[2]))
+                let lift = 200 / max(1, max(r, max(g, b)))
+                let color = Color(red: min(255, r * lift) / 255, green: min(255, g * lift) / 255, blue: min(255, b * lift) / 255)
+                DispatchQueue.main.async { cache[url] = color }
+            }
+        }
+        return nil
+    }
+}
+
+/// The butterfly of the closed capsule: now and then it beats its wings (Settings → Appearance).
+struct FlappingButterfly: View {
+    @EnvironmentObject var preferences: Preferences
+    let height: CGFloat
+
+    var body: some View {
+        if preferences.bool("butterfly-flap") {
+            TimelineView(.animation(minimumInterval: 0.05)) { context in
+                let every = max(5, preferences.double("butterfly-flap-every"))
+                let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: every)
+                let flap = phase < 0.56 ? 1 - 0.7 * abs(sin(phase / 0.28 * .pi)) : 1
+                ButterflyImage(height: height).scaleEffect(x: flap, y: 1)
+            }
+        } else {
+            ButterflyImage(height: height)
+        }
+    }
+}
+
 struct Bars: View {
     let playing: Bool
     var color = MunaColor.accent

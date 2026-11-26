@@ -73,9 +73,13 @@ final class TrayModel: ObservableObject {
         observer = Preferences.shared.$trayKeepFiles.dropFirst().sink { [weak self] keep in self?.store.keep = keep }
     }
 
+    /// Files were put on the tray (the card of Live Activities).
+    var onAdded: (Int) -> Void = { _ in }
+
     func add(_ urls: [URL]) {
         store.add(urls)
         files = store.files
+        onAdded(urls.count)
     }
 
     func remove(_ url: URL) {

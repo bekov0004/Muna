@@ -138,6 +138,8 @@ struct CapsuleCard: Equatable {
     var details: String
     var symbol: String
     var ok: Bool
+    /// How long it stays (Settings → Live Activities); nil: the usual time.
+    var seconds: Double? = nil
 }
 
 /// What the pages remember while the panel is open: drafts, the search, the group being named ...
@@ -445,7 +447,7 @@ final class CapsuleController {
             withAnimation(CapsuleMetrics.animation) { self?.model.card = nil }
         }
         cardTimer = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + CapsuleMetrics.cardTime, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + (card.seconds ?? CapsuleMetrics.cardTime), execute: work)
     }
 
     private var keepsOpen: Bool {

@@ -9,6 +9,8 @@ import SwiftUI
 /// the whole app (a card, a file coming in, the Command Bar) is handled here; the capsule that
 /// opens for it is the one of the screen with the pointer.
 final class CapsuleManager {
+    private var meetingTimer: Timer?
+    private var toldMeetings: Set<String> = []
     private let app: AppState
     private let preferences = Preferences.shared
     private var controllers: [CapsuleController] = []
@@ -53,7 +55,24 @@ final class CapsuleManager {
             if Preferences.shared.bool("reminder-sound") { NSSound(named: "Glass")?.play() }
             self?.tell("Reminder", text, symbol: "bell.badge.fill", ok: true)
         }
+        // Live Activities: the next meeting from 10 minutes before it, files added to the tray
+        app.tray.onAdded = { [weak self] count in
+            guard Preferences.shared.bool("activity-files") else { return }
+            self?.tell(count == 1 ? "Added a file" : "Added \(count) files", "To the Tray", symbol: "tray.and.arrow.down.fill", ok: true,
+                       seconds: Preferences.shared.double("peek-files-seconds"))
+        }
+        meetingTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self, Preferences.shared.bool("activity-calendar") else { return }
+            for event in self.app.calendar.events(on: Date()) where !event.allDay {
+                let minutes = event.start.timeIntervalSinceNow / 60
+                if minutes > 0, minutes <= 10, self.toldMeetings.insert(event.id + "\(event.start.timeIntervalSince1970)").inserted {
+                    self.tell(event.title, "In \(Int(minutes.rounded(.up))) min · \(event.start.formatted(date: .omitted, time: .shortened))", symbol: "calendar", ok: true,
+                              seconds: Preferences.shared.double("peek-calendar-seconds"))
+                }
+            }
+        }
         app.downloads.onFinished = { [weak self] url in
+            guard Preferences.shared.bool("activity-downloads") else { return }
             self?.tell("Downloaded", url.lastPathComponent, symbol: "arrow.down.circle.fill", ok: true)
         }
         app.agents.onPermission = { [weak self] task, permission in
@@ -156,10 +175,10 @@ final class CapsuleManager {
     }
 
     /// Something happened: a card in every closed capsule, and a line in the Alerts section.
-    func tell(_ title: String, _ details: String, symbol: String, ok: Bool) {
+    func tell(_ title: String, _ details: String, symbol: String, ok: Bool, seconds: Double? = nil) {
         app.alerts.add(title, details, symbol: symbol, ok: ok)
         app.companion.surprise()
-        let card = CapsuleCard(title: title, details: details, symbol: symbol, ok: ok)
+        let card = CapsuleCard(title: title, details: details, symbol: symbol, ok: ok, seconds: seconds)
         controllers.forEach { $0.showCard(card) }
     }
 

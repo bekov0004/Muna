@@ -15,7 +15,7 @@ struct MediaWidget: View {
         if let track = nowPlaying.track {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 12) {
-                    Artwork(url: track.artworkURL, size: 64, radius: 10)
+                    Artwork(url: track.artworkURL, size: 64, radius: CGFloat(Preferences.shared.double("album-corner-radius")))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(track.title).font(.system(size: 13, weight: .bold)).foregroundColor(.white).lineLimit(1)
                         TimelineView(.periodic(from: Date(), by: 0.5)) { context in
@@ -31,7 +31,7 @@ struct MediaWidget: View {
                             MediaButton(symbol: nowPlaying.isPlaying ? "pause.fill" : "play.fill", size: 16) { nowPlaying.playPause() }
                             MediaButton(symbol: "forward.fill") { nowPlaying.next() }
                             Spacer(minLength: 4)
-                            Bars(playing: nowPlaying.isPlaying, color: MunaColor.muna)
+                            MediaEffect(playing: nowPlaying.isPlaying, artwork: nowPlaying.track?.artworkURL, fallback: MunaColor.muna)
                                 .frame(width: 24, height: 14)
                                 .padding(.trailing, 4)
                         }

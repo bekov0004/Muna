@@ -311,10 +311,31 @@ public sealed class SettingsWindow : DarkWindow
     IEnumerable<UIElement> Calendar()
     {
         _calendarUrl.Width = 380;
+        if (_calendarUrl.Text == _p.CalendarUrl) _calendarUrl.Text = "";
         var status = _app.Calendar.Loading ? "Reading…" : _app.Calendar.Error.Length > 0 ? _app.Calendar.Error : _app.Calendar.HasSource ? "Read" : "No calendar yet";
-        yield return Card("Calendar link",
-            Setting("iCalendar (.ics) address", status, Ui.Row(8, Ui.Detach(_calendarUrl), Button("Save", () => { _p.CalendarUrl = _calendarUrl.Text.Trim(); }, accent: true))));
-        yield return Ui.Text("Outlook: Settings → Calendar → Shared calendars → Publish a calendar → the ICS link. Google: the calendar's settings → \"Secret address in iCal format\". A .ics file on this computer works too. Muna reads it every 15 minutes; nothing is sent anywhere.", 11, color: C.WinSecondary, wrap: true);
+        if (CalendarModel.HasOutlook)
+            yield return Card("Outlook",
+                Switch("Outlook's calendar", "The events of Outlook on this computer (only their titles and times are read).", _p.CalendarOutlook, v => _p.CalendarOutlook = v));
+        var rows = new List<UIElement>();
+        foreach (var url in _p.CalendarUrls)
+        {
+            var u = url;
+            rows.Add(new Border
+            {
+                Child = Ui.Row(10, Ui.Icon(Glyph.Calendar, 13, C.WinAccent), Ui.Text(url, 12, color: C.WinText).Grow(),
+                               Ui.IconButton(Glyph.Close, () => { var list = _p.CalendarUrls; list.Remove(u); _p.CalendarUrls = list; })),
+                Padding = new Thickness(14, 10, 14, 10),
+            });
+        }
+        rows.Add(Setting("Add an iCalendar (.ics) address", status, Ui.Row(8, Ui.Detach(_calendarUrl), Button("Add", () =>
+        {
+            var list = _p.CalendarUrls;
+            list.Add(_calendarUrl.Text.Trim());
+            _calendarUrl.Text = "";
+            _p.CalendarUrls = list;
+        }, accent: true))));
+        yield return Card("Calendar links", rows.ToArray());
+        yield return Ui.Text("Outlook on the web: Settings → Calendar → Shared calendars → Publish a calendar → the ICS link. Google: the calendar's settings → \"Secret address in iCal format\". A .ics file on this computer works too. Muna reads them every 15 minutes; nothing is sent anywhere.", 11, color: C.WinSecondary, wrap: true);
     }
 
     IEnumerable<UIElement> LocalSendPage()

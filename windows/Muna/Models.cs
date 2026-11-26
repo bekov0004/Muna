@@ -217,51 +217,116 @@ public sealed class SnippetsModel : Model
 public sealed class CalendarModel : Model
 {
     List<CalendarEvent> _events = new();
+    List<CalendarEvent> _outlook = new();
     readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(20) };
     DispatcherTimer? _timer;
     public string Error { get; private set; } = "";
     public bool Loading { get; private set; }
-    public bool HasSource => Preferences.Shared.CalendarUrl.Length > 0;
+    /// <summary>Outlook (the desktop app) is installed: its calendar can be read on this computer.</summary>
+    public static bool HasOutlook => Type.GetTypeFromProgID("Outlook.Application") is not null;
+    public bool HasSource => Preferences.Shared.CalendarUrls.Count > 0 || (Preferences.Shared.CalendarOutlook && HasOutlook);
 
     public void Start()
     {
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(15) };
         _timer.Tick += (_, _) => Load();
         _timer.Start();
-        Preferences.Shared.Changed += key => { if (key == "calendar-url") Load(); };
+        Preferences.Shared.Changed += key => { if (key is "calendar-url" or "calendar-urls" or "calendar-outlook") Load(); };
         Load();
     }
 
+    /// <summary>Reads every calendar link (iCalendar) and, when chosen, Outlook's calendar.</summary>
     public async void Load()
     {
-        var url = Preferences.Shared.CalendarUrl.Trim();
-        if (url.Length == 0)
+        var urls = Preferences.Shared.CalendarUrls;
+        var outlook = Preferences.Shared.CalendarOutlook && HasOutlook;
+        if (urls.Count == 0 && !outlook)
         {
             _events = new();
+            _outlook = new();
             Error = "";
             Notify();
             return;
         }
-        if (url.StartsWith("webcal://", StringComparison.OrdinalIgnoreCase)) url = "https://" + url[9..];
         Loading = true;
         Notify();
-        try
+        var events = new List<CalendarEvent>();
+        var errors = new List<string>();
+        foreach (var link in urls)
         {
-            var text = File.Exists(url) ? await File.ReadAllTextAsync(url) : await _http.GetStringAsync(url);
-            _events = IcsCalendar.Parse(text);
-            Error = "";
+            var url = link.Trim();
+            if (url.StartsWith("webcal://", StringComparison.OrdinalIgnoreCase)) url = "https://" + url[9..];
+            try
+            {
+                var text = File.Exists(url) ? await File.ReadAllTextAsync(url) : await _http.GetStringAsync(url);
+                events.AddRange(IcsCalendar.Parse(text));
+            }
+            catch (Exception e)
+            {
+                errors.Add(e is HttpRequestException ? "A calendar link could not be read" : "A calendar could not be read");
+            }
         }
-        catch (Exception e)
+        _events = events;
+        if (outlook)
         {
-            Error = e is HttpRequestException ? "The calendar link could not be read" : "The calendar could not be read";
+            try { _outlook = await Task.Run(() => OutlookCalendar.Read(DateTime.Today.AddDays(-31), DateTime.Today.AddDays(92))); }
+            catch (Exception e) { errors.Add($"Outlook: {e.Message}"); }
         }
+        else _outlook = new();
+        Error = string.Join(" · ", errors.Distinct());
         Loading = false;
         Notify();
     }
 
     /// <summary>The events of a day, all-day ones first.</summary>
     public List<CalendarEvent> EventsOn(DateTime day) => IcsCalendar.Occurrences(_events, day.Date, day.Date.AddDays(1))
+        .Concat(_outlook.Where(e => e.Start < day.Date.AddDays(1) && e.End > day.Date))
         .OrderBy(e => e.AllDay ? 0 : 1).ThenBy(e => e.Start).ToList();
+}
+
+/// <summary>The calendar of Outlook for Windows (the desktop app), through its automation interface:
+/// the events (repeats unfolded by Outlook) between two days. Only subjects and times are read.</summary>
+public static class OutlookCalendar
+{
+    public static List<CalendarEvent> Read(DateTime from, DateTime to)
+    {
+        var list = new List<CalendarEvent>();
+        var type = Type.GetTypeFromProgID("Outlook.Application");
+        if (type is null) return list;
+        object? app = null;
+        try
+        {
+            app = Activator.CreateInstance(type);
+            dynamic outlook = app!;
+            dynamic folder = outlook.GetNamespace("MAPI").GetDefaultFolder(9);   // olFolderCalendar
+            dynamic items = folder.Items;
+            items.IncludeRecurrences = true;
+            items.Sort("[Start]");
+            var culture = System.Globalization.CultureInfo.CurrentCulture;
+            string filter = $"[Start] < '{to.ToString("g", culture)}' AND [End] > '{from.ToString("g", culture)}'";
+            dynamic found = items.Restrict(filter);
+            dynamic? item = found.GetFirst();
+            while (item is not null && list.Count < 800)
+            {
+                try
+                {
+                    string subject = item.Subject ?? "";
+                    DateTime start = item.Start;
+                    DateTime end = item.End;
+                    bool allDay = item.AllDayEvent;
+                    string id = item.EntryID ?? "";
+                    list.Add(new CalendarEvent($"{id}-{start.Ticks}", subject.Length == 0 ? "(No title)" : subject, start, end, allDay));
+                }
+                catch { /* an item that is no appointment */ }
+                item = found.GetNext();
+            }
+        }
+        finally
+        {
+            if (app is not null && System.Runtime.InteropServices.Marshal.IsComObject(app)) System.Runtime.InteropServices.Marshal.FinalReleaseComObject(app);
+        }
+        return list;
+    }
 }
 
 /// <summary>The countdown of the Timer widget (like linux/service/timer).</summary>

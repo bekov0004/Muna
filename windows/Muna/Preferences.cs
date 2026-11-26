@@ -186,6 +186,23 @@ public sealed class Preferences
 
     /// <summary>An iCalendar (.ics) link whose events the Calendar widget shows (Outlook, Google: "secret address").</summary>
     public string CalendarUrl { get => Get("calendar-url", ""); set => Set("calendar-url", value); }
+    /// <summary>Every calendar link (the first one is <see cref="CalendarUrl"/>, kept for older settings).</summary>
+    public List<string> CalendarUrls
+    {
+        get
+        {
+            var more = (_values["calendar-urls"] as JsonArray)?.Select(n => n?.GetValue<string>()).OfType<string>() ?? Enumerable.Empty<string>();
+            return new[] { CalendarUrl }.Concat(more).Select(u => u.Trim()).Where(u => u.Length > 0).Distinct().ToList();
+        }
+        set
+        {
+            var list = value.Select(u => u.Trim()).Where(u => u.Length > 0).Distinct().ToList();
+            _values["calendar-url"] = list.FirstOrDefault() ?? "";
+            Set("calendar-urls", new JsonArray(list.Skip(1).Select(v => (JsonNode?)v).ToArray()));
+        }
+    }
+    /// <summary>Outlook's own calendar (when Outlook for Windows is installed).</summary>
+    public bool CalendarOutlook { get => Get("calendar-outlook", true); set => Set("calendar-outlook", value); }
 
     public int Cells(string id)
     {

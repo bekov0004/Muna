@@ -815,6 +815,7 @@ public sealed class PhoneModel : Model
                 {
                     LinkActive = true;
                     LiveError = "";
+                    if (Preferences.Shared.PhoneDarkScreen) link.Send("p 0");
                     if (link.Screen is { } screen) _realSize = new Size(screen.Width, screen.Height);
                     Notify();
                 });

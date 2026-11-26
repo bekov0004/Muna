@@ -146,6 +146,30 @@ public sealed class Preferences
     /// <summary>Cards for a busy processor, heat, a full disk or memory and a low battery (Linux's system-alerts).</summary>
     public bool SystemAlerts { get => Get("system-alerts", true); set => Set("system-alerts", value); }
 
+    /// <summary>Linux's alert thresholds: processor %, temperature °C, free disk %, battery %, free memory %.</summary>
+    public int AlertCpu { get => Get("alert-cpu", 90); set => Set("alert-cpu", value); }
+    public int AlertTemp { get => Get("alert-temp", 85); set => Set("alert-temp", value); }
+    public int AlertDisk { get => Get("alert-disk", 5); set => Set("alert-disk", value); }
+    public int AlertBattery { get => Get("alert-battery", 20); set => Set("alert-battery", value); }
+    public int AlertMemory { get => Get("alert-memory", 8); set => Set("alert-memory", value); }
+    public bool ReminderSound { get => Get("reminder-sound", true); set => Set("reminder-sound", value); }
+    public bool AwakeOnStart { get => Get("awake-on-start", false); set => Set("awake-on-start", value); }
+    public bool AgentsAlerts { get => Get("agents-alerts", true); set => Set("agents-alerts", value); }
+    /// <summary>The phone's screen goes dark while it is used from the computer (Muna Phone).</summary>
+    public bool PhoneDarkScreen { get => Get("phone-dark-screen", true); set => Set("phone-dark-screen", value); }
+    /// <summary>Seconds a card stays in the closed capsule.</summary>
+    public double CardSeconds { get => Math.Clamp(Get("card-seconds", 4.0), 1, 15); set => Set("card-seconds", value); }
+    /// <summary>The actions around the radial menu, in order (Linux's ids).</summary>
+    public List<string> RadialActions
+    {
+        get
+        {
+            var list = (_values["radial-actions"] as JsonArray)?.Select(n => n?.GetValue<string>()).OfType<string>().ToList();
+            return list is { Count: > 0 } ? list : new List<string> { "play-pause", "next", "screenshot", "downloads", "color", "prev" };
+        }
+        set => Set("radial-actions", new JsonArray(value.Select(v => (JsonNode?)v).ToArray()));
+    }
+
     // touchpad gestures (Linux's keys)
     /// <summary>Three- and four-finger swipes, pinches and holds (Windows' own must be set to "Nothing" first).</summary>
     public bool TouchpadGestures { get => Get("touchpad-gestures", false); set => Set("touchpad-gestures", value); }

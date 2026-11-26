@@ -225,14 +225,15 @@ public sealed class SystemAlerts
         if (!Preferences.Shared.SystemAlerts) return;
         var m = _app.Monitor;
         if (!m.Watched) m.Sample();
-        _busyTicks = m.Cpu > 0.9 ? _busyTicks + 1 : 0;
-        Tell("cpu", _busyTicks >= 6, "The processor is busy", $"Over 90% for a minute", Glyph.Cpu);
-        Tell("temp", m.Temperature is > 90, "The computer is hot", m.Temperature is { } c ? SystemMonitor.TemperatureText(c) : "", Glyph.Thermometer);
+        var p = Preferences.Shared;
+        _busyTicks = m.Cpu * 100 >= p.AlertCpu ? _busyTicks + 1 : 0;
+        Tell("cpu", _busyTicks >= 6, "The processor is busy", $"Over {p.AlertCpu}% for a minute", Glyph.Cpu);
+        Tell("temp", m.Temperature >= p.AlertTemp, "The computer is hot", m.Temperature is { } c ? SystemMonitor.TemperatureText(c) : "", Glyph.Thermometer);
         var (free, total) = SystemMonitor.SystemDisk();
-        Tell("disk", total > 0 && free < total * 0.05, "The disk is nearly full", $"{Ui.SizeText(free)} free", Glyph.Disk);
-        Tell("memory", m.MemoryPercent >= 92, "Memory is nearly full", $"{m.MemoryPercent}% in use", Glyph.Memory);
+        Tell("disk", total > 0 && free * 100.0 / total < p.AlertDisk, "The disk is nearly full", $"{Ui.SizeText(free)} free", Glyph.Disk);
+        Tell("memory", 100 - m.MemoryPercent < p.AlertMemory, "Memory is nearly full", $"{m.MemoryPercent}% in use", Glyph.Memory);
         var battery = SystemMonitor.Battery();
-        Tell("battery", battery.HasBattery && !battery.Charging && battery.Percent <= 15, "The battery is low", $"{battery.Percent}% left", Glyph.Battery);
+        Tell("battery", battery.HasBattery && !battery.Charging && battery.Percent <= p.AlertBattery, "The battery is low", $"{battery.Percent}% left", Glyph.Battery);
     }
 
     void Tell(string id, bool bad, string title, string details, string glyph)

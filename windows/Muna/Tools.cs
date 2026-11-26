@@ -73,17 +73,41 @@ public sealed class RadialMenu
 
     public RadialMenu(AppState app) => _app = app;
 
-    (string Glyph, string Label, Action Run)[] Actions() => new (string, string, Action)[]
+    /// <summary>What can go around the wheel (Linux's radial-actions ids).</summary>
+    public static readonly (string Id, string Title, string Glyph)[] Catalog =
     {
-        (Glyph.Screenshot, "Screenshot", QuickTools.Screenshot),
-        (Glyph.Eyedropper, "Colour", () => ColorPicker.Pick(hex => _app.Capsules.Tell("Colour copied", hex, Glyph.Eyedropper, true))),
-        (Glyph.Search, "Command", _app.Capsules.OpenCommand),
-        (Glyph.Note, "Scratchpad", _app.ShowScratchpad),
-        (Glyph.Moon, "Dark mode", () => QuickTools.ToggleDarkMode()),
-        (Glyph.Coffee, _app.Awake.IsOn ? "Sleep" : "Awake 1 h", () => { if (_app.Awake.IsOn) _app.Awake.Stop(); else _app.Awake.Start(60); }),
-        (Glyph.Monitor, "Screen off", QuickTools.ScreenOff),
-        (Glyph.Clipboard, "Clipboard", () => _app.Capsules.Open(PanelTab.Clipboard)),
+        ("play-pause", "Play or pause", Glyph.Play), ("next", "Next track", Glyph.Next), ("prev", "Previous track", Glyph.Previous),
+        ("screenshot", "Screenshot", Glyph.Screenshot), ("recording", "Screen recording", Glyph.Video), ("color", "Colour picker", Glyph.Eyedropper),
+        ("downloads", "Downloads", Glyph.Download), ("command", "Search", Glyph.Search), ("clipboard", "Clipboard", Glyph.Clipboard),
+        ("dark", "Dark mode", Glyph.Moon), ("night", "Night light", Glyph.Sun), ("mic", "Mute microphone", Glyph.Microphone),
+        ("awake", "Keep awake", Glyph.Coffee), ("cleaning", "Cleaning mode", Glyph.Broom), ("lock", "Lock the screen", Glyph.Lock),
+        ("scratchpad", "Scratchpad", Glyph.Note), ("screen-off", "Screen off", Glyph.Monitor),
     };
+
+    Action Run(string id) => id switch
+    {
+        "play-pause" => () => Native.TapKey(Native.VK_MEDIA_PLAY_PAUSE),
+        "next" => () => Native.TapKey(Native.VK_MEDIA_NEXT),
+        "prev" => () => Native.TapKey(Native.VK_MEDIA_PREV),
+        "screenshot" => QuickTools.Screenshot,
+        "recording" => () => Keys.Chord(0x5B, 0x10, 0x52),          // Win+Shift+R: the Snipping Tool's recording
+        "color" => () => ColorPicker.Pick(hex => _app.Capsules.Tell("Colour copied", hex, Glyph.Eyedropper, true)),
+        "downloads" => DownloadsModel.OpenFolder,
+        "command" => _app.Capsules.OpenCommand,
+        "clipboard" => () => _app.Capsules.Open(PanelTab.Clipboard),
+        "dark" => () => QuickTools.ToggleDarkMode(),
+        "night" => () => SystemSwitches.SetNightLight(!(SystemSwitches.NightLight ?? false)),
+        "mic" => _app.Sound.ToggleMicrophone,
+        "awake" => () => { if (_app.Awake.IsOn) _app.Awake.Stop(); else _app.Awake.Start(60); },
+        "cleaning" => CleaningMode.Start,
+        "lock" => () => Native.LockWorkStation(),
+        "scratchpad" => _app.ShowScratchpad,
+        _ => QuickTools.ScreenOff,
+    };
+
+    (string Glyph, string Label, Action Run)[] Actions() => Preferences.Shared.RadialActions
+        .Select(id => Catalog.FirstOrDefault(c => c.Id == id)).Where(c => c.Id is not null)
+        .Select(c => (c.Glyph, c.Id == "awake" && _app.Awake.IsOn ? "Sleep" : c.Title, Run(c.Id))).ToArray();
 
     public void Toggle()
     {

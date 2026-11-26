@@ -489,7 +489,7 @@ public sealed class CapsuleWindow : Window
         SetSize(ClosedSize());
         Invalidate();
         _cardTimer?.Stop();
-        _cardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _cardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Preferences.Shared.CardSeconds) };
         _cardTimer.Tick += (_, _) =>
         {
             _cardTimer?.Stop();

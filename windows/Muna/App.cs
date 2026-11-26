@@ -80,6 +80,7 @@ public sealed class AppState
         Desktops.Start();
         Bars.Rebuild();
         SystemAlerts.Start();
+        if (Preferences.Shared.AwakeOnStart) Awake.Start(null, false);
         Gestures.Start();
         if (Preferences.Shared.AppNotifications) Notifications.Start();
     }
@@ -182,7 +183,7 @@ public sealed class CapsuleManager
         };
         app.Timer.Finished += () => Tell("Time is up", "The timer ended", Glyph.Clock, true);
         app.Focus.PhaseEnded += (title, details) => Tell(title, details, Glyph.Flag, true);
-        app.Reminders.Due += text => { System.Media.SystemSounds.Exclamation.Play(); Tell("Reminder", text, Glyph.Bell, true); };
+        app.Reminders.Due += text => { if (Preferences.Shared.ReminderSound) System.Media.SystemSounds.Exclamation.Play(); Tell("Reminder", text, Glyph.Bell, true); };
         app.Downloads.Finished += path => Tell("Downloaded", System.IO.Path.GetFileName(path), Glyph.Download, true);
         app.Agents.PermissionAsked += (_, _) =>
         {
@@ -190,7 +191,7 @@ public sealed class CapsuleManager
             capsule.SetTab(PanelTab.Agent);
             capsule.OpenNow();
         };
-        app.Agents.TaskFinished += (task, ok) => Tell(ok ? $"{task.Project} is done" : $"{task.Project} stopped", ok ? task.Current : task.Error, ok ? Glyph.Sparkle : Glyph.Warning, ok);
+        app.Agents.TaskFinished += (task, ok) => { if (Preferences.Shared.AgentsAlerts) Tell(ok ? $"{task.Project} is done" : $"{task.Project} stopped", ok ? task.Current : task.Error, ok ? Glyph.Sparkle : Glyph.Warning, ok); };
         app.Agents.Changed += () =>
         {
             var waiting = app.Agents.Waiting is not null;

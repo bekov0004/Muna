@@ -1,3 +1,4 @@
+using System.Threading;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -52,7 +53,9 @@ public sealed class CommandModel : Model
             Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
         };
         var result = new List<(string, string)>();
+        // "Live captions" and "LiveCaptions" are one app
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        static string Plain(string name) => new(name.Where(char.IsLetterOrDigit).ToArray());
         foreach (var folder in folders.Where(Directory.Exists))
         {
             IEnumerable<string> files;
@@ -65,10 +68,42 @@ public sealed class CommandModel : Model
                 var name = Path.GetFileNameWithoutExtension(file);
                 var lower = name.ToLowerInvariant();
                 if (lower.Contains("uninstall") || lower.Contains("readme") || lower.Contains("help") && lower.Length < 12) continue;
-                if (seen.Add(name)) result.Add((name, file));
+                if (seen.Add(Plain(name))) result.Add((name, file));
             }
         }
+        // Store apps (Notepad, Calculator, Settings on Windows 11 …) have no shortcut there: the Start
+        // menu's own list, shell:AppsFolder, has them (read on a thread of its own: the shell wants STA)
+        foreach (var (name, id) in AppsFolder())
+            if (seen.Add(Plain(name))) result.Add((name, $"shell:AppsFolder\\{id}"));
         return result.OrderBy(a => a.Item1, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    static List<(string Name, string Id)> AppsFolder()
+    {
+        var list = new List<(string, string)>();
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                dynamic shell = Activator.CreateInstance(Type.GetTypeFromProgID("Shell.Application")!)!;
+                dynamic folder = shell.NameSpace("shell:AppsFolder");
+                foreach (dynamic item in folder.Items())
+                {
+                    string name = item.Name, id = item.Path;
+                    var lower = name.ToLowerInvariant();
+                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(id) || lower.Contains("uninstall")) continue;
+                    // web links and documents pinned there are no apps
+                    if (id.StartsWith("http", StringComparison.OrdinalIgnoreCase)) continue;
+                    list.Add((name, id));
+                }
+            }
+            catch (Exception e) { App.Log(e); }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.IsBackground = true;
+        thread.Start();
+        thread.Join(TimeSpan.FromSeconds(15));
+        return list;
     }
 
     public void Reset()

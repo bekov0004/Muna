@@ -487,13 +487,15 @@ public static class Ui
     /// <summary>The shell's icon of a file (by extension, folders and programs by path).</summary>
     public static ImageSource? FileIcon(string path)
     {
-        var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
-        var key = Directory.Exists(path) ? "<folder>" : ext is ".exe" or ".lnk" or ".ico" or "" ? path : ext;
+        // an app of the Start menu's list (Store apps): its own icon
+        var shellItem = path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase);
+        var ext = shellItem ? "" : System.IO.Path.GetExtension(path).ToLowerInvariant();
+        var key = shellItem ? path : Directory.Exists(path) ? "<folder>" : ext is ".exe" or ".lnk" or ".ico" or "" ? path : ext;
         if (IconCache.TryGetValue(key, out var cached)) return cached;
         ImageSource? result = null;
         try
         {
-            result = Native.ShellIcon(path);
+            result = shellItem ? Native.ShellItemIcon(path) : Native.ShellIcon(path);
         }
         catch { /* no icon */ }
         IconCache[key] = result;

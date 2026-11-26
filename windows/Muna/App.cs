@@ -290,6 +290,8 @@ public sealed class CapsuleManager
         foreach (var model in new Model[] { app.NowPlaying, app.Notes, app.Todo, app.Tray, app.Clipboard, app.Calendar, app.Timer, app.Alerts, app.Camera, app.Command, app.Privacy })
             model.Changed += Redraw;
         app.NowPlaying.Changed += () => All(c => c.ActivityChanged());
+        // the Command Bar takes the height of its results
+        app.Command.Changed += () => All(c => { if (c.IsOpen && c.Tab == PanelTab.Command) c.LayoutChanged(); });
         app.Timer.Changed += () => All(c => c.ActivityChanged());
         _pointer.Tick += (_, _) => WatchPointer();
         _fullScreen.Tick += (_, _) => WatchFullScreen();

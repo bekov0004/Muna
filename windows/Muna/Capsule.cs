@@ -150,7 +150,14 @@ public sealed class CapsuleWindow : Window
     public PanelLayout Layout { get; private set; } = PanelLayout.Make(1920, new[] { "media" }, _ => 4);
     /// <summary>How much taller than normal the list section is now (pulled with two fingers).</summary>
     public double Extra { get; private set; }
-    public double BodyHeight => Tab.BodyHeight() + (Tab.Growable() ? Extra : 0);
+    public double BodyHeight => Tab == PanelTab.Command ? CommandHeight() : Tab.BodyHeight() + (Tab.Growable() ? Extra : 0);
+
+    /// <summary>The Command Bar grows with its results (as on Linux), from 250 to 450.</summary>
+    double CommandHeight()
+    {
+        var rows = App.Command.Results.Count;
+        return rows == 0 ? PanelTab.Command.BodyHeight() : Math.Clamp(64 + rows * 47, PanelTab.Command.BodyHeight(), 450);
+    }
     public bool IsEditing { get; private set; }
     public bool IsDropTarget { get; private set; }
     public CapsuleCard? Card { get; private set; }

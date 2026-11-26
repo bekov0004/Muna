@@ -291,3 +291,66 @@ final class GestureTests: XCTestCase {
         XCTAssertNil(GestureCatalog.parseKeys("<Hyper>x"))
     }
 }
+
+final class ParityTests: XCTestCase {
+    func testTiling() {
+        XCTAssertEqual(TileSlots.slots("columns", 2), [CGRect(x: 0, y: 0, width: 0.5, height: 1), CGRect(x: 0.5, y: 0, width: 0.5, height: 1)])
+        XCTAssertEqual(TileSlots.slots("grid", 5)[3], CGRect(x: 0, y: 0.5, width: 0.5, height: 0.5))
+        XCTAssertEqual(TileSlots.slots("main", 3)[0], CGRect(x: 0, y: 0, width: 0.6, height: 1))
+        XCTAssertEqual(TileSlots.slots("rows", 2)[1], CGRect(x: 0, y: 0.5, width: 1, height: 0.5))
+        XCTAssertTrue(TileSlots.slots("grid", 0).isEmpty)
+    }
+
+    func testPhoneLinkAsTheApp() {
+        // the same fingerprint and proof as the Kotlin and GJS sides
+        XCTAssertEqual(PhoneLinkProtocol.fingerprint("hello"), "2cf24dba")
+        XCTAssertEqual(PhoneLinkProtocol.proof("k", "srv", "a", "b"), "55d32f35b2cac9548eb00e38c2a04672f228b4d5f4c07dc8cdc917d61c684152")
+        let token = PhoneLinkProtocol.randomToken()
+        let phoneNonce = "0123456789abcdef0123456789abcdef"
+        let hello = "HELLO2 V \(PhoneLinkProtocol.fingerprint(token)) \(phoneNonce)"
+        guard let challenge = PhoneLinkProtocol.challenge(hello: hello, token: token) else { return XCTFail("refused") }
+        XCTAssertEqual(challenge.role, "V")
+        let auth = "AUTH \(PhoneLinkProtocol.proof(token, "cli", challenge.nonce, phoneNonce)) 1080x2400 34 Pixel_8"
+        XCTAssertEqual(PhoneLinkProtocol.check(auth: auth, token: token, nonce: challenge.nonce, phoneNonce: phoneNonce), "1080x2400 34 Pixel_8")
+        XCTAssertNil(PhoneLinkProtocol.check(auth: "AUTH 00 x", token: token, nonce: challenge.nonce, phoneNonce: phoneNonce))
+        XCTAssertNil(PhoneLinkProtocol.challenge(hello: "HELLO2 V 00000000 \(phoneNonce)", token: token))
+        XCTAssertEqual(PhoneLinkProtocol.lanAddress(phone: "inet 192.168.1.20/24 brd", local: [("10.0.0.5", 8), ("192.168.1.33", 24)]), "192.168.1.33")
+    }
+
+    func testAccessUnits() {
+        func nal(_ type: UInt8, _ length: Int, four: Bool = true) -> [UInt8] { (four ? [0, 0, 0, 1] : [0, 0, 1]) + [type] + Array(repeating: 0x55, count: length) }
+        let stream = nal(7, 10) + nal(8, 4) + nal(5, 300) + nal(1, 120, four: false) + nal(1, 80) + nal(7, 10)
+        let splitter = AnnexB()
+        var units: [[UInt8]] = []
+        var at = 0
+        while at < stream.count { units += splitter.push(Array(stream[at..<min(at + 37, stream.count)])); at += 37 }
+        XCTAssertEqual(units.count, 3)
+        XCTAssertEqual(AnnexB.firstType(units[0]), 7)
+        XCTAssertEqual(units[0].count, 15 + 9 + 305)
+        XCTAssertEqual(units[1].count, 124)
+    }
+
+    func testTokenCounts() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("muna-tokens-\(UUID().uuidString)")
+        let claude = root.appendingPathComponent("claude/-home-me-Muna")
+        try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let now = Date()
+        let stamp = { (hours: Double) in ISO8601DateFormatter().string(from: now.addingTimeInterval(-hours * 3600)) }
+        let log = claude.appendingPathComponent("s1.jsonl")
+        try ("{\"timestamp\":\"\(stamp(1))\",\"message\":{\"usage\":{\"input_tokens\":100,\"output_tokens\":50,\"cache_read_input_tokens\":1000}}}\n" +
+             "{\"timestamp\":\"\(stamp(30))\",\"message\":{\"usage\":{\"input_tokens\":7,\"output_tokens\":3}}}\n{\"half\": ").write(to: log, atomically: true, encoding: .utf8)
+        let usage = TokenUsage()
+        let first = usage.update(claudeRoot: root.appendingPathComponent("claude").path, codexRoot: root.appendingPathComponent("codex").path, now: now)
+        XCTAssertEqual(first.first?.tokens5h, 1150)
+        XCTAssertEqual(first.first?.tokens7d, 1160)
+        let handle = try FileHandle(forWritingTo: log)
+        handle.seekToEndOfFile()
+        handle.write(Data("\"x\"}\n{\"timestamp\":\"\(stamp(0.5))\",\"message\":{\"usage\":{\"output_tokens\":40}}}\n".utf8))
+        handle.closeFile()
+        let second = usage.update(claudeRoot: root.appendingPathComponent("claude").path, codexRoot: root.appendingPathComponent("codex").path, now: now)
+        XCTAssertEqual(second.first?.tokens5h, 1190)
+        XCTAssertEqual(second.first?.messages5h, 2)
+        XCTAssertEqual(TokenUsage.short(1_190_000), "1.2M")
+    }
+}

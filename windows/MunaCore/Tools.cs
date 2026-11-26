@@ -430,6 +430,18 @@ public static class PhoneAdb
 {
     public const int Back = 4, Home = 3, Recents = 187, Wake = 224;
 
+    /// <summary>What `adb mdns services` prints → (name, "pairing" or "connect", address).</summary>
+    public static List<(string Name, string Type, string Address)> ParseMdns(string text)
+    {
+        var found = new List<(string, string, string)>();
+        foreach (var line in text.Split('\n'))
+        {
+            var match = Regex.Match(line.Trim(), @"^(\S+)\s+_adb-tls-(pairing|connect)\._tcp\.?\s+(\S+:\d+)$");
+            if (match.Success) found.Add((match.Groups[1].Value, match.Groups[2].Value, match.Groups[3].Value));
+        }
+        return found;
+    }
+
     public static string? FindAdb()
     {
         var fromEnv = Environment.GetEnvironmentVariable("MUNA_ADB");

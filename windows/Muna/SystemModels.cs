@@ -653,6 +653,81 @@ public sealed class PhoneModel : Model
 
     public PhoneModel() => _timer.Tick += (_, _) => Tick();
 
+    // --- pairing over Wi-Fi (Android 11+: Wireless debugging → Pair with QR code) -------------------
+
+    /// <summary>A pairing in progress: the QR text, and "waiting", "pairing", "connecting" or "failed".</summary>
+    public sealed record PairingState(string Text, string Status, string Message);
+    public PairingState? Pairing { get; private set; }
+    string _pairName = "", _pairPassword = "", _pairHost = "";
+    DateTime _pairSince;
+    readonly HashSet<string> _pairTried = new();
+    bool _pairBusy;
+
+    static string Random(string alphabet, int length) =>
+        new(Enumerable.Range(0, length).Select(_ => alphabet[System.Security.Cryptography.RandomNumberGenerator.GetInt32(alphabet.Length)]).ToArray());
+
+    /// <summary>Shows a QR code for the phone to scan (as Linux): adb finds the phone by its name, pairs with the password, connects.</summary>
+    public void StartPairing()
+    {
+        if (Adb is null) return;
+        _pairName = $"muna-{Random("abcdefghjkmnpqrstuvwxyz23456789", 5)}";
+        _pairPassword = Random("0123456789", 6);
+        _pairSince = DateTime.Now;
+        _pairTried.Clear();
+        Pairing = new PairingState($"WIFI:T:ADB;S:{_pairName};P:{_pairPassword};;", "waiting", "");
+        Notify();
+    }
+
+    public void CancelPairing()
+    {
+        Pairing = null;
+        Notify();
+    }
+
+    void SetPairing(string status, string message)
+    {
+        if (Pairing is null) return;
+        Pairing = Pairing with { Status = status, Message = message };
+        Notify();
+    }
+
+    void AdvancePairing()
+    {
+        if (Pairing is null || _pairBusy || Pairing.Status is not ("waiting" or "connecting")) return;
+        if ((DateTime.Now - _pairSince).TotalMinutes > 3) { SetPairing("failed", "Time is up. Try again."); return; }
+        _pairBusy = true;
+        var status = Pairing.Status;
+        Task.Run(() =>
+        {
+            var services = PhoneAdb.ParseMdns(Text("mdns", "services"));
+            if (status == "waiting")
+            {
+                var entry = services.FirstOrDefault(s => s.Type == "pairing" && s.Name == _pairName);
+                if (entry.Address is null || !_pairTried.Add(entry.Address)) return ("", "");
+                _pairHost = entry.Address.Split(':')[0];
+                Ui(() => SetPairing("pairing", "Pairing…"));
+                var result = Text("pair", entry.Address, _pairPassword);
+                if (!result.Contains("Successfully paired", StringComparison.OrdinalIgnoreCase))
+                    return ("failed", result.Trim().Split('\n')[0] is { Length: > 0 } line ? line : "Pairing failed");
+                return ("connecting", "Paired. Connecting…");
+            }
+            var connect = services.FirstOrDefault(s => s.Type == "connect" && s.Address.StartsWith(_pairHost + ":"));
+            if (connect.Address is null) return ("", "");
+            var answer = Text("connect", connect.Address);
+            if (!answer.Contains("connected to", StringComparison.OrdinalIgnoreCase))
+                return ("failed", answer.Trim().Split('\n')[0] is { Length: > 0 } line ? line : "Could not connect");
+            Serial = connect.Address;
+            return ("done", "");
+        }).ContinueWith(t => Ui(() =>
+        {
+            _pairBusy = false;
+            if (t.IsFaulted) return;
+            var (next, message) = t.Result;
+            if (next == "done") { Pairing = null; _ticks = 0; Notify(); }
+            else if (next.Length > 0) SetPairing(next, message);
+        }));
+    }
+
     public PhoneDevice? Current => Devices.FirstOrDefault(d => d.Serial == Serial && d.Ready) ?? Devices.FirstOrDefault(d => d.Ready);
 
     public void Watch()
@@ -685,6 +760,7 @@ public sealed class PhoneModel : Model
 
     void Tick()
     {
+        AdvancePairing();
         if (_busy || Adb is null) return;
         _busy = true;
         var refreshDevices = _ticks++ % 5 == 0 || Devices.Count == 0;

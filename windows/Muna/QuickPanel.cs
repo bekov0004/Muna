@@ -331,12 +331,14 @@ public sealed class QuickPanel : Window
         var phone = _app.Phone;
         if (phone.Adb is null)
             return Block(Ui.Text("adb was not found. Install Android's platform-tools (winget install Google.PlatformTools) and turn on USB debugging on the phone.", 12, color: C.Secondary, wrap: true));
+        if (phone.Pairing is { } pairing) return PairingBlock(phone, pairing);
         if (phone.Current is not { } device)
         {
             var waiting = phone.Devices.FirstOrDefault();
             return Block(Ui.Text(waiting is not null && !waiting.Ready
                 ? $"{waiting.Model}: allow USB debugging on the phone ({waiting.State})"
-                : "No phone. Connect one with USB debugging on (or pair it over Wi-Fi with adb).", 12, color: C.Secondary, wrap: true));
+                : "No phone. Connect one with USB debugging on, or pair it over Wi-Fi.", 12, color: C.Secondary, wrap: true),
+                Ui.Pill("Pair over Wi-Fi…", phone.StartPairing, accent: true));
         }
         var head = Ui.Row(8, Ui.Icon(Glyph.Phone, 13, C.Accent), Ui.Semi(device.Model, 12).Grow());
         if (phone.Battery is { } battery) head.Children.Add(Ui.Digits($"{battery.Percent}%{(battery.Charging ? " ⚡" : "")}", 12, color: C.Secondary));
@@ -358,6 +360,43 @@ public sealed class QuickPanel : Window
                           Ui.Pill("Apps", () => phone.Key(PhoneAdb.Recents)), Ui.Pill("Wake", () => phone.Key(PhoneAdb.Wake)));
         keys.HorizontalAlignment = HorizontalAlignment.Center;
         return Block(head, phone.Screen is null ? Ui.Text("Getting the screen…", 11, color: C.Secondary) : picture, keys, Ui.Detach(_phoneText));
+    }
+
+    /// <summary>The QR code of a pairing, and what the phone must do.</summary>
+    static UIElement PairingBlock(PhoneModel phone, PhoneModel.PairingState pairing)
+    {
+        var rows = new List<UIElement?> { Ui.Semi("Pair a phone over Wi-Fi", 13) };
+        if (pairing.Status == "failed")
+        {
+            rows.Add(Ui.Text(pairing.Message, 12, color: C.Warning, wrap: true));
+            rows.Add(Ui.Row(6, Ui.Pill("Try again", phone.StartPairing, accent: true), Ui.Pill("Cancel", phone.CancelPairing)));
+            return Block(rows.ToArray());
+        }
+        rows.Add(QrImage(pairing.Text, 180).Align(HorizontalAlignment.Center));
+        rows.Add(Ui.Text(pairing.Status == "waiting"
+            ? "On the phone: Settings → Developer options → Wireless debugging → Pair device with QR code, and scan this. The phone and this computer must be on the same Wi-Fi."
+            : pairing.Message, 11, color: C.Secondary, wrap: true));
+        rows.Add(Ui.Pill("Cancel", phone.CancelPairing));
+        return Block(rows.ToArray());
+    }
+
+    /// <summary>A QR code drawn as squares, with its quiet zone.</summary>
+    public static FrameworkElement QrImage(string text, double side)
+    {
+        var modules = Qr.Encode(text);
+        var n = modules.GetLength(0);
+        var group = new GeometryGroup();
+        for (var y = 0; y < n; y++)
+            for (var x = 0; x < n; x++)
+                if (modules[y, x]) group.Children.Add(new RectangleGeometry(new Rect(x + 4, y + 4, 1, 1)));
+        group.Freeze();
+        var drawing = new DrawingGroup();
+        drawing.Children.Add(new GeometryDrawing(Brushes.White, null, new RectangleGeometry(new Rect(0, 0, n + 8, n + 8))));
+        drawing.Children.Add(new GeometryDrawing(Brushes.Black, null, group));
+        drawing.Freeze();
+        var image = new Image { Source = new DrawingImage(drawing), Width = side, Height = side };
+        RenderOptions.SetEdgeMode(image, EdgeMode.Aliased);
+        return image;
     }
 
     UIElement AwakePage()

@@ -560,6 +560,40 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void TokenCounts()
+    {
+        using var t = new TempFolder();
+        var claude = Path.Combine(t.Path, "claude", "-home-me-Muna");
+        var codex = Path.Combine(t.Path, "codex", "2026", "11", "26");
+        Directory.CreateDirectory(claude);
+        Directory.CreateDirectory(codex);
+        var now = DateTime.UtcNow;
+        string Stamp(double hoursAgo) => now.AddHours(-hoursAgo).ToString("o");
+        var log = Path.Combine(claude, "s1.jsonl");
+        File.WriteAllText(log,
+            $"{{\"timestamp\":\"{Stamp(1)}\",\"message\":{{\"usage\":{{\"input_tokens\":100,\"output_tokens\":50,\"cache_read_input_tokens\":1000}}}}}}\n" +
+            $"{{\"timestamp\":\"{Stamp(30)}\",\"message\":{{\"usage\":{{\"input_tokens\":7,\"output_tokens\":3}}}}}}\n" +
+            "{\"type\":\"user\",\"message\":{\"content\":\"no usage here\"}}\n" +
+            "{\"half\": ");
+        File.WriteAllText(Path.Combine(codex, "rollout.jsonl"),
+            $"{{\"timestamp\":\"{Stamp(2)}\",\"payload\":{{\"info\":{{\"last_token_usage\":{{\"input_tokens\":20,\"output_tokens\":5}}}}}}}}\n");
+        var usage = new TokenUsage();
+        var first = usage.Update(Path.Combine(t.Path, "claude"), Path.Combine(t.Path, "codex"), now);
+        var c = first.Single(s => s.Agent == "Claude Code");
+        Assert.Equal(1150, c.Tokens5h);
+        Assert.Equal(1160, c.Tokens7d);
+        Assert.Equal(1, c.Messages5h);
+        Assert.Equal(25, first.Single(s => s.Agent == "Codex").Tokens5h);
+        // the half line is finished later: read once, not twice
+        File.AppendAllText(log, $"\"x\"}}\n{{\"timestamp\":\"{Stamp(0.5)}\",\"message\":{{\"usage\":{{\"output_tokens\":40}}}}}}\n");
+        var second = usage.Update(Path.Combine(t.Path, "claude"), Path.Combine(t.Path, "codex"), now).Single(s => s.Agent == "Claude Code");
+        Assert.Equal(1190, second.Tokens5h);
+        Assert.Equal(2, second.Messages5h);
+        Assert.Equal("1.2M", TokenUsage.Short(1_190_000));
+        Assert.Equal("840K", TokenUsage.Short(840_123));
+    }
+
+    [Fact]
     public void Tiling()
     {
         Assert.Equal(new[] { (0.0, 0.0, 1 / 3.0, 1.0), (1 / 3.0, 0.0, 1 / 3.0, 1.0), (2 / 3.0, 0.0, 1 / 3.0, 1.0) }, TileSlots.For("columns", 3));

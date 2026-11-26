@@ -616,6 +616,8 @@ public sealed class QuickPanel : Window
             rows.Add(Ui.Row(8, Ui.Icon(glyph, 12, tint), Ui.Column(1, Ui.Semi(task.Project, 12), Ui.Text(AgentsModel.StatusText(task), 11, color: C.Secondary)).Grow())
                 .OnClick(() => { agents.SelectedId = t.Id; HidePanel(); _app.ShowAgents(); }));
         }
+        if (agents.CodexPath is not null)
+            rows.Add(Ui.Pill("New Codex task…", () => { agents.NewAgent = "codex"; agents.Creating = true; HidePanel(); _app.ShowAgents(); }));
         rows.Add(Ui.Pill(agents.Tasks.Count == 0 ? "New task…" : "Open the agents window", () =>
         {
             if (agents.Tasks.Count == 0) agents.Creating = true;
@@ -632,6 +634,13 @@ public sealed class QuickPanel : Window
                     Ui.Column(1, Ui.Semi($"{session.Project} · {session.Agent}", 12),
                               Ui.Text(session.Working ? "Working now" : $"Last active {session.Modified.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}", 11, color: C.Secondary)).Grow()));
             column.Children.Add(Block(list.ToArray()));
+        }
+        if (agents.Usage.Count > 0)
+        {
+            var usage = new List<UIElement?> { Ui.Text("TOKENS", 10, FontWeights.Black, C.Caption) };
+            foreach (var u in agents.Usage)
+                usage.Add(Ui.Row(8, Ui.Semi(u.Agent, 12).Grow(), Ui.Text($"{TokenUsage.Short(u.Tokens5h)} in 5 h · {TokenUsage.Short(u.Tokens7d)} week", 11, color: C.Secondary)));
+            column.Children.Add(Block(usage.ToArray()));
         }
         if (agents.FiveHour is not null || agents.SevenDay is not null)
             column.Children.Add(Block(

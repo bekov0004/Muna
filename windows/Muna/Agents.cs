@@ -27,6 +27,16 @@ public sealed class AgentsModel : Model
     public bool Creating { get; set; }
     public string NewFolder { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
     public string? ClaudePath { get; } = ClaudeTask.FindClaude();
+    public string? CodexPath { get; } = ClaudeTask.FindCodex();
+    /// <summary>The new task's agent ("claude", "codex"), where it runs ("background", "terminal") and model.</summary>
+    public string NewAgent { get; set; } = "claude";
+    public string NewWhere { get; set; } = "background";
+    public string NewModel { get; set; } = "";
+    public static readonly (string Id, string Name)[] Models = { ("", "Default model"), ("opus", "Opus"), ("sonnet", "Sonnet"), ("haiku", "Haiku (fast, light)") };
+    /// <summary>The token counts of the last five hours and week (from the agents' own logs).</summary>
+    public List<TokenUsage.Summary> Usage { get; private set; } = new();
+    readonly TokenUsage _usage = new();
+    public string? Message { get; private set; }
     public List<AgentSession> Sessions { get; private set; } = new();
     public event Action<ClaudeTask, Permission>? PermissionAsked;
     public event Action<ClaudeTask, bool>? TaskFinished;
@@ -64,15 +74,36 @@ public sealed class AgentsModel : Model
     void ScanSessions()
     {
         var ours = Tasks.Select(t => t.SessionId).Where(s => s.Length > 0).ToHashSet();
-        Task.Run(() => AgentSessions.Scan(except: ours)).ContinueWith(t => Ui(() => { Sessions = t.Result; Notify(); }));
+        Task.Run(() => (AgentSessions.Scan(except: ours), _usage.Update())).ContinueWith(t => Ui(() =>
+        {
+            if (t.IsFaulted) return;
+            (Sessions, Usage) = t.Result;
+            Notify();
+        }));
     }
 
     public void Start(string prompt, string folder)
     {
         prompt = prompt.Trim();
+        Message = null;
+        // Codex, and Claude Code when asked, run in a terminal window; Muna follows them in their logs
+        if (NewAgent == "codex" || NewWhere == "terminal")
+        {
+            var binary = NewAgent == "codex" ? CodexPath : ClaudePath;
+            if (binary is null) { Message = NewAgent == "codex" ? "Codex is not installed" : "Claude Code is not installed"; Notify(); return; }
+            var arguments = new List<string>();
+            if (NewAgent != "codex" && NewModel.Length > 0) arguments.AddRange(new[] { "--model", NewModel });
+            if (prompt.Length > 0) arguments.Add(prompt);
+            Message = TerminalLauncher.Open(binary, folder, arguments) is { } error ? error : $"Started in a terminal: {(NewAgent == "codex" ? "Codex" : "Claude Code")} in {System.IO.Path.GetFileName(folder.TrimEnd('\\'))}";
+            Creating = false;
+            WatchSessions();
+            UnwatchSessions();
+            Notify();
+            return;
+        }
         if (prompt.Length == 0 || ClaudePath is null) return;
         _counter++;
-        var task = new ClaudeTask($"{DateTimeOffset.Now.ToUnixTimeSeconds()}-{_counter}", folder, prompt, ClaudePath) { Post = action => Ui(action) };
+        var task = new ClaudeTask($"{DateTimeOffset.Now.ToUnixTimeSeconds()}-{_counter}", folder, prompt, ClaudePath, NewModel) { Post = action => Ui(action) };
         task.Changed += _ => Notify();
         task.PermissionAsked += (t, p) => PermissionAsked?.Invoke(t, p);
         task.Finished += (t, ok) => TaskFinished?.Invoke(t, ok);
@@ -134,6 +165,10 @@ public sealed class AgentsModel : Model
         AgentStatus.Failed => (Glyph.Warning, C.Warning),
         _ => (Glyph.Close, C.Secondary),
     };
+
+    /// <summary>"Claude Code · 1.2M tokens in 5 h · 8.4M this week · 42 messages".</summary>
+    public static string UsageText(TokenUsage.Summary u) =>
+        $"{TokenUsage.Short(u.Tokens5h)} tokens in 5 h · {TokenUsage.Short(u.Tokens7d)} this week · {u.Messages5h} messages";
 
     public static string ResetText(DateTime at)
     {
@@ -255,6 +290,8 @@ public sealed class AgentsWindow : DarkWindow
         var column = Ui.Column(6, head, Ui.Scroll(list).Grow());
         foreach (var (label, limit) in new[] { ("5 hours", _agents.FiveHour), ("Week", _agents.SevenDay) })
             if (limit is not null) column.Children.Add(LimitLine(label, limit));
+        foreach (var usage in _agents.Usage)
+            column.Children.Add(Ui.Column(1, Ui.Semi(usage.Agent, 11), Ui.Text(AgentsModel.UsageText(usage), 10, color: C.Secondary, wrap: true)));
         return new Border { Child = column, Background = C.Rgb(23, 23, 23), Padding = new Thickness(12) };
     }
 
@@ -283,10 +320,25 @@ public sealed class AgentsWindow : DarkWindow
                 var dialog = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = _agents.NewFolder };
                 if (dialog.ShowDialog(this) == true) { _agents.NewFolder = dialog.FolderName; Render(); }
             })));
-        column.Children.Add(Ui.Semi("What should Claude do?", 12));
+        var agentChoice = DarkWindow.Choice(new[] { "Claude Code", "Codex" }, _agents.NewAgent == "codex" ? 1 : 0, i => { _agents.NewAgent = i == 1 ? "codex" : "claude"; Render(); });
+        column.Children.Add(Ui.Row(8, Ui.Semi("Agent", 12).Grow(), agentChoice));
+        if (_agents.NewAgent == "codex")
+        {
+            if (_agents.CodexPath is null) column.Children.Add(Ui.Text("Codex is not installed (npm install -g @openai/codex).", 12, color: C.Warning, wrap: true));
+            column.Children.Add(Ui.Text("Codex opens in a terminal window with the task as its first message; Muna follows it in its logs (Working now, tokens).", 11, color: C.Secondary, wrap: true));
+        }
+        else
+        {
+            column.Children.Add(Ui.Row(8, Ui.Semi("Where", 12).Grow(),
+                DarkWindow.Choice(new[] { "In the background", "In a terminal" }, _agents.NewWhere == "terminal" ? 1 : 0, i => { _agents.NewWhere = i == 1 ? "terminal" : "background"; Render(); })));
+            column.Children.Add(Ui.Row(8, Ui.Semi("Model", 12).Grow(),
+                DarkWindow.Choice(AgentsModel.Models.Select(m => m.Name).ToArray(), Math.Max(0, Array.FindIndex(AgentsModel.Models, m => m.Id == _agents.NewModel)), i => _agents.NewModel = AgentsModel.Models[i].Id)));
+        }
+        column.Children.Add(Ui.Semi(_agents.NewAgent == "codex" ? "What should Codex do?" : "What should Claude do?", 12));
         _prompt.MinHeight = 120;
         column.Children.Add(Ui.Detach(_prompt));
         column.Children.Add(Ui.Row(8, Ui.Spacer(), DarkWindow.Button("Start (Ctrl+Enter)", StartTask, accent: true)));
+        if (_agents.Message is { } message) column.Children.Add(Ui.Text(message, 12, color: C.Ok, wrap: true));
         column.Children.Add(Ui.Text("Claude Code works in the folder and asks before it changes anything: the question comes to the capsule and here.", 11, color: C.Secondary, wrap: true));
         return new Border { Child = column, Padding = new Thickness(28) };
     }
@@ -370,5 +422,45 @@ public sealed class AgentsWindow : DarkWindow
             default:
                 return Ui.Text(entry.Text, 12, color: C.Warning, wrap: true);
         }
+    }
+}
+
+/// <summary>Opens a program in a terminal window, in a folder (Windows Terminal when installed, else a
+/// console window), as Linux's openInTerminal.</summary>
+public static class TerminalLauncher
+{
+    /// <summary>Null when it opened, else what went wrong.</summary>
+    public static string? Open(string binary, string folder, IReadOnlyList<string> arguments)
+    {
+        try
+        {
+            var terminal = WindowsTerminal();
+            if (terminal is not null)
+            {
+                var info = new System.Diagnostics.ProcessStartInfo(terminal) { UseShellExecute = false, WorkingDirectory = folder };
+                info.ArgumentList.Add("-d");
+                info.ArgumentList.Add(folder);
+                info.ArgumentList.Add(binary);
+                // a ";" separates Windows Terminal's own commands
+                foreach (var a in arguments) info.ArgumentList.Add(a.Replace(";", "\\;"));
+                System.Diagnostics.Process.Start(info);
+                return null;
+            }
+            var line = string.Join(" ", new[] { binary }.Concat(arguments).Select(Quote));
+            // cmd takes the rest of its line as it is (its own quoting, not the C runtime's)
+            var console = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/k \"" + line + "\"") { UseShellExecute = true, WorkingDirectory = folder };
+            System.Diagnostics.Process.Start(console);
+            return null;
+        }
+        catch (Exception e) { return $"Could not open a terminal: {e.Message}"; }
+    }
+
+    static string Quote(string part) => part.Length > 0 && !part.Any(c => char.IsWhiteSpace(c) || c is '"' or '&' or '|' or '<' or '>' or '^')
+        ? part : "\"" + part.Replace("\"", "\"\"") + "\"";
+
+    static string? WindowsTerminal()
+    {
+        var local = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WindowsApps", "wt.exe");
+        return System.IO.File.Exists(local) ? local : null;
     }
 }

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json.Nodes;
 
 namespace Muna.Core;
@@ -79,6 +80,16 @@ public sealed class ClaudeTask
             Path.Combine(home, ".local", "bin"), Path.Combine(home, ".claude", "local"), Path.Combine(appData, "npm"),
             Path.Combine(home, ".npm-global", "bin"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin",
         };
+    }
+
+    /// <summary>Codex (npm installs codex.cmd), or null.</summary>
+    public static string? FindCodex()
+    {
+        var fromEnv = Environment.GetEnvironmentVariable("MUNA_CODEX_BIN");
+        if (!string.IsNullOrEmpty(fromEnv)) return fromEnv;
+        var names = OperatingSystem.IsWindows() ? new[] { "codex.exe", "codex.cmd" } : new[] { "codex" };
+        var folders = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator).Where(p => p.Length > 0).Concat(SearchPath());
+        return folders.SelectMany(f => names.Select(n => Path.Combine(f, n))).FirstOrDefault(File.Exists);
     }
 
     public static string? FindClaude()
@@ -487,4 +498,97 @@ public static class AgentSessions
         catch { /* unreadable */ }
         return "";
     }
+}
+
+/// <summary>How much the agents worked (linux/service/agents/module.js): the token counts and times
+/// of the messages in Claude Code's and Codex's logs, read as they grow (only the numbers, never the
+/// prompts), summed over the last five hours and the last week.</summary>
+public sealed class TokenUsage
+{
+    public sealed record Summary(string Agent, long Tokens5h, long Tokens7d, int Messages5h, DateTime Last);
+    sealed class LogFile { public string Agent = ""; public long Offset; public readonly List<(DateTime At, long Tokens)> Entries = new(); }
+
+    readonly Dictionary<string, LogFile> _files = new();
+    static readonly TimeSpan Week = TimeSpan.FromDays(7), FiveHours = TimeSpan.FromHours(5);
+
+    /// <summary>Reads what the logs gained since the last time and sums them.</summary>
+    public List<Summary> Update(string? claudeRoot = null, string? codexRoot = null, DateTime? now = null)
+    {
+        var at = now ?? DateTime.UtcNow;
+        var seen = new HashSet<string>();
+        foreach (var (agent, root, depth) in new[] { ("Claude Code", claudeRoot ?? AgentSessions.ClaudeRoot, 2), ("Codex", codexRoot ?? AgentSessions.CodexRoot, 4) })
+        {
+            if (!Directory.Exists(root)) continue;
+            IEnumerable<string> logs;
+            try { logs = Directory.EnumerateFiles(root, "*.jsonl", new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = depth }).ToList(); }
+            catch { continue; }
+            foreach (var log in logs)
+            {
+                if (at - File.GetLastWriteTimeUtc(log) > Week) continue;
+                seen.Add(log);
+                if (!_files.TryGetValue(log, out var file)) _files[log] = file = new LogFile { Agent = agent };
+                Read(log, file);
+            }
+        }
+        foreach (var gone in _files.Keys.Where(k => !seen.Contains(k)).ToList()) _files.Remove(gone);
+        var result = new List<Summary>();
+        foreach (var agent in new[] { "Claude Code", "Codex" })
+        {
+            long t5 = 0, t7 = 0;
+            var m5 = 0;
+            var last = DateTime.MinValue;
+            foreach (var file in _files.Values.Where(f => f.Agent == agent))
+            {
+                file.Entries.RemoveAll(e => at - e.At > Week);
+                foreach (var (time, tokens) in file.Entries)
+                {
+                    t7 += tokens;
+                    if (at - time <= FiveHours) { t5 += tokens; m5++; }
+                    if (time > last) last = time;
+                }
+            }
+            if (_files.Values.Any(f => f.Agent == agent)) result.Add(new Summary(agent, t5, t7, m5, last));
+        }
+        return result;
+    }
+
+    static void Read(string path, LogFile file)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            if (stream.Length < file.Offset) { file.Offset = 0; file.Entries.Clear(); }
+            stream.Seek(file.Offset, SeekOrigin.Begin);
+            var length = (int)Math.Min(stream.Length - file.Offset, 8 * 1024 * 1024);
+            if (length <= 0) return;
+            var bytes = new byte[length];
+            var read = 0;
+            while (read < length)
+            {
+                var n = stream.Read(bytes, read, length - read);
+                if (n <= 0) break;
+                read += n;
+            }
+            // only whole lines: a half-written one is read next time
+            var end = Array.LastIndexOf(bytes, (byte)'\n', read - 1);
+            if (end < 0) return;
+            file.Offset += end + 1;
+            foreach (var line in System.Text.Encoding.UTF8.GetString(bytes, 0, end).Split('\n'))
+            {
+                if (line.Length == 0) continue;
+                JsonNode? entry;
+                try { entry = JsonNode.Parse(line); } catch { continue; }
+                var usage = entry?["message"]?["usage"] as JsonObject ?? entry?["payload"]?["info"]?["last_token_usage"] as JsonObject;
+                if (usage is null || entry.Str("timestamp") is not { Length: > 0 } stamp) continue;
+                if (!DateTime.TryParse(stamp, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var time)) continue;
+                long Number(string key) => usage[key] is JsonValue v && v.TryGetValue<long>(out var n) ? n : 0;
+                var tokens = Number("input_tokens") + Number("output_tokens") + Number("cache_creation_input_tokens") + Number("cache_read_input_tokens");
+                file.Entries.Add((time, tokens));
+            }
+        }
+        catch { /* gone or half written: next time */ }
+    }
+
+    /// <summary>"1.2M", "840K", "512".</summary>
+    public static string Short(long tokens) => tokens >= 1_000_000 ? (tokens / 1_000_000.0).ToString("0.#", CultureInfo.InvariantCulture) + "M" : tokens >= 1000 ? $"{tokens / 1000}K" : $"{tokens}";
 }

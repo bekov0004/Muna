@@ -286,7 +286,10 @@ public sealed class CapsuleWindow : Window
         return new Size(width, height);
     }
 
-    Size OpenSize() => new(Math.Min(Layout.Width, _windowWidth), HeaderHeightNow + BodyHeight + BottomPadding);
+    /// <summary>The open panel's ears (the curves into the top edge) stand outside its width, as on Linux.</summary>
+    public const double OpenEar = 20;
+
+    Size OpenSize() => new(Math.Min(Layout.Width + 2 * OpenEar, _windowWidth), HeaderHeightNow + BodyHeight + BottomPadding);
 
     /// <summary>The capsule's rectangle on the screen, in pixels.</summary>
     public Rect ScreenRect
@@ -313,7 +316,7 @@ public sealed class CapsuleWindow : Window
     {
         var open = IsOpen;
         var radius = open ? Preferences.Shared.CornerRadius : 12;
-        var ear = open ? 20 : 7;
+        var ear = open ? OpenEar : 7;
         var look = Preferences.Shared;
         var tint = look.CapsuleColor;
         _shape.Fill = C.Rgb(tint.R, tint.G, tint.B, look.BackgroundOpacity);

@@ -107,7 +107,9 @@ public static class CapsuleViews
         column.VerticalAlignment = VerticalAlignment.Top;
         TextElement.SetForeground(column, C.Text);
         // the panel's padding (16, as munaLayout.js counts it: the widgets fill the rest exactly)
-        return new Border { Child = column, Padding = new Thickness(w.Layout.Padding, 0, w.Layout.Padding, CapsuleWindow.BottomPadding) };
+        // the ears stand outside the panel's width: the content starts after them
+        var side = w.Layout.Padding + CapsuleWindow.OpenEar;
+        return new Border { Child = column, Padding = new Thickness(side, 0, side, CapsuleWindow.BottomPadding) };
     }
 
     static UIElement Header(CapsuleWindow w)

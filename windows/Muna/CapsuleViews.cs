@@ -62,7 +62,7 @@ public static class CapsuleViews
             right = new Live(() => Ui.Digits(DateTime.Now.ToString("t", CultureInfo.CurrentCulture), 12, FontWeights.Bold, Brushes.White), TimeSpan.FromSeconds(5));
         }
         UIElement middle = Preferences.Shared.CapsuleButterfly
-            ? Ui.FlappingButterfly(Math.Max(12, CapsuleWindow.BarHeight - 9))
+            ? Ui.Detach(w.Butterfly).Size(Math.Max(15, CapsuleWindow.BarHeight - 4) * 76 / 64, Math.Max(15, CapsuleWindow.BarHeight - 4))
             : new Grid
             {
                 Width = 14, Height = 14,

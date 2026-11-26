@@ -144,6 +144,11 @@ public sealed class CapsuleWindow : Window
     public string ScreenId { get; }
 
     public bool IsOpen { get; private set; }
+
+    /// <summary>The butterfly of the closed capsule: one for the life of the window, so a redraw does
+    /// not cut its wing beat.</summary>
+    public readonly MunaButterfly Butterfly = new();
+    readonly DispatcherTimer _flapTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     public bool IsHovering { get; private set; }
     public PanelTab Tab { get; private set; } = PanelTab.Muna;
     public int PageIndex { get; set; }
@@ -178,6 +183,14 @@ public sealed class CapsuleWindow : Window
         App = app;
         Screen = screen;
         ScreenId = screen.DeviceName;
+        // now and then the butterfly beats its wings, where it is seen: the capsule closed, no card over it (Linux)
+        _flapTimer.Tick += (_, _) =>
+        {
+            var p = Preferences.Shared;
+            _flapTimer.Interval = TimeSpan.FromSeconds(Math.Max(5, p.Number("butterfly-flap-every")));
+            if (p.CapsuleButterfly && p.Bool("butterfly-flap") && !IsOpen && Card is null) Butterfly.Flap();
+        };
+        _flapTimer.Start();
         WindowStyle = WindowStyle.None;
         AllowsTransparency = true;
         Background = Brushes.Transparent;
@@ -504,6 +517,9 @@ public sealed class CapsuleWindow : Window
     {
         if (IsOpen) return;
         Card = card;
+        // something happened: warm wings and a beat of them, until the capsule opens (Linux's setActivity)
+        if (!Butterfly.Warm) Butterfly.Flap();
+        Butterfly.Warm = true;
         SetSize(ClosedSize());
         Invalidate();
         _cardTimer?.Stop();
@@ -537,6 +553,7 @@ public sealed class CapsuleWindow : Window
         _cardTimer?.Stop();
         Card = null;
         IsOpen = true;
+        Butterfly.Warm = false;
         SetSize(OpenSize());
         Render();
         App.PanelOpened(Tab);

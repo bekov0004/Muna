@@ -449,27 +449,6 @@ public static class Ui
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    /// The butterfly of the closed capsule: now and then it beats its wings (Settings → Appearance).
-    public static Image FlappingButterfly(double height)
-    {
-        var image = Butterfly(height);
-        var scale = new ScaleTransform(1, 1);
-        image.RenderTransform = scale;
-        image.RenderTransformOrigin = new Point(0.5, 0.5);
-        var timer = new System.Windows.Threading.DispatcherTimer();
-        timer.Tick += (_, _) =>
-        {
-            var p = Preferences.Shared;
-            timer.Interval = TimeSpan.FromSeconds(Math.Max(5, p.Number("butterfly-flap-every")));
-            if (!p.Bool("butterfly-flap")) return;
-            var flap = new System.Windows.Media.Animation.DoubleAnimation(1, 0.3, TimeSpan.FromMilliseconds(140)) { AutoReverse = true, RepeatBehavior = new System.Windows.Media.Animation.RepeatBehavior(2) };
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, flap);
-        };
-        image.Loaded += (_, _) => { timer.Interval = TimeSpan.FromSeconds(3); timer.Start(); };
-        image.Unloaded += (_, _) => timer.Stop();
-        return image;
-    }
-
     /// <summary>A picture with round corners (a cover), or a note on a tile.</summary>
     public static Border Artwork(ImageSource? source, double size, double? radius = null)
     {

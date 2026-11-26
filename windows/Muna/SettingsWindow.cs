@@ -75,6 +75,8 @@ public sealed class SettingsWindow : DarkWindow
 
     readonly TextBox _search = Input();
     readonly Grid _searchHolder = new();
+    ScrollViewer? _sideScroll, _pageScroll;
+    string? _drawnPage, _drawnQuery;
     readonly TextBox _reminderText = Input();
     readonly TextBox _reminderTime = Input();
     string _reminderRepeat = "once";
@@ -219,6 +221,16 @@ public sealed class SettingsWindow : DarkWindow
         scroller.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         Grid.SetColumn(scroller, 1);
         grid.Children.Add(scroller);
+        // drawing again (a switch changed, another page) keeps where the lists were scrolled to: the
+        // list of pages always, the page while it is the same one
+        var sideOffset = _sideScroll?.VerticalOffset ?? 0;
+        var pageOffset = _pageScroll is not null && _drawnPage == _page && _drawnQuery == query ? _pageScroll.VerticalOffset : 0;
+        sideScroll.Loaded += (_, _) => sideScroll.ScrollToVerticalOffset(sideOffset);
+        scroller.Loaded += (_, _) => scroller.ScrollToVerticalOffset(pageOffset);
+        _sideScroll = sideScroll;
+        _pageScroll = scroller;
+        _drawnPage = _page;
+        _drawnQuery = query;
         Content = grid;
     }
 

@@ -560,6 +560,42 @@ public class MoreFileTests
     }
 
     [Fact]
+    public async Task PhoneLinkHandshake()
+    {
+        var token = PhoneLinkProtocol.RandomToken();
+        // the same fingerprint and proofs as the Kotlin and GJS sides (SHA-256 / HMAC-SHA256, lowercase hex)
+        Assert.Equal("2cf24dba", PhoneLinkProtocol.Fingerprint("hello"));
+        Assert.Equal("55d32f35b2cac9548eb00e38c2a04672f228b4d5f4c07dc8cdc917d61c684152", PhoneLinkProtocol.Proof("k", "srv", "a", "b"));
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        async Task<bool> Phone(string secret, char role)
+        {
+            using var client = new System.Net.Sockets.TcpClient();
+            await client.ConnectAsync(System.Net.IPAddress.Loopback, port, cancel.Token);
+            return await PhoneLinkProtocol.Dial(client.GetStream(), secret, role, "1080x2400 34 Pixel_8", cancel.Token);
+        }
+        var good = Phone(token, 'V');
+        using (var server = await listener.AcceptTcpClientAsync(cancel.Token))
+        {
+            var accepted = await PhoneLinkProtocol.Accept(server.GetStream(), token, cancel.Token);
+            Assert.Equal(('V', "1080x2400 34 Pixel_8"), accepted);
+        }
+        Assert.True(await good);
+        // a phone with another secret is refused
+        var bad = Phone("another", 'C');
+        using (var server = await listener.AcceptTcpClientAsync(cancel.Token))
+            Assert.Null(await PhoneLinkProtocol.Accept(server.GetStream(), token, cancel.Token));
+        Assert.False(await bad);
+        listener.Stop();
+        // the computer's address in the phone's network
+        var local = new[] { (System.Net.IPAddress.Parse("10.0.0.5"), 8), (System.Net.IPAddress.Parse("192.168.1.33"), 24) };
+        Assert.Equal("192.168.1.33", PhoneLinkProtocol.LanAddress("2: wlan0: <UP>\n    inet 192.168.1.20/24 brd 192.168.1.255 scope global wlan0", local));
+        Assert.Null(PhoneLinkProtocol.LanAddress("inet 172.20.10.2/28", local));
+    }
+
+    [Fact]
     public void H264AccessUnits()
     {
         byte[] Nal(int type, int length, bool four = true) =>

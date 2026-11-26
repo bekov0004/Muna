@@ -1,7 +1,7 @@
 # Builds Muna from this repository and installs it for the current user.
 #   powershell -ExecutionPolicy Bypass -File windows\scripts\install.ps1 [-NoStart] [-NoLogin] [-Firewall]
 # Needs the .NET 10 SDK (winget install Microsoft.DotNet.SDK.10). No administrator rights are needed,
-# except for -Firewall (a rule that lets other computers send files with LocalSend).
+# except for -Firewall (rules that let other computers send files with LocalSend, and Muna Phone connect).
 param(
     [switch]$NoStart,
     [switch]$NoLogin,
@@ -62,7 +62,9 @@ Set-ItemProperty -Path $uninstall -Name 'NoRepair' -Value 1 -Type DWord
 if ($Firewall) {
     $rule = "netsh advfirewall firewall delete rule name=Muna-LocalSend >nul & " +
             "netsh advfirewall firewall add rule name=Muna-LocalSend dir=in action=allow protocol=TCP localport=53317 profile=private & " +
-            "netsh advfirewall firewall add rule name=Muna-LocalSend dir=in action=allow protocol=UDP localport=53317 profile=private"
+            "netsh advfirewall firewall add rule name=Muna-LocalSend dir=in action=allow protocol=UDP localport=53317 profile=private & " +
+            "netsh advfirewall firewall delete rule name=Muna-Phone >nul & " +
+            "netsh advfirewall firewall add rule name=Muna-Phone dir=in action=allow protocol=TCP localport=47831 profile=private"
     Start-Process cmd.exe -ArgumentList '/c', $rule -Verb RunAs -Wait
 }
 

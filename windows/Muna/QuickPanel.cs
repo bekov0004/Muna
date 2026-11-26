@@ -359,6 +359,11 @@ public sealed class QuickPanel : Window
         var keys = Ui.Row(6, Ui.Pill("Back", () => phone.Key(PhoneAdb.Back)), Ui.Pill("Home", () => phone.Key(PhoneAdb.Home)),
                           Ui.Pill("Apps", () => phone.Key(PhoneAdb.Recents)), Ui.Pill("Wake", () => phone.Key(PhoneAdb.Wake)),
                           Ui.Pill(phone.Live ? "Live" : "Still", () => { if (phone.Live) phone.StopLive(); else phone.StartLive(); }, active: phone.Live));
+        if (phone.LinkActive)
+        {
+            keys.Children.Add(Ui.Pill("Dark", () => phone.SetDark(!phone.Dark), active: phone.Dark));
+            head.Children.Add(Ui.Text("Muna Phone", 10, FontWeights.Bold, C.Ok));
+        }
         head.Children.Add(Ui.IconButton(Glyph.Wifi, phone.StartPairing, tip: "Pair another phone over Wi-Fi"));
         keys.HorizontalAlignment = HorizontalAlignment.Center;
         return Block(head, phone.Screen is null ? Ui.Text("Getting the screen…", 11, color: C.Secondary) : picture, keys,

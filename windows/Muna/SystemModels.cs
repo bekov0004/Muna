@@ -744,6 +744,11 @@ public sealed class PhoneModel : Model
 
     public bool Live { get; private set; }
     public string LiveError { get; private set; } = "";
+    /// <summary>The picture and the touches go over Muna Phone's link (the app is installed on the phone).</summary>
+    public bool LinkActive { get; private set; }
+    /// <summary>The phone's screen is kept dark while it is used from here (Muna Phone only).</summary>
+    public bool Dark { get; private set; }
+    volatile PhoneLinkSession? _link;
     WriteableBitmap? _liveBitmap;
     System.Threading.Thread? _liveThread;
     Process? _record;
@@ -769,11 +774,56 @@ public sealed class PhoneModel : Model
         Live = false;
         _liveOn = false;
         try { _record?.Kill(); } catch { /* gone */ }
+        _link?.Dispose();
         Notify();
     }
 
+    /// <summary>Muna Phone's link first (the app's server streams the picture itself, over the network);
+    /// without the app, or when it cannot start, the phone's screenrecord through adb.</summary>
     void LiveLoop(string serial)
     {
+        var apk = PhoneLinkSession.AppPath(Adb!, serial);
+        if (apk is not null && _liveOn)
+        {
+            try
+            {
+                var link = PhoneLinkSession.Launch(Adb!, serial, apk).GetAwaiter().GetResult();
+                _link = link;
+                link.Line += line =>
+                {
+                    if (line.StartsWith("POWER OK")) Ui(() => { Dark = line.TrimEnd().EndsWith(" 0"); Notify(); });
+                    else if (line.StartsWith("POWER ERR")) Ui(() => { Dark = false; LiveError = "This phone cannot keep its screen dark"; Notify(); });
+                };
+                Ui(() =>
+                {
+                    LinkActive = true;
+                    LiveError = "";
+                    if (link.Screen is { } screen) _realSize = new Size(screen.Width, screen.Height);
+                    Notify();
+                });
+                var width = (int)(Math.Round(Math.Min(540, link.Screen?.Width ?? RealWidth) / 16) * 16);
+                var height = (int)(Math.Round((link.Screen?.Height ?? RealHeight) * width / (link.Screen?.Width ?? RealWidth) / 16) * 16);
+                using var decoder = new H264Decoder();
+                var splitter = new AnnexB();
+                var stream = link.Video;
+                var chunk = new byte[16384];
+                int read;
+                while (_liveOn && (read = stream.Read(chunk, 0, chunk.Length)) > 0)
+                    foreach (var unit in splitter.Push(chunk.AsSpan(0, read)))
+                        decoder.Decode(unit, width, height, Show);
+            }
+            catch (Exception e)
+            {
+                var message = e.Message;
+                if (_liveOn) Ui(() => { LiveError = $"Muna Phone: {message}. The picture comes through adb."; Notify(); });
+            }
+            finally
+            {
+                _link?.Dispose();
+                _link = null;
+                Ui(() => { LinkActive = false; Dark = false; Notify(); });
+            }
+        }
         var failures = 0;
         while (_liveOn)
         {
@@ -919,6 +969,7 @@ public sealed class PhoneModel : Model
     public void Tap(Point point, Size size)
     {
         var (x, y) = ((int)(point.X / size.Width * RealWidth), (int)(point.Y / size.Height * RealHeight));
+        if (_link is { } link) { link.Send($"d {x} {y}"); link.Send($"u {x} {y}"); return; }
         Shell("input", "tap", x.ToString(), y.ToString());
     }
 
@@ -926,16 +977,46 @@ public sealed class PhoneModel : Model
     {
         int x1 = (int)(start.X / size.Width * RealWidth), y1 = (int)(start.Y / size.Height * RealHeight);
         int x2 = (int)(end.X / size.Width * RealWidth), y2 = (int)(end.Y / size.Height * RealHeight);
+        if (_link is { } link)
+        {
+            // a finger down, moving in steps, up: the phone sees a real swipe
+            var steps = Math.Clamp((int)(seconds * 60), 4, 40);
+            var delay = Math.Clamp((int)(seconds * 1000 / steps), 4, 30);
+            Task.Run(() =>
+            {
+                link.Send($"d {x1} {y1}");
+                for (var i = 1; i < steps; i++)
+                {
+                    link.Send($"m {x1 + (x2 - x1) * i / steps} {y1 + (y2 - y1) * i / steps}");
+                    System.Threading.Thread.Sleep(delay);
+                }
+                link.Send($"u {x2} {y2}");
+            });
+            return;
+        }
         Shell("input", "swipe", x1.ToString(), y1.ToString(), x2.ToString(), y2.ToString(), ((int)Math.Clamp(seconds * 1000, 80, 2000)).ToString());
     }
 
-    public void Key(int code) => Shell("input", "keyevent", code.ToString());
+    public void Key(int code)
+    {
+        if (_link is { } link) { link.Send($"k {code}"); return; }
+        Shell("input", "keyevent", code.ToString());
+    }
 
     public void SendText()
     {
         if (Draft.Length == 0) return;
-        Shell("input", "text", PhoneAdb.EscapeInputText(Draft));
+        if (_link is { } link) link.Send($"t {Draft}");
+        else Shell("input", "text", PhoneAdb.EscapeInputText(Draft));
         Draft = "";
         Notify();
+    }
+
+    /// <summary>Keeps the phone's screen dark while it is used from here (it still shows here).</summary>
+    public void SetDark(bool dark)
+    {
+        if (_link is not { } link) return;
+        link.Send(dark ? "p 0" : "p 2");
+        if (!dark) { Dark = false; Notify(); }
     }
 }

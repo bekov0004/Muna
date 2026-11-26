@@ -2,6 +2,7 @@ import AppKit
 import Carbon
 import Combine
 import ServiceManagement
+import SwiftUI
 
 /// Everything the app has, made once.
 final class AppState {

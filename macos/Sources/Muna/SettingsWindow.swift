@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import MunaCore
 import ServiceManagement
 import SwiftUI

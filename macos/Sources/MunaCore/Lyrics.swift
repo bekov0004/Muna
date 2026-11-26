@@ -4,7 +4,7 @@ import FoundationNetworking
 #endif
 
 /// One timed line of a song's lyrics.
-public struct LyricLine: Codable, Equatable {
+public struct LyricLine: Codable, Equatable, Sendable {
     /// Milliseconds from the start of the song.
     public let t: Int
     public let text: String
@@ -16,7 +16,7 @@ public struct LyricLine: Codable, Equatable {
 }
 
 /// What lrclib.net knows of a song: timed lines, or only the plain text.
-public struct LyricsResult: Codable, Equatable {
+public struct LyricsResult: Codable, Equatable, Sendable {
     public var lines: [LyricLine]?
     public var plain: String?
 
@@ -87,10 +87,7 @@ public final class LyricsClient {
         let title = title.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty else { return LyricsResult() }
         let key = Self.key(artist: artist, title: title, album: album, length: length)
-        lock.lock()
-        let remembered = memory[key]
-        lock.unlock()
-        if let remembered { return remembered }
+        if let remembered = recall(key) { return remembered }
         if let cached = readCache(key) {
             remember(key, cached)
             return cached
@@ -107,6 +104,13 @@ public final class LyricsClient {
         } catch {
             return nil
         }
+    }
+
+    /// What this run already found (a plain function: NSLock may not be used across an await).
+    private func recall(_ key: String) -> LyricsResult? {
+        lock.lock()
+        defer { lock.unlock() }
+        return memory[key]
     }
 
     private func remember(_ key: String, _ result: LyricsResult) {

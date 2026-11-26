@@ -273,7 +273,6 @@ final class CommandModel: ObservableObject {
                 self?.onDone()
             })
         }
-        let lowered = text.lowercased()
         let clips = clipboard.items.filter { !$0.isPrivate && $0.searchText.lowercased().contains(lowered) }.prefix(Self.maxClips)
         for item in clips {
             let title = (item.text ?? item.files?.first.flatMap { URL(string: $0)?.lastPathComponent } ?? "")

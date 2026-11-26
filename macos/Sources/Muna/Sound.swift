@@ -95,6 +95,19 @@ final class SoundModel: ObservableObject {
 
     func toggleMicrophone() { setMicrophoneMuted(!microphoneMuted) }
 
+    /// The volume of the alerts and system sounds (0…1; System Settings → Sound → Alert volume).
+    var alertVolume: Double {
+        var error: NSDictionary?
+        let result = NSAppleScript(source: "alert volume of (get volume settings)")?.executeAndReturnError(&error)
+        return Double(result?.int32Value ?? 100) / 100
+    }
+
+    func setAlertVolume(_ value: Double) {
+        var error: NSDictionary?
+        _ = NSAppleScript(source: "set volume alert volume \(Int((value * 100).rounded()))")?.executeAndReturnError(&error)
+        objectWillChange.send()
+    }
+
     /// The next output, skipping the ones switched off in Settings → Output switcher.
     func nextOutput() {
         refresh()
@@ -233,6 +246,12 @@ struct SoundPage: View {
                     Slider(value: Binding(get: { sound.volume }, set: { sound.setVolume($0) }), in: 0...1)
                         .controlSize(.small)
                         .disabled(!sound.hasVolume)
+                }
+                // the sound of system events (Linux's volume mixer has it too)
+                HStack(spacing: 8) {
+                    Image(systemName: "bell").frame(width: 18).foregroundColor(MunaColor.secondary)
+                    Text("System sounds").font(.system(size: 11)).foregroundColor(MunaColor.secondary)
+                    Slider(value: Binding(get: { sound.alertVolume }, set: { sound.setAlertVolume($0) }), in: 0...1).controlSize(.small)
                 }
             }
             QuickBlock {

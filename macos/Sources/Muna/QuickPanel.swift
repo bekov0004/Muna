@@ -377,6 +377,8 @@ final class QuickPanelState: ObservableObject {
     var onMic: () -> Void = {}
     /// Any action by its name (the Utilities tab; set by the app).
     var onRun: (String) -> Void = { _ in }
+    /// The Utilities list is being reordered and hidden.
+    @Published var customizing = false
 }
 
 struct QuickPanelView: View {

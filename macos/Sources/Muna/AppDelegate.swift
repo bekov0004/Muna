@@ -287,6 +287,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         menu.delegate = self
         statusItem = item
         applyIcon()
+        app.awake.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.applyIcon() } }.store(in: &readingsObservers)
 
         let panel = QuickPanelView(onSettings: { [weak self] in
             self?.popover.performClose(nil)
@@ -328,7 +329,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             DispatchQueue.main.async {
                 guard let self else { return }
                 if key == "bar-metrics" || key == "*" { self.setReadings(Preferences.shared.menuBarReadings || !Preferences.shared.strings("bar-metrics").isEmpty) }
-                if key == "bar-icon" || key == "*" { self.applyIcon() }
+                if ["bar-icon", "awake-icon", "awake-color", "*"].contains(key) { self.applyIcon() }
             }
         }.store(in: &readingsObservers)
         app.monitor.cpuPublisher.sink { [weak self] _ in
@@ -366,6 +367,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private func applyIcon() {
         guard let button = statusItem?.button else { return }
         let choice = Preferences.shared.string("bar-icon")
+        // keep awake on: its icon in its colour (Linux's awake-icon and awake-color)
+        if app.awake.isOn, let cup = NSImage(systemSymbolName: Preferences.shared.string("awake-icon"), accessibilityDescription: "Awake")
+            ?? NSImage(systemSymbolName: "cup.and.saucer.fill", accessibilityDescription: "Awake") {
+            let color = NSColor(hex: Preferences.shared.string("awake-color")) ?? .systemOrange
+            button.image = cup.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [color]))
+            return
+        }
         if choice != "butterfly", let symbol = NSImage(systemSymbolName: choice, accessibilityDescription: "Muna") {
             button.image = symbol
         } else if let image = ButterflyImage.image?.copy() as? NSImage {

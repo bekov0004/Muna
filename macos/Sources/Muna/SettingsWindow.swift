@@ -677,6 +677,24 @@ struct MenuBarSettings: View {
             }
             SettingsNote("Switch off anything you do not need; the arrows change the order.")
         }
+        SettingsCard("Keep awake") {
+            SettingsRow("Its icon in the menu bar while it is on") {
+                Picker("", selection: preferences.stringBinding("awake-icon")) {
+                    ForEach(["cup.and.saucer.fill", "sun.max.fill", "bolt.fill", "eye.fill", "moon.zzz.fill"], id: \.self) { symbol in Label(symbol, systemImage: symbol).tag(symbol) }
+                }
+                .labelsHidden()
+                .fixedSize()
+            }
+            SettingsRow("Its colour") {
+                HStack(spacing: 8) {
+                    ForEach(["#ff9500", "#ff3b30", "#34c759", "#0a84ff", "#bf5af2", "#ffffff"], id: \.self) { hex in
+                        Circle().fill(Color(NSColor(hex: hex) ?? .orange)).frame(width: 18, height: 18)
+                            .overlay(Circle().stroke(preferences.string("awake-color") == hex ? Color.accentColor : Color.clear, lineWidth: 2).padding(-3))
+                            .onTapGesture { preferences.set("awake-color", hex) }
+                    }
+                }
+            }
+        }
         SettingsCard("Menu bar icon") {
             SettingsRow("The icon of the Muna item in the menu bar") {
                 Picker("", selection: preferences.stringBinding("bar-icon")) {

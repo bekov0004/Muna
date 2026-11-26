@@ -140,7 +140,7 @@ final class Preferences: ObservableObject {
         "bar-metrics": [String](), "system-blocks": ["temps", "cpu", "gpu", "memory", "uptime"],
         "bar-icon": "butterfly", "menu-hidden": [String](), "menu-order": [String](),
         "radial-actions": ["play-pause", "next", "screenshot", "downloads", "color", "prev"],
-        "output-skipped": [String](), "eject-excluded": [String](), "cleaning-visible": false, "reminders": "[]",
+        "output-skipped": [String](), "eject-excluded": [String](), "cleaning-visible": false, "awake-icon": "cup.and.saucer.fill", "awake-color": "#ff9500", "utilities-order": [String](), "utilities-hidden": [String](), "reminders": "[]",
         "clipboard-click-pastes": false, "phone-dark-screen": true,
         "desktops-per-monitor": false,
     ]
@@ -190,5 +190,14 @@ final class Preferences: ObservableObject {
         }
         return FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser
+    }
+}
+
+extension NSColor {
+    /// "#rrggbb" → a colour.
+    convenience init?(hex: String) {
+        let text = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        guard text.count == 6, let value = Int(text, radix: 16) else { return nil }
+        self.init(red: CGFloat(value >> 16 & 0xff) / 255, green: CGFloat(value >> 8 & 0xff) / 255, blue: CGFloat(value & 0xff) / 255, alpha: 1)
     }
 }

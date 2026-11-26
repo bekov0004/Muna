@@ -507,9 +507,40 @@ struct UtilitiesPage: View {
         ("radial", "circle.grid.cross", "Radial menu", "Your actions around the pointer"),
     ]
 
+    @EnvironmentObject var preferences: Preferences
+
+    /// The tools in the chosen order, without the hidden ones (Linux's customize mode of the list).
+    private var shown: [(String, String, String, String)] {
+        let order = preferences.strings("utilities-order")
+        let hidden = preferences.strings("utilities-hidden")
+        let ordered = order.compactMap { id in Self.tools.first { $0.0 == id } } + Self.tools.filter { !order.contains($0.0) }
+        return state.customizing ? ordered : ordered.filter { !hidden.contains($0.0) }
+    }
+
+    private func move(_ id: String, _ step: Int) {
+        var ids = shown.map(\.0)
+        guard let index = ids.firstIndex(of: id), ids.indices.contains(index + step) else { return }
+        ids.swapAt(index, index + step)
+        preferences.set("utilities-order", ids)
+    }
+
     var body: some View {
         QuickBlock {
-            ForEach(Self.tools, id: \.0) { tool in
+            HStack {
+                Spacer()
+                Pill(label: state.customizing ? "Done" : "Customize", active: state.customizing) { state.customizing.toggle() }
+            }
+            ForEach(shown, id: \.0) { tool in
+                if state.customizing {
+                    HStack(spacing: 8) {
+                        Image(systemName: tool.1).frame(width: 22).foregroundColor(MunaColor.accent)
+                        Text(tool.2).font(.system(size: 12, weight: .semibold))
+                        Spacer()
+                        IconButton(symbol: "chevron.up") { move(tool.0, -1) }
+                        IconButton(symbol: "chevron.down") { move(tool.0, 1) }
+                        Toggle("", isOn: preferences.listBinding("utilities-hidden", tool.0, onMeansIn: false)).labelsHidden().toggleStyle(.switch).controlSize(.mini)
+                    }
+                } else {
                 Button { state.onRun(tool.0) } label: {
                     HStack(spacing: 10) {
                         Image(systemName: tool.1).frame(width: 22).foregroundColor(MunaColor.accent)
@@ -523,6 +554,7 @@ struct UtilitiesPage: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                }
             }
         }
     }

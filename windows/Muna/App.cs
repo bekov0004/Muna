@@ -253,6 +253,25 @@ public sealed class CapsuleManager
             }
         };
         meetings.Start();
+        // the butterfly's reminders of Settings → Appearance (once, every day, weekdays)
+        var butterfly = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        butterfly.Tick += (_, _) =>
+        {
+            var p = Preferences.Shared;
+            var list = ButterflyReminders.ParseList(p.Text("reminders"));
+            var now = DateTime.Now;
+            var changed = false;
+            for (var i = 0; i < list.Count; i++)
+            {
+                if (!ButterflyReminders.IsDue(list[i], now)) continue;
+                if (p.ReminderSound) System.Media.SystemSounds.Exclamation.Play();
+                Tell("Reminder", list[i].Text, Glyph.Bell, true, 8);
+                list[i] = ButterflyReminders.Rang(list[i], now);
+                changed = true;
+            }
+            if (changed) p.SetValue("reminders", ButterflyReminders.ToJson(list));
+        };
+        butterfly.Start();
         app.Tray.FilesAdded += count =>
         {
             if (Preferences.Shared.Bool("activity-files"))

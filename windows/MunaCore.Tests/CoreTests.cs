@@ -750,6 +750,28 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void ButterflyRemindersAsLinux()
+    {
+        // the same answers as linux/src/utils/reminders.js (run with node)
+        var now = new DateTime(2026, 11, 27, 15, 0, 0);
+        ButterflyReminders.Reminder R(string time, string repeat, string? date = null, string? last = null) => new("x", time, "t", repeat, true, date, last);
+        string Next(ButterflyReminders.Reminder r) => ButterflyReminders.NextRing(r, now)?.ToString("yyyy-MM-dd HH:mm") ?? "null";
+        var cases = new[] { R("09:00", "daily"), R("16:30", "daily"), R("09:00", "weekdays"), R("16:30", "weekdays", last: "2026-11-27"), R("14:00", "once", "2026-11-27") };
+        Assert.Equal("2026-11-28 09:00|False;2026-11-27 16:30|False;2026-11-30 09:00|False;2026-11-30 16:30|False;2026-11-27 14:00|True",
+                     string.Join(";", cases.Select(c => $"{Next(c)}|{ButterflyReminders.IsDue(c, now)}")));
+        Assert.Equal("09:05", ButterflyReminders.ParseTime("9.05"));
+        Assert.Null(ButterflyReminders.ParseTime("24:00"));
+        Assert.Equal("07:45", ButterflyReminders.ParseTime("7 45"));
+        Assert.Equal("2026-11-28", ButterflyReminders.New("14:00", "x", "once", now).Date);
+        Assert.Equal("2026-11-27", ButterflyReminders.New("18:00", "x", "once", now).Date);
+        var rang = ButterflyReminders.Rang(cases[4], now);
+        Assert.False(rang.Enabled);
+        var list = ButterflyReminders.ParseList(ButterflyReminders.ToJson(cases));
+        Assert.Equal(5, list.Count);
+        Assert.Equal("2026-11-27", list[3].LastFired);
+    }
+
+    [Fact]
     public void Tiling()
     {
         Assert.Equal(new[] { (0.0, 0.0, 1 / 3.0, 1.0), (1 / 3.0, 0.0, 1 / 3.0, 1.0), (2 / 3.0, 0.0, 1 / 3.0, 1.0) }, TileSlots.For("columns", 3));

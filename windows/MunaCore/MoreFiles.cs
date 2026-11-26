@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 
 namespace Muna.Core;
@@ -222,4 +223,96 @@ public sealed class ScratchpadStore
             ["notes"] = new JsonArray(_notes.Take(200).Select(n => (JsonNode?)new JsonObject { ["text"] = n.Text, ["at"] = n.At }).ToArray()),
         });
     }
+}
+
+/// The butterfly's reminders (linux/src/utils/reminders.js), kept as JSON in the "reminders" setting:
+/// {id, time: "HH:MM", text, repeat: once|daily|weekdays, enabled, date?, lastFired?, snoozeUntil?}.
+public static class ButterflyReminders
+{
+    public sealed record Reminder(string Id, string Time, string Text, string Repeat, bool Enabled, string? Date = null, string? LastFired = null, double SnoozeUntil = 0);
+
+    public static readonly string[] Repeats = { "once", "daily", "weekdays" };
+    static readonly TimeSpan Late = TimeSpan.FromHours(3);
+
+    public static string DayOf(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    public static string? ParseTime(string? text)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(text ?? "", @"^\s*(\d{1,2})[:.\s]?(\d{2})\s*$");
+        if (!match.Success) return null;
+        int h = int.Parse(match.Groups[1].Value), m = int.Parse(match.Groups[2].Value);
+        return h < 24 && m < 60 ? $"{h:00}:{m:00}" : null;
+    }
+
+    public static List<Reminder> ParseList(string json)
+    {
+        var list = new List<Reminder>();
+        try
+        {
+            if (JsonNode.Parse(string.IsNullOrEmpty(json) ? "[]" : json) is not JsonArray array) return list;
+            foreach (var node in array)
+            {
+                if (node is not JsonObject o || ParseTime(o.Str("time")) is not { } time || o["text"] is null) continue;
+                list.Add(new Reminder(o.Str("id") ?? Guid.NewGuid().ToString("N")[..8], time, o.Str("text") ?? "", o.Str("repeat") is { } r && Repeats.Contains(r) ? r : "once",
+                                      o["enabled"]?.GetValue<bool>() ?? true, o.Str("date"), o.Str("lastFired"), o.Double("snoozeUntil") ?? 0));
+            }
+        }
+        catch { /* a broken setting: no reminders */ }
+        return list;
+    }
+
+    public static string ToJson(IEnumerable<Reminder> list) => new JsonArray(list.Select(r =>
+    {
+        var o = new JsonObject { ["id"] = r.Id, ["time"] = r.Time, ["text"] = r.Text, ["repeat"] = r.Repeat, ["enabled"] = r.Enabled };
+        if (r.Date is not null) o["date"] = r.Date;
+        if (r.LastFired is not null) o["lastFired"] = r.LastFired;
+        if (r.SnoozeUntil > 0) o["snoozeUntil"] = r.SnoozeUntil;
+        return (JsonNode?)o;
+    }).ToArray()).ToJsonString();
+
+    static DateTime At(string day, string time) =>
+        DateTime.ParseExact($"{day} {time}", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+    /// A new reminder: a "once" one rings today, or tomorrow when that time has passed.
+    public static Reminder New(string time, string text, string repeat, DateTime now)
+    {
+        var t = ParseTime(time) ?? throw new ArgumentException("Write the time as 18:30");
+        var r = new Reminder(now.Ticks.ToString("x")[^8..], t, text.Trim(), Repeats.Contains(repeat) ? repeat : "once", true);
+        if (r.Repeat == "once")
+        {
+            var today = DayOf(now);
+            r = r with { Date = At(today, t) > now ? today : DayOf(now.AddDays(1)) };
+        }
+        return r;
+    }
+
+    public static DateTime? NextRing(Reminder r, DateTime now)
+    {
+        if (!r.Enabled) return null;
+        if (r.SnoozeUntil > 0) return DateTimeOffset.FromUnixTimeMilliseconds((long)r.SnoozeUntil).LocalDateTime;
+        if (r.Repeat == "once") return r.Date is null ? null : At(r.Date, r.Time);
+        for (var i = 0; i < 8; i++)
+        {
+            var day = now.Date.AddDays(i);
+            if (r.Repeat == "weekdays" && day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) continue;
+            var key = DayOf(day);
+            var when = At(key, r.Time);
+            if (r.LastFired == key) continue;
+            if (i == 0 && now - when > Late) continue;
+            return when;
+        }
+        return null;
+    }
+
+    public static bool IsDue(Reminder r, DateTime now) => NextRing(r, now) is { } when && when <= now && now - when <= Late + TimeSpan.FromMinutes(1);
+
+    /// After it rang: a "once" one turns off, a repeating one waits for its next day.
+    public static Reminder Rang(Reminder r, DateTime now) => r.Repeat == "once" ? r with { SnoozeUntil = 0, Enabled = false } : r with { SnoozeUntil = 0, LastFired = DayOf(now) };
+
+    public static string WhenText(Reminder r, DateTime now) => r.Repeat switch
+    {
+        "daily" => "Every day",
+        "weekdays" => "Weekdays",
+        _ => r.Date is null ? "" : r.Date == DayOf(now) ? "Today" : r.Date == DayOf(now.AddDays(1)) ? "Tomorrow" : r.Date,
+    };
 }

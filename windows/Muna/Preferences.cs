@@ -73,7 +73,7 @@ public sealed class Preferences
         ["peek-media-seconds"] = 2.5, ["peek-files-seconds"] = 1.5, ["peek-calendar-seconds"] = 6.0,
         ["album-corner-radius"] = 8.0, ["media-effect"] = "spectrum", ["colored-effects"] = true,
         ["show-caps-lock"] = true, ["show-input-source"] = true, ["clipboard-click-pastes"] = false,
-        ["monitor-interval"] = 2.0, ["graph-scale"] = true, ["cleaning-visible"] = false, ["color-scheme"] = "dark",
+        ["monitor-interval"] = 2.0, ["graph-scale"] = true, ["cleaning-visible"] = false, ["reminders"] = "[]", ["color-scheme"] = "dark",
     };
 
     public JsonNode? Value(string key) => _values[key] ?? (LinuxDefaults.TryGetValue(key, out var d) ? d : null);

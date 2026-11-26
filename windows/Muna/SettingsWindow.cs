@@ -75,6 +75,9 @@ public sealed class SettingsWindow : DarkWindow
     readonly TextBox _search = Input();
     readonly TextBox _reminderText = Input();
     readonly TextBox _reminderTime = Input();
+    string _reminderRepeat = "once";
+
+    void SaveReminders(IEnumerable<ButterflyReminders.Reminder> list) => _p.SetValue("reminders", ButterflyReminders.ToJson(list));
 
     readonly AppState _app;
     readonly Preferences _p = Preferences.Shared;
@@ -576,33 +579,40 @@ public sealed class SettingsWindow : DarkWindow
             Switch("Butterfly in the capsule", "The little butterfly in the middle of the closed capsule. Off: a small camera circle.", _p.CapsuleButterfly, v => _p.CapsuleButterfly = v),
             Switch("Flap its wings", "Now and then it beats its wings and blinks.", _p.Bool("butterfly-flap"), v => _p.SetValue("butterfly-flap", v)),
             SliderRow("Every", $"{(int)_p.Number("butterfly-flap-every")} s between two flaps", 5, 300, _p.Number("butterfly-flap-every"), v => _p.SetValue("butterfly-flap-every", Math.Round(v / 5) * 5), 5));
-        var reminders = _app.Reminders;
-        var list = reminders.Reminders.Select(r =>
+        // the butterfly's reminders (Linux's "reminders" setting): once, every day or on weekdays
+        var butterflyList = ButterflyReminders.ParseList(_p.Text("reminders"));
+        var now = DateTime.Now;
+        var list = butterflyList.Select(r =>
         {
             var item = r;
-            var at = DateTimeOffset.FromUnixTimeMilliseconds(r.At).LocalDateTime;
             return (UIElement)new Border
             {
-                Child = Ui.Row(10, Ui.Icon(Glyph.Bell, 12, C.WinAccent), Ui.Text(r.Text, 13, color: C.WinText).Grow(),
-                               Ui.Text(at.ToString("g", System.Globalization.CultureInfo.CurrentCulture), 11, color: C.WinSecondary), Button("Remove", () => reminders.Remove(item))),
+                Child = Ui.Row(10, Ui.Icon(Glyph.Bell, 12, r.Enabled ? C.WinAccent : C.WinSecondary), Ui.Digits(r.Time, 13, color: C.WinText),
+                               Ui.Text(r.Text, 13, color: C.WinText).Grow(), Ui.Text(ButterflyReminders.WhenText(r, now), 11, color: C.WinSecondary),
+                               Toggle(r.Enabled, on => SaveReminders(butterflyList.Select(x => x.Id == item.Id ? (on && x.Repeat == "once" ? ButterflyReminders.New(x.Time, x.Text, "once", DateTime.Now) with { Id = x.Id } : x with { Enabled = on }) : x))),
+                               Button("Remove", () => SaveReminders(butterflyList.Where(x => x.Id != item.Id)))),
                 Padding = new Thickness(14, 8, 14, 8),
             };
         }).ToList();
         if (list.Count == 0) list.Add(Ui.Text("No reminders yet.", 12, color: C.WinSecondary).Margin(14, 10, 14, 10));
-        _reminderText.Width = 260;
+        _reminderText.Width = 240;
         _reminderTime.Width = 70;
+        var repeats = new[] { "once", "daily", "weekdays" };
         list.Add(new Border
         {
-            Child = Ui.Row(8, Ui.Detach(_reminderText), Ui.Detach(_reminderTime), Button("Add", () =>
-            {
-                var time = _reminderTime.Text.Trim();
-                if (TimeSpan.TryParse(time, System.Globalization.CultureInfo.InvariantCulture, out var t) && t.TotalHours < 24)
+            Child = Ui.Row(8, Ui.Detach(_reminderText), Ui.Detach(_reminderTime),
+                Choice(new[] { "Once", "Every day", "Weekdays" }, Array.IndexOf(repeats, _reminderRepeat), i => _reminderRepeat = repeats[i]),
+                Button("Add", () =>
                 {
-                    reminders.Add(_reminderText.Text, t.Hours, t.Minutes);
-                    _reminderText.Text = "";
-                    _reminderTime.Text = "";
-                }
-            }, accent: true)),
+                    try
+                    {
+                        SaveReminders(butterflyList.Append(ButterflyReminders.New(_reminderTime.Text, _reminderText.Text.Trim().Length == 0 ? "Hello! I am your Muna butterfly." : _reminderText.Text, _reminderRepeat, DateTime.Now)));
+                        _reminderText.Text = "";
+                        _reminderTime.Text = "";
+                    }
+                    catch (ArgumentException) { _reminderTime.Text = ""; _reminderTime.ToolTip = "Write the time as 18:30"; }
+                }, accent: true),
+                Button("Show it now", () => _app.Capsules.Tell("Reminder", _reminderText.Text.Trim().Length == 0 ? "Hello! I am your Muna butterfly." : _reminderText.Text, Glyph.Bell, true, 8))),
             Padding = new Thickness(14, 8, 14, 8),
         });
         yield return Card("Reminders",

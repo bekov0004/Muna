@@ -126,6 +126,39 @@ final class WindowsModel: ObservableObject {
         message = nil
     }
 
+    /// Linux's "send the window to a new desktop": macOS has no call for it, so Muna makes the desktop
+    /// (Mission Control's +), then holds the window by its title bar and goes to the new desktop with
+    /// ^→ (macOS's own keys): a held window comes along. Needs Accessibility and ^→ switched on.
+    func sendToNewDesktop() {
+        guard let app = targetApp(), let window = focusedWindow(of: app) else { show("No window to send"); return }
+        var posValue: CFTypeRef?
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posValue) == .success,
+              AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success,
+              let p = posValue, let z = sizeValue else { show("No window to send"); return }
+        var origin = CGPoint.zero, size = CGSize.zero
+        AXValueGetValue(p as! AXValue, .cgPoint, &origin)
+        AXValueGetValue(z as! AXValue, .cgSize, &size)
+        // the title bar, right of the window buttons (top-left screen coordinates, as CGEvent wants)
+        let grip = CGPoint(x: origin.x + min(120, size.width / 2), y: origin.y + 10)
+        NewDesktop.make { [weak self] made in
+            guard made else { self?.show("Mission Control's + was not found"); return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                app.activate(options: [])
+                guard let screen = Spaces.screens().first(where: { $0.count > 1 }) ?? Spaces.screens().first else { return }
+                let steps = max(1, screen.count - 1 - screen.current)
+                let source = CGEventSource(stateID: .hidSystemState)
+                CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: grip, mouseButton: .left)?.post(tap: .cghidEventTap)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    for _ in 0..<steps { Keyboard.press("<Control>Right") }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                        CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: grip, mouseButton: .left)?.post(tap: .cghidEventTap)
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Accessibility
 
     private func targetApp() -> NSRunningApplication? {

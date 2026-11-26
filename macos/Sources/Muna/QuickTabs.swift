@@ -598,6 +598,7 @@ enum Spaces {
 
 struct DesktopsPage: View {
     @EnvironmentObject var state: QuickPanelState
+    @EnvironmentObject var windows: WindowsModel
 
     var body: some View {
         let screens = Spaces.screens()
@@ -618,13 +619,71 @@ struct DesktopsPage: View {
             QuickBlock {
                 HStack {
                     Pill(label: "Mission Control") { MissionControl.run(nil) }
-                    Pill(label: "New desktop") { MissionControl.run(nil) }
+                    Pill(label: "New desktop") { NewDesktop.make { _ in state.objectWillChange.send() } }
+                    Pill(label: "Send window there") { windows.sendToNewDesktop() }
                     Pill(label: "Show desktop") { MissionControl.run("1") }
                 }
-                Text("A new desktop: the + at the top of Mission Control. macOS lets no app move a window to another desktop; drag it there in Mission Control.")
+                Text("New desktop presses the + of Mission Control for you; Send window there makes one and carries the window you were in to it (Accessibility, and ^→ on in Keyboard Shortcuts → Mission Control).")
                     .font(.system(size: 10)).foregroundColor(MunaColor.secondary).fixedSize(horizontal: false, vertical: true)
                 if let separate = MacSwitches.all.first(where: { $0.id == "spaces-span" }) { SwitchRow(item: separate) }
             }
         }
+    }
+}
+
+/// A new desktop from Muna (Linux's "new desktop"): macOS has no call for it, so Muna opens Mission
+/// Control and presses its + through Accessibility (the Dock draws Mission Control), then closes it.
+enum NewDesktop {
+    static func make(done: ((Bool) -> Void)? = nil) {
+        guard AXIsProcessTrusted() else {
+            AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
+            done?(false)
+            return
+        }
+        guard let dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first else { done?(false); return }
+        MissionControl.run(nil)
+        let app = AXUIElementCreateApplication(dock.processIdentifier)
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Mission Control takes a moment to appear: look for the + for up to two seconds
+            var pressed = false
+            for _ in 0..<20 {
+                Thread.sleep(forTimeInterval: 0.1)
+                if let button = addButton(in: app, byName: true) ?? addButton(in: app, byName: false) {
+                    pressed = AXUIElementPerformAction(button, kAXPressAction as CFString) == .success
+                    break
+                }
+            }
+            Thread.sleep(forTimeInterval: 0.6)
+            DispatchQueue.main.async {
+                MissionControl.run(nil)   // closes it again
+                done?(pressed)
+            }
+        }
+    }
+
+    private static func children(_ element: AXUIElement) -> [AXUIElement] {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &value) == .success else { return [] }
+        return value as? [AXUIElement] ?? []
+    }
+
+    private static func string(_ element: AXUIElement, _ attribute: String) -> String {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success else { return "" }
+        return value as? String ?? ""
+    }
+
+    /// The + of the Spaces bar: a button that is named "add desktop" (in English), or else the button
+    /// beside the list of desktops.
+    private static func addButton(in element: AXUIElement, byName: Bool, depth: Int = 0) -> AXUIElement? {
+        guard depth < 8 else { return nil }
+        let kids = children(element)
+        let hasList = kids.contains { string($0, kAXRoleAttribute) == kAXListRole }
+        for kid in kids where string(kid, kAXRoleAttribute) == kAXButtonRole {
+            let name = (string(kid, kAXDescriptionAttribute) + " " + string(kid, kAXIdentifierAttribute)).lowercased()
+            if byName ? name.contains("add desktop") : hasList { return kid }
+        }
+        for kid in kids { if let found = addButton(in: kid, byName: byName, depth: depth + 1) { return found } }
+        return nil
     }
 }

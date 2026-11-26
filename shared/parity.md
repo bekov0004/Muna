@@ -40,7 +40,7 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Downloads (`downloads`) | files arriving with progress | ✅ | ✅ | |
 | Input (`input`) | mouse and keyboard switches | ✅ | ✅ | Mac: some take effect at the next login (macOS) |
 | Windows (`windows`) | a picture of each screen with its windows: drag, zones, columns, rows, grid, main + side | ✅ | ✅ | Mac: pictures need Screen Recording |
-| Desktops (`workspaces`) | list, switch, new, send a window to a new desktop, per monitor | 🟡 | ✅ | macOS lets no app create a desktop or move a window to one ➖ (Mission Control does) |
+| Desktops (`workspaces`) | list, switch, new, send a window to a new desktop, per monitor | ✅ | ✅ | Mac: a new desktop is Mission Control's + pressed through Accessibility; the window is carried there held by its title bar with ^→ |
 | Reminders (`reminders`) | the butterfly's reminders: once, every day, weekdays | ✅ | ✅ | |
 | AI Agents (`agents`) | working now, tokens 5 h and week, cards, Codex | ✅ | ✅ | |
 | Phone (`phone`) | live screen, control, QR pairing, Muna Phone link, dark screen | ✅ | ✅ | |

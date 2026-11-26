@@ -71,6 +71,7 @@ public sealed class QuickPanel : Window
     readonly Field _reminderText = new("Remind me to…");
     readonly Field _reminderTime = new("HH:MM");
     readonly Field _phoneText = new("Type on the phone, Enter sends");
+    string? _scrolledPage;
     readonly Border _root = new() { Background = Brushes.Black, CornerRadius = new CornerRadius(14), BorderBrush = C.White(0.1), BorderThickness = new Thickness(1), Padding = new Thickness(14) };
 
     public QuickPanel(AppState app)
@@ -83,7 +84,9 @@ public sealed class QuickPanel : Window
         ShowInTaskbar = false;
         ResizeMode = ResizeMode.NoResize;
         Width = 360;
-        SizeToContent = SizeToContent.Height;
+        // one height for every tab: the tabs and the buttons stay under the pointer when the tab changes
+        // (Linux's window hangs from the top bar, so its tabs never move); a long tab scrolls
+        Height = 640;
         FontFamily = Ui.Font;
         Title = "Muna";
         Content = _root;
@@ -114,6 +117,7 @@ public sealed class QuickPanel : Window
         if (_page == "agents") _app.Agents.WatchSessions();
         if (_page == "toggles") RefreshRadios();
         if (_page == "windows") StartPictures();
+        FitHeight();
         Render();
         Show();
         Place();
@@ -148,6 +152,15 @@ public sealed class QuickPanel : Window
     }
 
     /// <summary>Above the notification area (the corner of the main screen where the taskbar is).</summary>
+    /// <summary>As tall as 640, or the screen above the taskbar allows.</summary>
+    void FitHeight()
+    {
+        var screen = Forms.Screen.PrimaryScreen ?? Forms.Screen.AllScreens[0];
+        var area = screen.WorkingArea;
+        var scale = Native.Scale(Native.MonitorAt(area.Right - 1, area.Bottom - 1));
+        Height = Math.Min(640, area.Height / scale - 24);
+    }
+
     void Place()
     {
         var hwnd = new WindowInteropHelper(this).Handle;
@@ -232,14 +245,34 @@ public sealed class QuickPanel : Window
             "utilities" => UtilitiesPage(),
             _ => ToolsPage(),
         };
-        column.Children.Add(body);
-        if (_message is not null) column.Children.Add(Ui.Text(_message, 11, color: C.Ok, wrap: true));
-        column.Children.Add(Ui.Row(8,
+        var bottom = Ui.Column(8);
+        if (_message is not null) bottom.Children.Add(Ui.Text(_message, 11, color: C.Ok, wrap: true));
+        bottom.Children.Add(Ui.Row(8,
             Footer(Glyph.Settings, "Settings", () => { HidePanel(); _app.ShowSettings(); }).Grow(),
             Footer(Glyph.Search, "Command Bar", () => { HidePanel(); _app.Capsules.OpenCommand(); }).Grow(),
             Footer(Glyph.Power, "Quit", () => Application.Current.Dispatcher.BeginInvoke(() => { HidePanel(); QuitApp(); })).Grow()));
-        TextElement.SetForeground(column, C.Text);
-        _root.Child = column;
+        // the head and the buttons stay put; the tab between them scrolls when it is long
+        if (body is FrameworkElement top) top.VerticalAlignment = VerticalAlignment.Top;   // a short tab keeps its own height
+        var scroller = Ui.Scroll(body);
+        scroller.Margin = new Thickness(0, 12, 0, 12);
+        var grid = new Grid();
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        grid.Children.Add(column);
+        Grid.SetRow(scroller, 1);
+        grid.Children.Add(scroller);
+        Grid.SetRow(bottom, 2);
+        grid.Children.Add(bottom);
+        TextElement.SetForeground(grid, C.Text);
+        // keep where a long tab was scrolled to when it is drawn again (it redraws every second)
+        if (_root.Child is Grid old && old.Children.Count > 1 && old.Children[1] is ScrollViewer was && _scrolledPage == _page)
+        {
+            var offset = was.VerticalOffset;
+            scroller.Loaded += (_, _) => scroller.ScrollToVerticalOffset(offset);
+        }
+        _scrolledPage = _page;
+        _root.Child = grid;
     }
 
     static void QuitApp()

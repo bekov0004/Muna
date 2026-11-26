@@ -141,6 +141,36 @@ public static class Native
 
     public static IntPtr MonitorAt(int x, int y) => MonitorFromPoint(new POINT { X = x, Y = y }, 2);
 
+    [DllImport("user32.dll")] static extern IntPtr GetTopWindow(IntPtr hwnd);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] static extern int GetStyle(IntPtr hwnd, int index);
+
+    /// <summary>The taskbar, its flyouts (the hidden icons, the clock, quick settings), the desktop.</summary>
+    public static bool IsShellWindow(IntPtr hwnd)
+    {
+        var name = new StringBuilder(64);
+        GetClassName(hwnd, name, 64);
+        return name.ToString() is "WorkerW" or "Progman" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "NotifyIconOverflowWindow"
+            or "TopLevelWindowForOverflowXamlIsland" or "Windows.UI.Core.CoreWindow" or "XamlExplorerHostIslandWindow" or "Xaml_WindowedPopupClass";
+    }
+
+    /// <summary>The window the user works in: the one in front, or, when that is the taskbar or one of
+    /// its flyouts (the click that opened Muna's window went there), the next app window behind it.</summary>
+    public static IntPtr WorkWindow(int ownProcess)
+    {
+        bool Good(IntPtr h)
+        {
+            if (h == IntPtr.Zero || !IsWindowVisible(h) || IsShellWindow(h) || GetWindowTextLength(h) == 0) return false;
+            if ((GetStyle(h, -20) & 0x80) != 0) return false;   // WS_EX_TOOLWINDOW
+            GetWindowThreadProcessId(h, out var process);
+            return process != ownProcess;
+        }
+        var front = GetForegroundWindow();
+        if (Good(front)) return front;
+        for (var h = GetTopWindow(IntPtr.Zero); h != IntPtr.Zero; h = GetWindow(h, 2))   // GW_HWNDNEXT: down the z-order
+            if (Good(h)) return h;
+        return IntPtr.Zero;
+    }
+
     /// <summary>The window in front covers its whole monitor (a game, a video, a presentation).</summary>
     public static bool ForegroundIsFullScreen(System.Drawing.Rectangle monitor)
     {
@@ -215,6 +245,9 @@ public static class Native
             if (!IsWindowVisible(hwnd) || GetWindowTextLength(hwnd) == 0) return true;
             var ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE).ToInt64();
             if ((ex & WS_EX_TOOLWINDOW) != 0) return true;
+            // popups and dialogs belong to their window; windows that never take the keyboard are no app
+            // windows (a menu, a tooltip host); the desktop and the taskbar are not either
+            if ((ex & 0x08000000) != 0 || GetWindow(hwnd, 4) != IntPtr.Zero || IsShellWindow(hwnd)) return true;   // WS_EX_NOACTIVATE, GW_OWNER
             // a window hidden by the system (another desktop, a suspended app)
             if (DwmGetWindowAttribute(hwnd, 14, out int cloaked, 4) == 0 && cloaked != 0) return true;
             list.Add(hwnd);

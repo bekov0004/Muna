@@ -780,9 +780,8 @@ public sealed class WindowsModel : Model
     /// <summary>Remembers the window in front (not Muna's own).</summary>
     public void Remember()
     {
-        var hwnd = Native.GetForegroundWindow();
-        Native.GetWindowThreadProcessId(hwnd, out var process);
-        if (hwnd != IntPtr.Zero && process != Environment.ProcessId) Target = hwnd;
+        var hwnd = Native.WorkWindow(Environment.ProcessId);
+        if (hwnd != IntPtr.Zero) Target = hwnd;
     }
 
     public void Apply(string layout)

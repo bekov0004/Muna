@@ -92,6 +92,15 @@ public sealed class SoundModel : Model
     }
 
     /// <summary>Makes a device the default output (for every role).</summary>
+    /// <summary>The next sound output (the radial menu and the gestures' "next output").</summary>
+    public void NextOutput()
+    {
+        if (Outputs.Count == 0) Refresh();
+        if (Outputs.Count < 2) return;
+        var index = Outputs.FindIndex(o => o.Id == DefaultOutput);
+        SelectOutput(Outputs[(index + 1) % Outputs.Count].Id);
+    }
+
     public void SelectOutput(string id)
     {
         try

@@ -69,7 +69,36 @@ public static class Keys
         foreach (var k in keys.Reverse()) Native.keybd_event(k, 0, (Extended(k) ? 1u : 0) | 2, mark);
     }
 
-    static bool Extended(byte k) => k is 0x25 or 0x26 or 0x27 or 0x28 or 0x5B or 0x5C;
+    static bool Extended(byte k) => k is 0x21 or 0x22 or 0x23 or 0x24 or 0x25 or 0x26 or 0x27 or 0x28 or 0x2D or 0x2E or 0x5B or 0x5C;
+
+    public static void Tap(byte key, bool shift = false)
+    {
+        if (shift) Chord(0x10, key); else Chord(key);
+    }
+
+    /// <summary>Presses Linux's way of writing keys: "&lt;Control&gt;&lt;Shift&gt;t", "&lt;Super&gt;Left", "F5", "Super".</summary>
+    public static void Press(string accel)
+    {
+        if (Muna.Core.GestureCatalog.ParseKeys(accel) is not { } keys) return;
+        var codes = new List<byte>();
+        foreach (var m in keys.Modifiers)
+            codes.Add(m switch { "shift" => (byte)0x10, "alt" => (byte)0x12, "super" => (byte)0x5B, _ => (byte)0x11 });
+        if (Code(keys.Key) is { } code) codes.Add(code);
+        if (codes.Count > 0) Chord(codes.ToArray());
+    }
+
+    static byte? Code(string name)
+    {
+        if (name.Length == 1 && char.IsLetterOrDigit(name[0])) return (byte)char.ToUpperInvariant(name[0]);
+        if (name.Length is 2 or 3 && (name[0] is 'F' or 'f') && int.TryParse(name[1..], out var f) && f is >= 1 and <= 24) return (byte)(0x6F + f);
+        return name.ToLowerInvariant() switch
+        {
+            "left" => 0x25, "up" => 0x26, "right" => 0x27, "down" => 0x28, "page_up" or "prior" => 0x21, "page_down" or "next" => 0x22,
+            "home" => 0x24, "end" => 0x23, "tab" => 0x09, "return" or "enter" => 0x0D, "escape" => 0x1B, "delete" => 0x2E, "backspace" => 0x08,
+            "space" => 0x20, "plus" or "equal" => 0xBB, "minus" => 0xBD, "print" => 0x2C, "insert" => 0x2D, "super" => 0x5B, "" => null,
+            _ => null,
+        };
+    }
 }
 
 /// <summary>Linux's "separate desktops for every monitor" (linux/src/windows/monitorDesktops.js):

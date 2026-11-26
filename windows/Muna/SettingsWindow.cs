@@ -20,6 +20,7 @@ public sealed class SettingsWindow : DarkWindow
         ("general", "General", Glyph.Settings, "How the capsule opens and closes, and what it shows when closed."),
         ("appearance", "Appearance", Glyph.Brightness, "The capsule's size, shape, colour and shadow."),
         ("bars", "Readings and bars", Glyph.Cpu, "Readings of the computer where you see them, the Muna bar across the top of monitors, the taskbar, desktops."),
+        ("gestures", "Touchpad gestures", Glyph.Gesture, "Three and four fingers, pinches, resting the fingers, and one finger along the touchpad's edges."),
         ("widgets", "Muna page", Glyph.Apps, "The widgets of the Muna section: which, in what order, how wide."),
         ("calendar", "Calendar", Glyph.Calendar, "The calendar the Calendar widget shows."),
         ("localsend", "LocalSend", Glyph.Wifi, "Sending files to other computers and phones, and receiving them."),
@@ -76,6 +77,7 @@ public sealed class SettingsWindow : DarkWindow
             "general" => General(),
             "appearance" => Appearance(),
             "bars" => Bars(),
+            "gestures" => Gestures(),
             "widgets" => Widgets(),
             "calendar" => Calendar(),
             "localsend" => LocalSendPage(),
@@ -222,6 +224,59 @@ public sealed class SettingsWindow : DarkWindow
             Switch("Hide the taskbar", "Windows' taskbar slides away and comes back when the pointer reaches it.", autoHide, v => { try { Taskbar.AutoHide = v; } catch { } Render(); }),
             Switch("Separate desktops for every monitor", "Switching desktops on one monitor does not switch the others: Ctrl+Win+← and → switch the monitor under the pointer, with Shift the window in front goes along. Muna keeps these desktops itself (their windows are minimised).",
                 _p.DesktopsPerMonitor, v => _p.DesktopsPerMonitor = v));
+    }
+
+    static string GestureName(string id)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(id, @"^(swipe|pinch|hold)(\d)(?:-(\w+))?$");
+        var (kind, fingers, direction) = (match.Groups[1].Value, match.Groups[2].Value, match.Groups[3].Value);
+        if (kind == "hold") return $"{fingers} fingers rest and lift";
+        var name = direction switch { "left" => "Swipe left", "right" => "Swipe right", "up" => "Swipe up", "down" => "Swipe down", "in" => "Pinch in (fingers together)", _ => "Pinch out (fingers apart)" };
+        return kind == "pinch" ? $"{name} · {fingers}" : name;
+    }
+
+    UIElement ActionPicker(string current, Action<string> set)
+    {
+        var actions = GestureCatalog.Actions;
+        var items = actions.Select(a => (a.Title, (string?)a.Group)).ToList();
+        return Dropdown(items, Math.Max(0, Array.FindIndex(actions, a => a.Id == current)), i => set(actions[i].Id));
+    }
+
+    IEnumerable<UIElement> Gestures()
+    {
+        var found = _app.Gestures.TouchpadFound;
+        yield return Card("Touchpad",
+            Switch("Gestures with three and four fingers", "Swipes, pinches and resting the fingers do what you choose below.", _p.TouchpadGestures, v => _p.TouchpadGestures = v),
+            Switch("One finger along the edges", "Slide along an edge for brightness or volume, double tap or rest a finger at an edge.", _p.EdgeGestures, v => _p.EdgeGestures = v),
+            SliderRow("Sensitivity", $"{(int)_p.GestureSensitivity}% (more: a shorter swipe is enough)", 25, 400, _p.GestureSensitivity, v => _p.GestureSensitivity = Math.Round(v / 5) * 5, 5),
+            Setting("Windows' own gestures", "Windows does its three- and four-finger gestures too: set them to \"Nothing\" there (Advanced gestures), then Muna's take their place.",
+                    Button("Open", () => CapsuleViews.Launch("ms-settings:devices-touchpad"))));
+        if ((_p.TouchpadGestures || _p.EdgeGestures) && !found)
+            yield return Ui.Text("No precision touchpad has reported yet: touch it once. A touchpad without Windows' precision driver cannot be read.", 11, color: C.Warning, wrap: true);
+        foreach (var (title, ids) in new[]
+        {
+            ("Three fingers", GestureCatalog.Gestures.Where(g => g.StartsWith("swipe3"))),
+            ("Four fingers", GestureCatalog.Gestures.Where(g => g.StartsWith("swipe4"))),
+            ("Pinch", GestureCatalog.Gestures.Where(g => g.StartsWith("pinch"))),
+            ("Rest the fingers", GestureCatalog.Gestures.Where(g => g.StartsWith("hold"))),
+        })
+        {
+            yield return Card(title, ids.Select(id => Setting(GestureName(id), null, ActionPicker(_p.GestureAction(id), a => _p.SetGestureAction(id, a)))).ToArray());
+        }
+        var edges = new List<UIElement>();
+        foreach (var (key, label) in new[]
+        {
+            ("edge-left-plus", "Left edge, up"), ("edge-left-minus", "Left edge, down"), ("edge-right-plus", "Right edge, up"), ("edge-right-minus", "Right edge, down"),
+            ("edge-top-plus", "Top edge, to the right"), ("edge-top-minus", "Top edge, to the left"), ("edge-bottom-plus", "Bottom edge, to the right"), ("edge-bottom-minus", "Bottom edge, to the left"),
+            ("edge-tap-left", "Double tap, left edge"), ("edge-tap-right", "Double tap, right edge"), ("edge-tap-top", "Double tap, top middle"), ("edge-tap-bottom", "Double tap, bottom middle"),
+            ("edge-hold-left", "Rest a finger, left edge"), ("edge-hold-right", "Rest a finger, right edge"), ("edge-hold-top", "Rest a finger, top middle"), ("edge-hold-bottom", "Rest a finger, bottom middle"),
+        })
+        {
+            var k = key;
+            edges.Add(Setting(label, null, ActionPicker(_p.EdgeAction(k), a => _p.SetEdgeAction(k, a))));
+        }
+        yield return Card("Edges (one finger)", edges.ToArray());
+        yield return Button("Reset the gestures", _p.ResetGestures).Align(HorizontalAlignment.Left);
     }
 
     IEnumerable<UIElement> Widgets()

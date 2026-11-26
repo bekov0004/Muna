@@ -146,6 +146,34 @@ public sealed class Preferences
     /// <summary>Cards for a busy processor, heat, a full disk or memory and a low battery (Linux's system-alerts).</summary>
     public bool SystemAlerts { get => Get("system-alerts", true); set => Set("system-alerts", value); }
 
+    // touchpad gestures (Linux's keys)
+    /// <summary>Three- and four-finger swipes, pinches and holds (Windows' own must be set to "Nothing" first).</summary>
+    public bool TouchpadGestures { get => Get("touchpad-gestures", false); set => Set("touchpad-gestures", value); }
+    /// <summary>One finger along the touchpad's edges, double taps and holds at them.</summary>
+    public bool EdgeGestures { get => Get("edge-gestures", true); set => Set("edge-gestures", value); }
+    public double GestureSensitivity { get => Math.Clamp(Get("gesture-sensitivity", 100.0), 25, 400); set => Set("gesture-sensitivity", value); }
+
+    public string GestureAction(string gesture) =>
+        (_values["gesture-actions"] as JsonObject)?[gesture]?.GetValue<string>() ?? GestureCatalog.Defaults.GetValueOrDefault(gesture, "none");
+
+    public void SetGestureAction(string gesture, string action)
+    {
+        var all = (_values["gesture-actions"] as JsonObject)?.DeepClone() as JsonObject ?? new JsonObject();
+        all[gesture] = action;
+        Set("gesture-actions", all);
+    }
+
+    public void ResetGestures()
+    {
+        _values.Remove("gesture-actions");
+        foreach (var key in GestureCatalog.EdgeDefaults.Keys) _values.Remove(key);
+        _store.Save(_values);
+        Changed?.Invoke("gesture-actions");
+    }
+
+    public string EdgeAction(string key) => Get(key, GestureCatalog.EdgeDefaults.GetValueOrDefault(key, "none"));
+    public void SetEdgeAction(string key, string action) => Set(key, action);
+
     // the Muna page
     public List<string> EnabledWidgets
     {

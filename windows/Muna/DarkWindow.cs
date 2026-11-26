@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -111,6 +112,32 @@ public class DarkWindow : Window
     }
 
     /// <summary>A setting: its name and description on the left, the control on the right.</summary>
+    /// <summary>A list to choose from (long lists, as the gestures' actions), with group headings.</summary>
+    public static ComboBox Dropdown(IReadOnlyList<(string Label, string? Group)> items, int selected, Action<int> changed)
+    {
+        var box = new ComboBox { MinWidth = 230, FontFamily = Ui.Font, FontSize = 12, MaxDropDownHeight = 420 };
+        string? group = null;
+        var indexes = new List<int>();
+        for (var i = 0; i < items.Count; i++)
+        {
+            var (label, g) = items[i];
+            if (!string.IsNullOrEmpty(g) && g != group)
+            {
+                group = g;
+                box.Items.Add(new ComboBoxItem { Content = g.ToUpperInvariant(), IsEnabled = false, FontSize = 10, FontWeight = FontWeights.Bold });
+                indexes.Add(-1);
+            }
+            box.Items.Add(new ComboBoxItem { Content = label });
+            indexes.Add(i);
+        }
+        box.SelectedIndex = Math.Max(0, indexes.IndexOf(selected));
+        box.SelectionChanged += (_, _) =>
+        {
+            if (box.SelectedIndex >= 0 && indexes[box.SelectedIndex] is var index and >= 0) changed(index);
+        };
+        return box;
+    }
+
     public static UIElement Setting(string title, string? subtitle, UIElement control)
     {
         var text = Ui.Column(2, Ui.Text(title, 13, color: C.WinText));

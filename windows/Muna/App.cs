@@ -42,6 +42,7 @@ public sealed class AppState
     public readonly PhoneModel Phone = new();
     public readonly MonitorDesktops Desktops = new();
     public readonly SystemNotifications Notifications = new();
+    public GestureActions Gestures { get; }
     public SystemAlerts SystemAlerts { get; }
     public CapsuleManager Capsules { get; }
     public MunaBars Bars { get; }
@@ -57,6 +58,7 @@ public sealed class AppState
         Capsules = new CapsuleManager(this);
         Bars = new MunaBars(this);
         SystemAlerts = new SystemAlerts(this);
+        Gestures = new GestureActions(this);
         Notifications.Arrived += toast => Alerts.AddFromApp(toast.App, toast.Aumid, toast.Title, toast.Body, toast.At);
         Preferences.Shared.Changed += key =>
         {
@@ -78,6 +80,7 @@ public sealed class AppState
         Desktops.Start();
         Bars.Rebuild();
         SystemAlerts.Start();
+        Gestures.Start();
         if (Preferences.Shared.AppNotifications) Notifications.Start();
     }
 
@@ -112,6 +115,9 @@ public sealed class AppState
         _scratchpadWindow.ShowFront();
     }
 
+    public event Action? RadialRequested;
+    public void ToggleRadial() => RadialRequested?.Invoke();
+
     public void ToggleQuickPanel()
     {
         _quick ??= new QuickPanel(this);
@@ -133,6 +139,7 @@ public sealed class AppState
         Scratchpad.Save();
         Displays.Restore();
         Desktops.Stop();
+        Gestures.Stop();
         Bars.CloseAll();
         CleaningMode.Stop();
         LocalSend.Shutdown();
@@ -463,7 +470,11 @@ public sealed class App : Application
         var preferences = Preferences.Shared;
         const uint space = 0x20;
         _commandKey = preferences.CommandHotKey ? _keys.Add(Native.MOD_ALT, space, State.Capsules.OpenCommand) : 0;
-        _radial ??= new RadialMenu(State);
+        if (_radial is null)
+        {
+            _radial = new RadialMenu(State);
+            State.RadialRequested += _radial.Toggle;
+        }
         _radialKey = preferences.RadialHotKey ? _keys.Add(Native.MOD_CONTROL | Native.MOD_ALT, space, _radial.Toggle) : 0;
         if (preferences.SectionHotKeys)
         {

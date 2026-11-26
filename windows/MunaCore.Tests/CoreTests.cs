@@ -560,6 +560,67 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void TouchpadGestures()
+    {
+        var g = new TouchGestures { Aspect = 0.6 };
+        var t = 0.0;
+        List<GestureEvent> Fingers(params (double X, double Y)[] at)
+        {
+            t += 0.01;
+            return g.Frame(at.Select((p, i) => new Contact(i, p.X, p.Y)).ToList(), t);
+        }
+        // three fingers to the left: locked, moved, triggered, ended
+        var events = new List<GestureEvent>();
+        for (var i = 0; i <= 20; i++)
+        {
+            var x = 0.6 - i * 0.02;
+            events.AddRange(Fingers((x, 0.5), (x + 0.05, 0.45), (x + 0.1, 0.5)));
+        }
+        events.AddRange(Fingers());
+        Assert.Contains(new SwipeLocked("swipe3-left"), events);
+        Assert.Contains(new SwipeTriggered("swipe3-left"), events);
+        Assert.Equal(new SwipeEnded("swipe3-left"), events.Last());
+        Assert.InRange(events.OfType<SwipeMoved>().Sum(e => e.Delta), 0.39, 0.41);
+        // four fingers coming together: a pinch in
+        events.Clear();
+        for (var i = 0; i <= 10; i++)
+        {
+            var d = 0.2 - i * 0.012;
+            events.AddRange(Fingers((0.5 - d, 0.5), (0.5 + d, 0.5), (0.5, 0.5 - d), (0.5, 0.5 + d)));
+        }
+        events.AddRange(Fingers());
+        Assert.Equal(new[] { new Pinched("pinch4-in") }, events.ToArray());
+        // three fingers resting, then lifted: a hold
+        events.Clear();
+        for (var i = 0; i < 40; i++) events.AddRange(Fingers((0.4, 0.5), (0.5, 0.5), (0.6, 0.5)));
+        events.AddRange(Fingers());
+        Assert.Equal(new[] { new Held("hold3") }, events.ToArray());
+        // one finger up the right edge: steps of volume
+        events.Clear();
+        for (var i = 0; i <= 30; i++) events.AddRange(Fingers((0.97, 0.8 - i * 0.01)));
+        events.AddRange(Fingers());
+        Assert.Equal(new EdgeBegan("right"), events[0]);
+        Assert.Equal(3, events.OfType<EdgeStep>().Count(e => e.Direction == 1));
+        Assert.Equal(new EdgeEnded("right"), events.Last());
+        // a double tap in the middle of the top edge
+        events.Clear();
+        events.AddRange(Fingers((0.5, 0.03))); events.AddRange(Fingers());
+        t += 0.1;
+        events.AddRange(Fingers((0.5, 0.03))); events.AddRange(Fingers());
+        Assert.Equal(new[] { new EdgeDoubleTap("top") }, events.ToArray());
+        // a finger resting at the left edge: a hold (by the clock)
+        events.Clear();
+        events.AddRange(Fingers((0.02, 0.5)));
+        events.AddRange(g.Tick(t + 0.6));
+        Assert.Equal(new[] { new EdgeHold("left") }, events.ToArray());
+        // keys of an action
+        var keys = GestureCatalog.ParseKeys("<Control><Shift>t")!.Value;
+        Assert.Equal(new[] { "control", "shift" }, keys.Modifiers);
+        Assert.Equal("t", keys.Key);
+        Assert.Null(GestureCatalog.ParseKeys("<Hyper>x"));
+    }
+
+    [Fact]
     public async Task PhoneLinkHandshake()
     {
         var token = PhoneLinkProtocol.RandomToken();

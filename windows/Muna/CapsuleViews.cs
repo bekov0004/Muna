@@ -54,7 +54,7 @@ public static class CapsuleViews
         else if (Preferences.Shared.ActivitiesInCollapsed && app.NowPlaying.Track is { } track)
         {
             left = Ui.Artwork(track.Artwork, CapsuleWindow.BarHeight - 12);
-            right = new Live(() => Ui.Bars(app.NowPlaying.IsPlaying), TimeSpan.FromMilliseconds(120));
+            right = new Live(() => Ui.MediaEffect(app.NowPlaying.IsPlaying, app.NowPlaying.Track?.Artwork, C.Accent), TimeSpan.FromMilliseconds(120));
         }
         else
         {
@@ -62,7 +62,7 @@ public static class CapsuleViews
             right = new Live(() => Ui.Digits(DateTime.Now.ToString("t", CultureInfo.CurrentCulture), 12, FontWeights.Bold, Brushes.White), TimeSpan.FromSeconds(5));
         }
         UIElement middle = Preferences.Shared.CapsuleButterfly
-            ? Ui.Butterfly(Math.Max(12, CapsuleWindow.BarHeight - 9))
+            ? Ui.FlappingButterfly(Math.Max(12, CapsuleWindow.BarHeight - 9))
             : new Grid
             {
                 Width = 14, Height = 14,
@@ -232,10 +232,10 @@ public static class CapsuleViews
             Ui.ControlButton(now.IsPlaying ? Glyph.Pause : Glyph.Play, now.PlayPause, 15, 26, 24),
             Ui.ControlButton(Glyph.Next, now.Next, 12, 26, 24),
             Ui.Spacer(),
-            new Live(() => Ui.Bars(now.IsPlaying, C.Muna), TimeSpan.FromMilliseconds(120)).Margin(0, 0, 4, 0));
+            new Live(() => Ui.MediaEffect(now.IsPlaying, now.Track?.Artwork, C.Muna), TimeSpan.FromMilliseconds(120)).Margin(0, 0, 4, 0));
         controls.Margin = new Thickness(0, 2, 0, 0);
         var text = Ui.Column(1, title, middle, artist, controls).Grow();
-        var top = Ui.Row(12, Ui.Artwork(track.Artwork, 64, 10).Align(v: VerticalAlignment.Top), text);
+        var top = Ui.Row(12, Ui.Artwork(track.Artwork, 64, Preferences.Shared.Number("album-corner-radius")).Align(v: VerticalAlignment.Top), text);
         top.Center = false;
         var column = Ui.Column(8, top);
         if (track.Duration > 0) column.Children.Add(new Live(() => Progress(now, track.Duration), TimeSpan.FromSeconds(1)));

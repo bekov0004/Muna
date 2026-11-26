@@ -77,7 +77,8 @@ public sealed class TrayModel : Model
         Preferences.Shared.Changed += key => { if (key == "tray-keep-files") _store.Keep = Preferences.Shared.TrayKeepFiles; };
     }
 
-    public void Add(IEnumerable<string> paths) { _store.Add(paths); Notify(); }
+    public event Action<int>? FilesAdded;
+    public void Add(IEnumerable<string> paths) { var list = paths.ToList(); _store.Add(list); Notify(); FilesAdded?.Invoke(list.Count); }
     public void Remove(string path) { _store.Remove(path); Notify(); }
     public void Clear() { _store.Clear(); Notify(); }
     public void Refresh() { _store.DropMissing(); Notify(); }

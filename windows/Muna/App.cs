@@ -239,6 +239,25 @@ public sealed class CapsuleManager
         app.Command.Done += () => All(c => { if (c.IsOpen && c.Tab == PanelTab.Command) c.Close_(); });
         // what the open pages show
         void Redraw() => All(c => c.Invalidate());
+        // Live Activities: the next meeting from 10 minutes before it, files added to the tray
+        var meetings = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        var told = new HashSet<string>();
+        meetings.Tick += (_, _) =>
+        {
+            if (!Preferences.Shared.Bool("activity-calendar")) return;
+            foreach (var e in app.Calendar.EventsOn(DateTime.Today).Where(e => !e.AllDay))
+            {
+                var minutes = (e.Start - DateTime.Now).TotalMinutes;
+                if (minutes is > 0 and <= 10 && told.Add($"{e.Uid}-{e.Start:o}"))
+                    Tell(e.Title, $"In {(int)Math.Ceiling(minutes)} min · {e.Start.ToString("t", System.Globalization.CultureInfo.CurrentCulture)}", Glyph.Calendar, true, Preferences.Shared.Number("peek-calendar-seconds"));
+            }
+        };
+        meetings.Start();
+        app.Tray.FilesAdded += count =>
+        {
+            if (Preferences.Shared.Bool("activity-files"))
+                Tell(count == 1 ? "Added a file" : $"Added {count} files", "To the Tray", Glyph.Tray, true, Preferences.Shared.Number("peek-files-seconds"));
+        };
         foreach (var model in new Model[] { app.NowPlaying, app.Notes, app.Todo, app.Tray, app.Clipboard, app.Calendar, app.Timer, app.Alerts, app.Camera, app.Command, app.Privacy })
             model.Changed += Redraw;
         app.NowPlaying.Changed += () => All(c => c.ActivityChanged());
@@ -354,11 +373,11 @@ public sealed class CapsuleManager
     }
 
     /// <summary>Something happened: a card in every closed capsule, and a line in the Alerts section.</summary>
-    public void Tell(string title, string details, string glyph, bool ok)
+    public void Tell(string title, string details, string glyph, bool ok, double? seconds = null)
     {
         _app.Alerts.Add(title, details, glyph, ok);
         _app.Companion.Surprise();
-        var card = new CapsuleCard(title, details, glyph, ok);
+        var card = new CapsuleCard(title, details, glyph, ok, seconds);
         All(c => c.ShowCard(card));
     }
 

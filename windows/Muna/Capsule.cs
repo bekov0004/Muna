@@ -51,7 +51,7 @@ public static class Tabs
 }
 
 /// <summary>A short message the closed capsule shows for a few seconds.</summary>
-public sealed record CapsuleCard(string Title, string Details, string Glyph, bool Ok);
+public sealed record CapsuleCard(string Title, string Details, string Glyph, bool Ok, double? Seconds = null);
 
 /// <summary>What the pages remember while the panel is open: the text fields (kept, so typing is
 /// never lost when a page is drawn again), the calendar's day, the group being named …</summary>
@@ -497,7 +497,7 @@ public sealed class CapsuleWindow : Window
         SetSize(ClosedSize());
         Invalidate();
         _cardTimer?.Stop();
-        _cardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Preferences.Shared.CardSeconds) };
+        _cardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(card.Seconds ?? Preferences.Shared.CardSeconds) };
         _cardTimer.Tick += (_, _) =>
         {
             _cardTimer?.Stop();

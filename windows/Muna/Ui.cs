@@ -337,6 +337,51 @@ public static class Ui
     };
 
     /// <summary>Bars that move while the music plays (redrawn by the caller's clock).</summary>
+    /// Settings → Live Activities → Effect type and Colored effects: Linux's spectrum (bars) or waves,
+    /// white or in the album's colour.
+    public static UIElement MediaEffect(bool playing, ImageSource? artwork, Brush fallback, double height = 14)
+    {
+        var p = Preferences.Shared;
+        var color = p.Bool("colored-effects") && AlbumColor(artwork) is { } album ? album : fallback;
+        return p.Text("media-effect") == "waves" ? Waves(playing, color, height) : Bars(playing, color, height);
+    }
+
+    static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ImageSource, Brush> AlbumColors = new();
+
+    /// The average colour of a cover, lightened so it shows on black.
+    static Brush? AlbumColor(ImageSource? artwork)
+    {
+        if (artwork is not BitmapSource bitmap) return null;
+        if (AlbumColors.TryGetValue(artwork, out var known)) return known;
+        try
+        {
+            var small = new TransformedBitmap(new FormatConvertedBitmap(bitmap, PixelFormats.Bgra32, null, 0), new ScaleTransform(8.0 / bitmap.PixelWidth, 8.0 / bitmap.PixelHeight));
+            var pixels = new byte[small.PixelWidth * small.PixelHeight * 4];
+            small.CopyPixels(pixels, small.PixelWidth * 4, 0);
+            double r = 0, g = 0, b = 0;
+            var n = pixels.Length / 4;
+            for (var i = 0; i < pixels.Length; i += 4) { b += pixels[i]; g += pixels[i + 1]; r += pixels[i + 2]; }
+            (r, g, b) = (r / n, g / n, b / n);
+            var lift = 200 / Math.Max(1, Math.Max(r, Math.Max(g, b)));
+            var brush = C.Rgb((byte)Math.Min(255, r * lift), (byte)Math.Min(255, g * lift), (byte)Math.Min(255, b * lift));
+            AlbumColors.Add(artwork, brush);
+            return brush;
+        }
+        catch { return null; }
+    }
+
+    public static Flex Waves(bool playing, Brush color, double height = 14)
+    {
+        var t = DateTime.Now.TimeOfDay.TotalSeconds;
+        var row = Row(1);
+        for (var i = 0; i < 7; i++)
+        {
+            var level = playing ? 0.3 + 0.7 * (0.5 + 0.5 * Math.Sin(t * 4 - i * 0.9)) : 0.25;
+            row.Children.Add(new Ellipse { Width = 3, Height = 3, Fill = color, Margin = new Thickness(0, (1 - level) * height, 0, 0) });
+        }
+        return row;
+    }
+
     public static Flex Bars(bool playing, Brush? color = null, double height = 14)
     {
         var t = DateTime.Now.TimeOfDay.TotalSeconds;
@@ -364,6 +409,27 @@ public static class Ui
         Source = ButterflySource, Height = height, Width = height * 72 / 64, Stretch = Stretch.Uniform,
         VerticalAlignment = VerticalAlignment.Center,
     };
+
+    /// The butterfly of the closed capsule: now and then it beats its wings (Settings → Appearance).
+    public static Image FlappingButterfly(double height)
+    {
+        var image = Butterfly(height);
+        var scale = new ScaleTransform(1, 1);
+        image.RenderTransform = scale;
+        image.RenderTransformOrigin = new Point(0.5, 0.5);
+        var timer = new System.Windows.Threading.DispatcherTimer();
+        timer.Tick += (_, _) =>
+        {
+            var p = Preferences.Shared;
+            timer.Interval = TimeSpan.FromSeconds(Math.Max(5, p.Number("butterfly-flap-every")));
+            if (!p.Bool("butterfly-flap")) return;
+            var flap = new System.Windows.Media.Animation.DoubleAnimation(1, 0.3, TimeSpan.FromMilliseconds(140)) { AutoReverse = true, RepeatBehavior = new System.Windows.Media.Animation.RepeatBehavior(2) };
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, flap);
+        };
+        image.Loaded += (_, _) => { timer.Interval = TimeSpan.FromSeconds(3); timer.Start(); };
+        image.Unloaded += (_, _) => timer.Stop();
+        return image;
+    }
 
     /// <summary>A picture with round corners (a cover), or a note on a tile.</summary>
     public static Border Artwork(ImageSource? source, double size, double? radius = null)

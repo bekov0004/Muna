@@ -101,12 +101,12 @@ public static class CapsuleViews
             PanelTab.Agent => AgentsView.Permission(w),
             _ => MirrorLarge(w),
         };
-        var holder = new Border { Child = body, Height = w.Tab.BodyHeight(), ClipToBounds = w.Tab != PanelTab.Command };
+        var holder = new Border { Child = body, Height = w.BodyHeight, ClipToBounds = w.Tab != PanelTab.Command };
         var column = Ui.Column(0, w.Tab.HasHeader() ? Header(w) : new Border { Height = 8 }, holder);
         column.VerticalAlignment = VerticalAlignment.Top;
         TextElement.SetForeground(column, C.Text);
         // the panel's padding (16, as munaLayout.js counts it: the widgets fill the rest exactly)
-        return new Border { Child = column, Padding = new Thickness(PanelLayout.Padding, 0, PanelLayout.Padding, CapsuleWindow.BottomPadding) };
+        return new Border { Child = column, Padding = new Thickness(w.Layout.Padding, 0, w.Layout.Padding, CapsuleWindow.BottomPadding) };
     }
 
     static UIElement Header(CapsuleWindow w)
@@ -150,9 +150,9 @@ public static class CapsuleViews
         for (var i = 0; i < slots.Count; i++)
         {
             if (i > 0)
-                row.Children.Add(new Grid { Width = PanelLayout.Gap, Children = { Ui.Line(true).Align(HorizontalAlignment.Center) } });
+                row.Children.Add(w.Layout.Dividers ? new Grid { Width = w.Layout.Gap, Children = { Ui.Line(true).Align(HorizontalAlignment.Center) } } : new Grid { Width = w.Layout.Gap });
             var (id, width) = slots[i];
-            row.Children.Add(new Border { Width = width, Height = PanelLayout.RowHeight, Child = Widget(w, id), ClipToBounds = id != "companion" });
+            row.Children.Add(new Border { Width = width, Height = w.Layout.RowHeight, Child = Widget(w, id), ClipToBounds = id != "companion" });
         }
         return row;
     }
@@ -289,7 +289,7 @@ public static class CapsuleViews
     static UIElement Mirror(CapsuleWindow w)
     {
         var camera = w.App.Camera;
-        var side = PanelLayout.RowHeight - 6;
+        var side = Math.Min(w.Layout.RowHeight - 6, 150);
         var grid = new Grid { Width = side, Height = side };
         grid.Children.Add(new Ellipse { Fill = C.White(0.06) });
         switch (camera.Access)

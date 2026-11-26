@@ -7,16 +7,23 @@ namespace Muna.Core;
 
 /// <summary>How wide the open capsule is and which widgets go on which page: Linux's rules
 /// (linux/src/ui/munaLayout.js). A widget is some cells wide (44 px each).</summary>
-public sealed record PanelLayout(double Width, List<List<(string Id, double Width)>> Pages)
+public sealed record PanelLayout(double Width, List<List<(string Id, double Width)>> Pages, LayoutLook Look)
 {
-    public const double Cell = 44, Gap = 16, Padding = 16, RowHeight = 112, MinWidth = 560, MaxShare = 0.72, ScreenMargin = 24;
+    public const double Cell = 44, MinWidth = 560, MaxShare = 0.72, ScreenMargin = 24;
+    public double Gap => Look.Gap;
+    public double Padding => Look.Padding;
+    public double RowHeight => Look.RowHeight;
+    public bool Dividers => Look.Dividers;
 
-    public static PanelLayout Make(double screenWidth, IReadOnlyList<string> widgets, Func<string, int> cells, double atLeast = 0)
+    public static PanelLayout Make(double screenWidth, IReadOnlyList<string> widgets, Func<string, int> cells, double atLeast = 0, LayoutLook? look = null)
     {
+        look ??= new LayoutLook();
+        var cell = Cell * look.Scale;
+        double gap = look.Gap, padding = look.Padding;
         var ids = widgets.Count == 0 ? new List<string> { "media" } : widgets.ToList();
         var maxTotal = Math.Max(MinWidth, Math.Min(screenWidth * MaxShare, screenWidth - 2 * ScreenMargin));
-        double Natural(string id) => Math.Max(cells(id), 1) * Cell;
-        double Total(List<string> list) => list.Sum(Natural) + Math.Max(list.Count - 1, 0) * Gap + 2 * Padding;
+        double Natural(string id) => Math.Max(cells(id), 1) * cell;
+        double Total(List<string> list) => list.Sum(Natural) + Math.Max(list.Count - 1, 0) * gap + 2 * padding;
         var pageIds = new List<List<string>>();
         var current = new List<string>();
         foreach (var id in ids)
@@ -29,17 +36,23 @@ public sealed record PanelLayout(double Width, List<List<(string Id, double Widt
             current.Add(id);
         }
         pageIds.Add(current);
-        var width = Math.Max(Math.Max(MinWidth, atLeast), pageIds.Max(Total));
+        var width = look.FixedShare is { } share
+            ? Math.Max(Math.Max(MinWidth, atLeast), Math.Min(screenWidth * share, maxTotal))
+            : Math.Max(Math.Max(MinWidth, atLeast), pageIds.Max(Total));
         width = Math.Round(Math.Min(width, Math.Max(maxTotal, atLeast)));
         var pages = pageIds.Select(list =>
         {
-            var inner = width - 2 * Padding - Math.Max(list.Count - 1, 0) * Gap;
+            var inner = width - 2 * padding - Math.Max(list.Count - 1, 0) * gap;
             double sum = list.Sum(id => Math.Max(cells(id), 1));
             return list.Select(id => (id, Math.Floor(inner * Math.Max(cells(id), 1) / sum))).ToList();
         }).ToList();
-        return new PanelLayout(width, pages);
+        return new PanelLayout(width, pages, look);
     }
 }
+
+/// <summary>Settings → Appearance (Linux's size-scale, widget-spacing, content-padding, row-height,
+/// show-dividers, width-mode and fixed-width). <see cref="FixedShare"/> null: the width follows the widgets.</summary>
+public sealed record LayoutLook(double Scale = 1, double Gap = 16, double Padding = 16, double RowHeight = 112, bool Dividers = true, double? FixedShare = null);
 
 /// <summary>What the Command Bar understands, as Linux (linux/src/commandbar/engine.js).</summary>
 public static class CommandEngine

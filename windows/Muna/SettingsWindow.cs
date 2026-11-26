@@ -18,6 +18,7 @@ public sealed class SettingsWindow : DarkWindow
     static readonly (string Id, string Title, string Glyph, string About)[] Pages =
     {
         ("general", "General", Glyph.Settings, "How the capsule opens and closes, and what it shows when closed."),
+        ("appearance", "Appearance", Glyph.Brightness, "The capsule's size, shape, colour and shadow."),
         ("widgets", "Muna page", Glyph.Apps, "The widgets of the Muna section: which, in what order, how wide."),
         ("calendar", "Calendar", Glyph.Calendar, "The calendar the Calendar widget shows."),
         ("localsend", "LocalSend", Glyph.Wifi, "Sending files to other computers and phones, and receiving them."),
@@ -72,6 +73,7 @@ public sealed class SettingsWindow : DarkWindow
         foreach (var block in _page switch
         {
             "general" => General(),
+            "appearance" => Appearance(),
             "widgets" => Widgets(),
             "calendar" => Calendar(),
             "localsend" => LocalSendPage(),
@@ -111,10 +113,7 @@ public sealed class SettingsWindow : DarkWindow
             Switch("Activities in the closed capsule", "Music, the timer and sendings take the sides of the closed capsule.", _p.ActivitiesInCollapsed, v => _p.ActivitiesInCollapsed = v),
             Switch("Step aside for full-screen apps", "Games, videos and presentations hide the capsule.", _p.HideInFullscreen, v => _p.HideInFullscreen = v),
             Setting("Screens", "Which monitors have a capsule.", Choice(new[] { "Every screen", "The main screen" }, _p.CapsuleScreens == "main" ? 1 : 0, i => _p.CapsuleScreens = i == 1 ? "main" : "all")));
-        yield return Card("Appearance",
-            SliderRow("Corner radius", $"{(int)_p.CornerRadius}", 8, 44, _p.CornerRadius, v => _p.CornerRadius = Math.Round(v), 1),
-            SliderRow("Opacity", $"{(int)(_p.BackgroundOpacity * 100)}%", 0.5, 1, _p.BackgroundOpacity, v => _p.BackgroundOpacity = Math.Round(v, 2)),
-            SliderRow("Animation speed", $"{_p.AnimationSpeed:0.00}×", 0.25, 4, _p.AnimationSpeed, v => _p.AnimationSpeed = Math.Round(v, 2)),
+        yield return Card("Media",
             Switch("Show the lyrics", "The words of the song from lrclib.net (artist, title, album and length are sent there).", _p.ShowLyrics, v => _p.ShowLyrics = v));
         yield return Card("Keys",
             Switch("Command Bar: Alt+Space", null, _p.CommandHotKey, v => _p.CommandHotKey = v),
@@ -123,6 +122,53 @@ public sealed class SettingsWindow : DarkWindow
         yield return Card("System",
             Switch("Readings on Muna's icon", "The processor and the memory in the tray icon's tooltip.", _p.MenuBarReadings, v => _p.MenuBarReadings = v),
             Switch("Open at login", "Muna starts when you sign in.", AutoStart.Enabled, v => { try { AutoStart.Enabled = v; } catch { } Render(); }));
+    }
+
+    static readonly (string Name, string Hex)[] Colors =
+    {
+        ("Black", "#000000"), ("Graphite", "#1c1c1e"), ("Night blue", "#0b1a33"), ("Plum", "#24112e"), ("Forest", "#0d2318"), ("Wine", "#2a0d14"),
+    };
+
+    readonly TextBox _colorHex = Input();
+
+    IEnumerable<UIElement> Appearance()
+    {
+        yield return Card("Shape",
+            SliderRow("Corner radius", $"{(int)_p.CornerRadius} px", 8, 44, _p.CornerRadius, v => _p.CornerRadius = Math.Round(v), 1),
+            SliderRow("Transparency", $"{_p.BackgroundOpacity:0.00} (1.00 is fully opaque)", 0.5, 1, _p.BackgroundOpacity, v => _p.BackgroundOpacity = Math.Round(v, 2), 0.02),
+            SliderRow("Shadow", _p.ShadowStrength <= 0.01 ? "Off" : $"{_p.ShadowStrength:0.0}", 0, 1, _p.ShadowStrength, v => _p.ShadowStrength = Math.Round(v, 1), 0.1),
+            SliderRow("Animation speed", $"{_p.AnimationSpeed:0.00}×", 0.25, 4, _p.AnimationSpeed, v => _p.AnimationSpeed = Math.Round(v, 2)));
+        var swatches = Ui.Row(8);
+        foreach (var (name, hex) in Colors)
+        {
+            var h = hex;
+            var on = string.Equals(_p.CapsuleColorHex, hex, StringComparison.OrdinalIgnoreCase);
+            var dot = new Border
+            {
+                Width = 26, Height = 26, CornerRadius = new CornerRadius(13), Background = new SolidColorBrush(Preferences.ParseColor(hex, System.Windows.Media.Colors.Black)),
+                BorderBrush = on ? C.WinAccent : C.White(0.25), BorderThickness = new Thickness(on ? 3 : 1), ToolTip = name,
+            };
+            swatches.Children.Add(dot.OnClick(() => _p.CapsuleColorHex = h));
+        }
+        _colorHex.Width = 90;
+        if (!_colorHex.IsKeyboardFocused) _colorHex.Text = _p.CapsuleColorHex;
+        swatches.Children.Add(Ui.Detach(_colorHex));
+        swatches.Children.Add(Button("Use", () =>
+        {
+            var text = _colorHex.Text.Trim();
+            if (!text.StartsWith('#')) text = "#" + text;
+            if (System.Text.RegularExpressions.Regex.IsMatch(text, "^#[0-9a-fA-F]{6}$")) _p.CapsuleColorHex = text.ToLowerInvariant();
+        }));
+        yield return Card("Colour", Setting("Capsule colour", "The closed capsule and the open panel.", swatches));
+        yield return Card("Widgets",
+            SliderRow("Widget size", $"{_p.SizeScale:0.00}× (scales the width of every cell)", 0.85, 1.25, _p.SizeScale, v => _p.SizeScale = Math.Round(v, 2), 0.05),
+            SliderRow("Height", $"{(int)_p.RowHeight} px of widgets", 90, 220, _p.RowHeight, v => _p.RowHeight = Math.Round(v), 2),
+            SliderRow("Padding", $"{(int)_p.ContentPadding} px around the widgets", 6, 32, _p.ContentPadding, v => _p.ContentPadding = Math.Round(v), 1),
+            SliderRow("Spacing", $"{(int)_p.WidgetSpacing} px between widgets", 0, 40, _p.WidgetSpacing, v => _p.WidgetSpacing = Math.Round(v), 1),
+            Switch("Dividers", "Thin lines between widgets.", _p.ShowDividers, v => _p.ShowDividers = v),
+            Setting("Width", "Auto follows the widgets; fixed is a share of the screen.", Choice(new[] { "Auto", "Fixed" }, _p.WidthMode == "fixed" ? 1 : 0, i => _p.WidthMode = i == 1 ? "fixed" : "auto")),
+            _p.WidthMode == "fixed" ? SliderRow("Fixed width", $"{(int)(_p.FixedWidth * 100)}% of the screen", 0.25, 0.9, _p.FixedWidth, v => _p.FixedWidth = Math.Round(v, 2), 0.05) : null);
+        yield return Button("Reset the appearance", _p.ResetAppearance).Align(HorizontalAlignment.Left);
     }
 
     IEnumerable<UIElement> Widgets()

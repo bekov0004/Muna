@@ -75,6 +75,38 @@ public sealed class Preferences
     public bool HideInFullscreen { get => Get("hide-in-fullscreen", true); set => Set("hide-in-fullscreen", value); }
     public double CornerRadius { get => Math.Clamp(Get("corner-radius", 32.0), 8, 44); set => Set("corner-radius", value); }
     public double BackgroundOpacity { get => Math.Clamp(Get("background-opacity", 0.96), 0.5, 1); set => Set("background-opacity", value); }
+    /// <summary>Settings → Appearance: the widgets' size (cells of 44 × this), height, padding, spacing,
+    /// dividers, width, shadow and colour, with Linux's keys.</summary>
+    public double SizeScale { get => Math.Clamp(Get("size-scale", 1.0), 0.85, 1.25); set => Set("size-scale", value); }
+    public double RowHeight { get => Math.Clamp(Get("row-height", 112.0), 90, 220); set => Set("row-height", value); }
+    public double ContentPadding { get => Math.Clamp(Get("content-padding", 16.0), 6, 32); set => Set("content-padding", value); }
+    public double WidgetSpacing { get => Math.Clamp(Get("widget-spacing", 16.0), 0, 40); set => Set("widget-spacing", value); }
+    public bool ShowDividers { get => Get("show-dividers", true); set => Set("show-dividers", value); }
+    /// <summary>"auto": as wide as the widgets need; "fixed": <see cref="FixedWidth"/> of the screen.</summary>
+    public string WidthMode { get => Get("width-mode", "auto"); set => Set("width-mode", value); }
+    public double FixedWidth { get => Math.Clamp(Get("fixed-width", 0.4), 0.25, 0.9); set => Set("fixed-width", value); }
+    public double ShadowStrength { get => Math.Clamp(Get("shadow-strength", 0.6), 0, 1); set => Set("shadow-strength", value); }
+    /// <summary>The capsule's colour ("#rrggbb"; black as on Linux).</summary>
+    public string CapsuleColorHex { get => Get("capsule-color", "#000000"); set => Set("capsule-color", value); }
+    public System.Windows.Media.Color CapsuleColor => ParseColor(CapsuleColorHex, System.Windows.Media.Colors.Black);
+    public LayoutLook Look => new(SizeScale, WidgetSpacing, ContentPadding, RowHeight, ShowDividers, WidthMode == "fixed" ? FixedWidth : null);
+
+    public static System.Windows.Media.Color ParseColor(string hex, System.Windows.Media.Color fallback)
+    {
+        try { return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex); }
+        catch { return fallback; }
+    }
+
+    /// <summary>Puts the appearance back as it was.</summary>
+    public void ResetAppearance()
+    {
+        foreach (var key in new[] { "size-scale", "row-height", "content-padding", "widget-spacing", "show-dividers", "width-mode", "fixed-width",
+                                    "shadow-strength", "capsule-color", "corner-radius", "background-opacity", "animation-speed" })
+            _values.Remove(key);
+        _store.Save(_values);
+        Changed?.Invoke("appearance");
+    }
+
     public double AnimationSpeed { get => Math.Clamp(Get("animation-speed", 1.0), 0.25, 4); set => Set("animation-speed", value); }
     /// <summary>The words of the song, from lrclib.net (artist, title, album and length are sent there).</summary>
     public bool ShowLyrics { get => Get("show-lyrics", false); set => Set("show-lyrics", value); }

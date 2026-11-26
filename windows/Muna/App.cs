@@ -193,7 +193,9 @@ public sealed class CapsuleManager
             case "capsule-screens":
                 Rebuild();
                 break;
-            case "enabled-widgets" or "widget-cells":
+            case "enabled-widgets" or "widget-cells" or "size-scale" or "row-height" or "content-padding" or "widget-spacing"
+                or "show-dividers" or "width-mode" or "fixed-width" or "appearance" or "capsule-color" or "shadow-strength"
+                or "background-opacity" or "corner-radius":
                 All(c => c.LayoutChanged());
                 break;
             case "activities-in-collapsed":

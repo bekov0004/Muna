@@ -36,13 +36,16 @@ public static class Tabs
     /// <summary>The height of the section under the tabs.</summary>
     public static double BodyHeight(this PanelTab tab) => tab switch
     {
-        PanelTab.Muna or PanelTab.Tray => PanelLayout.RowHeight,
+        PanelTab.Muna or PanelTab.Tray => Preferences.Shared.RowHeight,
         PanelTab.LocalSend => 138,
-        PanelTab.Clipboard or PanelTab.Alerts => 236,
+        PanelTab.Clipboard or PanelTab.Alerts => Math.Max(170, Preferences.Shared.RowHeight),
         PanelTab.Command => 250,
         PanelTab.Agent => 120,
         _ => 300,
     };
+
+    /// <summary>Sections whose list can be pulled taller (Linux: a two-finger swipe down at the top).</summary>
+    public static bool Growable(this PanelTab tab) => tab is PanelTab.Clipboard or PanelTab.Alerts;
 
     public static bool HasHeader(this PanelTab tab) => tab is not (PanelTab.Command or PanelTab.Agent or PanelTab.Mirror);
 }
@@ -133,7 +136,7 @@ public sealed class Live : Border
 public sealed class CapsuleWindow : Window
 {
     public const double BarHeight = 30, PillWidth = 200, HoverGrow = 14, HeaderHeight = 36, BottomPadding = 12, CardHeight = 34;
-    const double WindowHeight = 520;
+    double _windowHeight = 520;
 
     public AppState App { get; }
     public PanelState State { get; } = new();
@@ -145,6 +148,9 @@ public sealed class CapsuleWindow : Window
     public PanelTab Tab { get; private set; } = PanelTab.Muna;
     public int PageIndex { get; set; }
     public PanelLayout Layout { get; private set; } = PanelLayout.Make(1920, new[] { "media" }, _ => 4);
+    /// <summary>How much taller than normal the list section is now (pulled with two fingers).</summary>
+    public double Extra { get; private set; }
+    public double BodyHeight => Tab.BodyHeight() + (Tab.Growable() ? Extra : 0);
     public bool IsEditing { get; private set; }
     public bool IsDropTarget { get; private set; }
     public CapsuleCard? Card { get; private set; }
@@ -184,6 +190,7 @@ public sealed class CapsuleWindow : Window
         _capsule.DragLeave += OnDragLeave;
         _capsule.Drop += OnDrop;
         _capsule.MouseWheel += OnWheel;
+        _capsule.PreviewMouseWheel += OnPull;
         var root = new Grid();
         root.Children.Add(_capsule);
         Content = root;
@@ -228,9 +235,11 @@ public sealed class CapsuleWindow : Window
         _windowWidth = Math.Min(screenWidth, Math.Max(620, screenWidth * PanelLayout.MaxShare + 60));
         // a taskbar on top: hang below it
         var top = Screen.WorkingArea.Top > bounds.Top ? Screen.WorkingArea.Top : bounds.Top;
+        // tall enough for a list pulled to 40% of the screen
+        _windowHeight = Math.Max(520, bounds.Height / _scale * 0.4 + HeaderHeight + BottomPadding + 40);
         var widthPx = (int)Math.Round(_windowWidth * _scale);
         Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, bounds.Left + (bounds.Width - widthPx) / 2, top,
-                            widthPx, (int)Math.Round(WindowHeight * _scale), Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
+                            widthPx, (int)Math.Round(_windowHeight * _scale), Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
         RefreshLayout();
     }
 
@@ -246,7 +255,7 @@ public sealed class CapsuleWindow : Window
     {
         var preferences = Preferences.Shared;
         var screenWidth = Area.Width / Math.Max(_scale, 0.5);
-        Layout = PanelLayout.Make(Math.Min(screenWidth, _windowWidth / PanelLayout.MaxShare), preferences.EnabledWidgets, preferences.Cells);
+        Layout = PanelLayout.Make(Math.Min(screenWidth, _windowWidth / PanelLayout.MaxShare), preferences.EnabledWidgets, preferences.Cells, look: preferences.Look);
         if (PageIndex >= Layout.Pages.Count) PageIndex = 0;
     }
 
@@ -264,7 +273,7 @@ public sealed class CapsuleWindow : Window
         return new Size(width, height);
     }
 
-    Size OpenSize() => new(Math.Min(Layout.Width, _windowWidth), HeaderHeightNow + Tab.BodyHeight() + BottomPadding);
+    Size OpenSize() => new(Math.Min(Layout.Width, _windowWidth), HeaderHeightNow + BodyHeight + BottomPadding);
 
     /// <summary>The capsule's rectangle on the screen, in pixels.</summary>
     public Rect ScreenRect
@@ -292,7 +301,16 @@ public sealed class CapsuleWindow : Window
         var open = IsOpen;
         var radius = open ? Preferences.Shared.CornerRadius : 12;
         var ear = open ? 20 : 7;
-        _shape.Fill = C.Rgb(0, 0, 0, Preferences.Shared.BackgroundOpacity);
+        var look = Preferences.Shared;
+        var tint = look.CapsuleColor;
+        _shape.Fill = C.Rgb(tint.R, tint.G, tint.B, look.BackgroundOpacity);
+        // Linux's shadow: deeper under the open panel
+        if (look.ShadowStrength <= 0.01) _shape.Effect = null;
+        else _shape.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            Color = Colors.Black, Direction = 270, ShadowDepth = open ? 8 : 2, BlurRadius = open ? 26 : 10,
+            Opacity = (open ? 0.55 : 0.4) * look.ShadowStrength, RenderingBias = System.Windows.Media.Effects.RenderingBias.Performance,
+        };
         if (!animate || !IsLoaded)
         {
             _capsule.BeginAnimation(WidthProperty, null);
@@ -434,6 +452,7 @@ public sealed class CapsuleWindow : Window
     {
         if (Tab == tab) return;
         Tab = tab;
+        Extra = 0;
         if (IsOpen)
         {
             SetSize(OpenSize());
@@ -511,6 +530,7 @@ public sealed class CapsuleWindow : Window
             _previousForeground = IntPtr.Zero;
         }
         IsOpen = false;
+        Extra = 0;
         SetSize(ClosedSize());
         Render();
         App.PanelClosed();
@@ -534,7 +554,7 @@ public sealed class CapsuleWindow : Window
     public void LayoutChanged()
     {
         RefreshLayout();
-        if (IsOpen) SetSize(OpenSize());
+        SetSize(IsOpen ? OpenSize() : ClosedSize());
         Invalidate();
     }
 
@@ -600,6 +620,36 @@ public sealed class CapsuleWindow : Window
         if (e.OriginalSource is DependencyObject d && FindScroller(d) is { } scroller && scroller.ScrollableHeight > 0) return;
         PageIndex = Math.Clamp(PageIndex + (e.Delta < 0 ? 1 : -1), 0, Layout.Pages.Count - 1);
         e.Handled = true;
+        Invalidate();
+    }
+
+    double _pullSum;
+    DateTime _pullAt;
+
+    /// <summary>Linux's two-finger pull: when the list cannot scroll further toward the top, swiping
+    /// on makes the section taller (to show everything, at most 40% of the screen); swiping back when it
+    /// cannot scroll further down makes it normal again. A pause starts a new swipe.</summary>
+    void OnPull(object sender, MouseWheelEventArgs e)
+    {
+        if (!IsOpen || !Tab.Growable()) return;
+        var scroller = e.OriginalSource is DependencyObject d ? FindScroller(d) : null;
+        var towardTop = e.Delta > 0;
+        if (scroller is not null && scroller.ScrollableHeight > 1 &&
+            (towardTop ? scroller.VerticalOffset > 1 : scroller.VerticalOffset < scroller.ScrollableHeight - 1)) { _pullSum = 0; return; }
+        var now = DateTime.Now;
+        if ((now - _pullAt).TotalMilliseconds > 250) _pullSum = 0;
+        _pullAt = now;
+        var cap = Math.Max(0, Area.Height / Math.Max(_scale, 0.5) * 0.4 - Tab.BodyHeight());
+        double target;
+        if (towardTop && Extra < cap) target = Math.Min(cap, Extra + (scroller?.ScrollableHeight ?? cap) + (scroller is null ? 0 : 1));
+        else if (!towardTop && Extra > 0) target = 0;
+        else return;
+        e.Handled = true;
+        _pullSum += Math.Abs(e.Delta);
+        if (_pullSum < 120) return;
+        _pullSum = -100000;   // once per swipe
+        Extra = Math.Round(target);
+        SetSize(OpenSize());
         Invalidate();
     }
 

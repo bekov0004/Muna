@@ -359,6 +359,13 @@ public class ToolTests
         Assert.Equal(740, layout.Width);
         Assert.Equal(new double[] { 220, 176, 132, 132 }, layout.Pages[0].Select(s => s.Width));
         Assert.Equal(560, PanelLayout.Make(1920, new[] { "timer" }, _ => 3).Width);
+        // a bigger size, a fixed width
+        var big = PanelLayout.Make(1920, new[] { "media", "calendar" }, _ => 5, look: new LayoutLook(Scale: 1.2, Gap: 10, Padding: 20));
+        Assert.Equal(Math.Round(10 * 44 * 1.2 + 10 + 40), big.Width);
+        Assert.Equal(20, big.Padding);
+        var fixedWidth = PanelLayout.Make(1920, new[] { "timer" }, _ => 3, look: new LayoutLook(FixedShare: 0.5));
+        Assert.Equal(960, fixedWidth.Width);
+        Assert.Equal(960 - 32, fixedWidth.Pages[0][0].Width);
     }
 
     [Fact]

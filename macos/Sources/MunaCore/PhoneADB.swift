@@ -26,6 +26,17 @@ public enum PhoneADB {
     }
 
     /// The phones in `adb devices -l`.
+    /// What `adb mdns services` prints → (name, "pairing" or "connect", address).
+    public static func parseMdns(_ output: String) -> [(name: String, type: String, address: String)] {
+        let pattern = try! NSRegularExpression(pattern: "^(\\S+)\\s+_adb-tls-(pairing|connect)\\._tcp\\.?\\s+(\\S+:\\d+)$")
+        return output.split(separator: "\n").compactMap { raw in
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard let match = pattern.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+                  let a = Range(match.range(at: 1), in: line), let b = Range(match.range(at: 2), in: line), let c = Range(match.range(at: 3), in: line) else { return nil }
+            return (String(line[a]), String(line[b]), String(line[c]))
+        }
+    }
+
     public static func parseDevices(_ output: String) -> [PhoneDevice] {
         output.split(separator: "\n").compactMap { line in
             let parts = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)

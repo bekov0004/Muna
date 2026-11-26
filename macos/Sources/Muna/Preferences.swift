@@ -17,6 +17,7 @@ enum WidgetCatalog {
         WidgetInfo(id: "media", title: "Media Player", subtitle: "The music playing in Music or Spotify", symbol: "music.note", cells: 5, minCells: 3),
         WidgetInfo(id: "calendar", title: "Calendar", subtitle: "The days around today and the events", symbol: "calendar", cells: 4, minCells: 3),
         WidgetInfo(id: "mirror", title: "Mirror", subtitle: "A camera preview, only while open", symbol: "camera", cells: 3, minCells: 2),
+        WidgetInfo(id: "phonecard", title: "Phone", subtitle: "Your Android phone in the capsule: its screen, with control; a QR code connects it", symbol: "iphone", cells: 3, minCells: 2),
         WidgetInfo(id: "timer", title: "Timer", subtitle: "A countdown that shows in the capsule", symbol: "timer", cells: 3, minCells: 3),
         WidgetInfo(id: "todo", title: "To-do", subtitle: "A simple local task list", symbol: "checklist", cells: 4, minCells: 3),
         WidgetInfo(id: "notes", title: "Notes", subtitle: "Quick notes you can copy later", symbol: "note.text", cells: 4, minCells: 3),

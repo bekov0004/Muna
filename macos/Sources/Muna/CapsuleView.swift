@@ -376,6 +376,7 @@ struct WidgetView: View {
         case "notes": NotesWidget()
         case "shortcuts": ShortcutsWidget()
         case "companion": CompanionWidget()
+        case "phonecard": PhoneCardWidget()
         default: EmptyView()
         }
     }

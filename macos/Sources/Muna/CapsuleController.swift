@@ -284,6 +284,8 @@ final class CapsuleController {
             .environmentObject(app.agents)
             .environmentObject(app.privacy)
             .environmentObject(app.companion)
+            .environmentObject(app.phone)
+            .environmentObject(app.pairing)
         let host = NSHostingView(rootView: root)
         host.translatesAutoresizingMaskIntoConstraints = false
         tracking.addSubview(host)

@@ -15,11 +15,36 @@ final class PhoneModel: ObservableObject {
     @Published private(set) var adb: String? = PhoneADB.findAdb()
     @Published private(set) var devices: [PhoneDevice] = []
     @Published var selected: String?
-    @Published private(set) var screen: NSImage?
+    @Published var screen: NSImage?
     /// The phone screen's size in pixels (the picture's).
-    @Published private(set) var pixels = CGSize(width: 1080, height: 2340)
+    @Published var pixels = CGSize(width: 1080, height: 2340)
     @Published private(set) var battery: Battery?
     @Published var textDraft = ""
+
+    /// The live picture (Muna Phone's link or the phone's screenrecord); "link" while Muna Phone carries it.
+    @Published private(set) var live = false
+    @Published private(set) var linkState = ""
+    private(set) lazy var stream: PhoneStream = {
+        let stream = PhoneStream(phone: self)
+        stream.onState = { [weak self] state in self?.linkState = state }
+        return stream
+    }()
+
+    func startLive() {
+        guard !live, let serial = device?.serial, device?.ready == true else { return }
+        live = true
+        stream.start(serial: serial)
+    }
+
+    func stopLive() {
+        guard live else { return }
+        live = false
+        linkState = ""
+        stream.stop()
+    }
+
+    /// Keeps the phone's screen dark while it is used from here (Muna Phone only).
+    func setDark(_ dark: Bool) { stream.link?.send(dark ? "p 0" : "p 2") }
 
     private let queue = DispatchQueue(label: "dev.muna.phone")
     private var timer: Timer?
@@ -39,6 +64,10 @@ final class PhoneModel: ObservableObject {
     func unwatch() {
         timer?.invalidate()
         timer = nil
+        // a page drawn again shows the phone again at once: the picture stops only when nobody does
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            if self?.timer == nil { self?.stopLive() }
+        }
     }
 
     private func tick() {
@@ -50,7 +79,7 @@ final class PhoneModel: ObservableObject {
     // --- adb --------------------------------------------------------------------------------------
 
     /// Runs adb (on the phone's queue) and returns what it printed.
-    private func run(_ arguments: [String]) -> Data {
+    func run(_ arguments: [String]) -> Data {
         guard let adb else { return Data() }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: adb)
@@ -85,7 +114,7 @@ final class PhoneModel: ObservableObject {
     }
 
     private func capture() {
-        guard !capturing, let serial = device?.serial, device?.ready == true else { return }
+        guard !live, !capturing, let serial = device?.serial, device?.ready == true else { return }
         capturing = true
         queue.async { [weak self] in
             guard let self else { return }
@@ -119,6 +148,7 @@ final class PhoneModel: ObservableObject {
 
     func tap(_ point: CGPoint, in size: CGSize) {
         let (x, y) = phonePoint(point, in: size)
+        if let link = stream.link { link.send("d \(x) \(y)"); link.send("u \(x) \(y)"); return }
         shell(["input", "tap", "\(x)", "\(y)"])
     }
 
@@ -126,10 +156,24 @@ final class PhoneModel: ObservableObject {
         let (x1, y1) = phonePoint(start, in: size)
         let (x2, y2) = phonePoint(end, in: size)
         let ms = Int(min(max(seconds * 1000, 80), 1000))
+        if let link = stream.link {
+            // a finger down, moving in steps, up: the phone sees a real swipe
+            let steps = min(max(ms / 16, 4), 40)
+            DispatchQueue.global(qos: .userInitiated).async {
+                link.send("d \(x1) \(y1)")
+                for i in 1..<steps {
+                    link.send("m \(x1 + (x2 - x1) * i / steps) \(y1 + (y2 - y1) * i / steps)")
+                    Thread.sleep(forTimeInterval: Double(ms) / 1000 / Double(steps))
+                }
+                link.send("u \(x2) \(y2)")
+            }
+            return
+        }
         shell(["input", "swipe", "\(x1)", "\(y1)", "\(x2)", "\(y2)", "\(ms)"])
     }
 
     func key(_ code: Int) {
+        if let link = stream.link { link.send("k \(code)"); return }
         shell(["input", "keyevent", "\(code)"])
     }
 
@@ -137,16 +181,20 @@ final class PhoneModel: ObservableObject {
         let text = textDraft
         guard !text.isEmpty else { return }
         textDraft = ""
+        if let link = stream.link { link.send("t \(text)"); return }
         shell(["input", "text", PhoneADB.escapeInputText(text)])
     }
 }
 
 struct PhonePage: View {
     @EnvironmentObject var phone: PhoneModel
+    @EnvironmentObject var pairing: PhonePairing
 
     var body: some View {
         VStack(spacing: 10) {
-            if phone.adb == nil {
+            if pairing.text != nil || pairing.status == "failed" {
+                PairingBlock()
+            } else if phone.adb == nil {
                 QuickBlock {
                     Text("adb is not installed").font(.system(size: 13, weight: .semibold))
                     Text("Muna talks to an Android phone with adb. Install it once in the Terminal:")
@@ -166,6 +214,19 @@ struct PhonePage: View {
                         ToolTile(symbol: "sun.max", label: "Wake") { phone.key(PhoneADB.wake) }
                     }
                     HStack(spacing: 6) {
+                        Pill(label: phone.live ? "Live" : "Still", active: phone.live) { if phone.live { phone.stopLive() } else { phone.startLive() } }
+                        if phone.linkState == "link" {
+                            Pill(label: "Dark screen") { phone.setDark(true) }
+                            Pill(label: "Light screen") { phone.setDark(false) }
+                            Text("Muna Phone").font(.system(size: 10, weight: .bold)).foregroundColor(MunaColor.ok)
+                        }
+                        Spacer()
+                        Pill(label: "Pair another") { pairing.start(phone) }
+                    }
+                    if !phone.linkState.isEmpty && phone.linkState != "link" && phone.linkState != "adb" {
+                        Text(phone.linkState).font(.system(size: 10)).foregroundColor(MunaColor.warning).fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack(spacing: 6) {
                         TextField("Type on the phone", text: $phone.textDraft)
                             .textFieldStyle(.roundedBorder)
                             .onSubmit { phone.sendText() }
@@ -181,10 +242,11 @@ struct PhonePage: View {
             } else {
                 QuickBlock {
                     Text("No phone").font(.system(size: 13, weight: .semibold))
-                    Text("Connect an Android phone with a USB cable and switch on USB debugging (Settings → Developer options).")
+                    Text("Connect an Android phone with a USB cable and switch on USB debugging (Settings → Developer options), or pair it over Wi-Fi.")
                         .font(.system(size: 11))
                         .foregroundColor(MunaColor.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Pill(label: "Pair over Wi-Fi…", accent: true) { pairing.start(phone) }
                 }
             }
         }

@@ -354,3 +354,13 @@ final class ParityTests: XCTestCase {
         XCTAssertEqual(TokenUsage.short(1_190_000), "1.2M")
     }
 }
+
+final class MdnsTests: XCTestCase {
+    func testMdns() {
+        let found = PhoneADB.parseMdns("List of discovered mdns services\nmuna-abcde\t_adb-tls-pairing._tcp.\t192.168.1.20:37215\nadb-R58N-x1\t_adb-tls-connect._tcp\t192.168.1.20:41877\n")
+        XCTAssertEqual(found.count, 2)
+        XCTAssertEqual(found[0].name, "muna-abcde")
+        XCTAssertEqual(found[0].type, "pairing")
+        XCTAssertEqual(found[1].address, "192.168.1.20:41877")
+    }
+}

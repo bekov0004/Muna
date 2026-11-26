@@ -27,7 +27,8 @@ public sealed class QuickPanel : Window
         ("system", "System", Glyph.Cpu), ("network", "Network", Glyph.Network), ("sound", "Sound", Glyph.Volume),
         ("displays", "Displays", Glyph.Brightness), ("phone", "Phone", Glyph.Phone), ("awake", "Keep awake", Glyph.Coffee),
         ("focus", "Focus", Glyph.Flag), ("reminders", "Reminders", Glyph.Bell), ("downloads", "Downloads", Glyph.Download),
-        ("windows", "Windows", Glyph.Window), ("agents", "AI agents", Glyph.Sparkle), ("tools", "Tools", Glyph.Settings),
+        ("windows", "Windows", Glyph.Window), ("agents", "AI agents", Glyph.Sparkle), ("controls", "Controls", Glyph.Sliders),
+        ("tools", "Tools", Glyph.Settings),
     };
 
     readonly AppState _app;
@@ -79,6 +80,7 @@ public sealed class QuickPanel : Window
         _app.Downloads.Refresh();
         if (_page == "phone") _app.Phone.Watch();
         if (_page == "agents") _app.Agents.WatchSessions();
+        if (_page == "tools") RefreshRadios();
         Render();
         Show();
         Place();
@@ -132,6 +134,7 @@ public sealed class QuickPanel : Window
         _page = page;
         if (page == "phone") { _app.Phone.Watch(); _app.Phone.ReadSize(); }
         if (page == "agents") _app.Agents.WatchSessions();
+        if (page == "tools") RefreshRadios();
         _message = null;
         Render();
     }
@@ -144,7 +147,7 @@ public sealed class QuickPanel : Window
 
     void Render()
     {
-        var tabs = new UniformGrid { Columns = 6 };
+        var tabs = new UniformGrid { Columns = 7 };
         foreach (var (id, title, glyph) in Pages)
         {
             var selected = id == _page;
@@ -169,6 +172,7 @@ public sealed class QuickPanel : Window
             "downloads" => DownloadsPage(),
             "windows" => WindowsPage(),
             "agents" => AgentsPage(),
+            "controls" => ControlsPage(),
             _ => ToolsPage(),
         };
         column.Children.Add(body);
@@ -527,8 +531,60 @@ public sealed class QuickPanel : Window
         return column;
     }
 
+    bool? _wifi, _bluetooth;
+
+    /// <summary>Reads the radios (Windows answers asynchronously), then draws again.</summary>
+    async void RefreshRadios()
+    {
+        _wifi = await SystemSwitches.RadioOn(global::Windows.Devices.Radios.RadioKind.WiFi);
+        _bluetooth = await SystemSwitches.RadioOn(global::Windows.Devices.Radios.RadioKind.Bluetooth);
+        Queue();
+    }
+
+    async void SwitchRadio(global::Windows.Devices.Radios.RadioKind kind, bool on)
+    {
+        var error = await SystemSwitches.SetRadio(kind, on);
+        if (error is not null) Say(error);
+        RefreshRadios();
+    }
+
+    async void Airplane()
+    {
+        var on = _wifi == true || _bluetooth == true;
+        var error = await SystemSwitches.SetAllRadios(!on);
+        Say(error ?? (on ? "Airplane mode: every radio is off" : "Radios are on again"));
+        RefreshRadios();
+    }
+
+    /// <summary>The quick toggles of Linux's top-bar window: a wide tile with a state.</summary>
+    static Border Toggle(string glyph, string title, bool? on, Action action)
+    {
+        var state = on is null ? "Not here" : on.Value ? "On" : "Off";
+        var tint = on == true ? C.Accent : C.White(0.08);
+        var tile = Ui.Box(Ui.Row(8, Ui.Box(Ui.Icon(glyph, 13, on == true ? Brushes.White : C.White(0.8)), tint, 13).Size(26, 26),
+            Ui.Column(0, Ui.Semi(title, 12), Ui.Text(state, 10, color: C.Secondary)).Grow()), C.White(0.06), 12, 10, 8).Margin(3, 3, 3, 3);
+        if (on is null) tile.Opacity = 0.5;
+        return tile.OnClick(action, C.White(0.12));
+    }
+
     UIElement ToolsPage()
     {
+        var toggles = new UniformGrid { Columns = 2 };
+        toggles.Children.Add(Toggle(Glyph.Wifi, "Wi-Fi", _wifi, () => { if (_wifi is { } on) SwitchRadio(global::Windows.Devices.Radios.RadioKind.WiFi, !on); }));
+        toggles.Children.Add(Toggle(Glyph.Bluetooth, "Bluetooth", _bluetooth, () => { if (_bluetooth is { } on) SwitchRadio(global::Windows.Devices.Radios.RadioKind.Bluetooth, !on); }));
+        var night = SystemSwitches.NightLight;
+        toggles.Children.Add(Toggle(Glyph.Moon, "Night light", night ?? false, () =>
+        {
+            if (!SystemSwitches.SetNightLight(!(night ?? false)))
+            {
+                Say("Turn night light on once in Windows' settings, then Muna can switch it");
+                CapsuleViews.Launch("ms-settings:nightlight");
+            }
+            else Render();
+        }));
+        toggles.Children.Add(Toggle(Glyph.Airplane, "Airplane mode", _wifi is null && _bluetooth is null ? null : _wifi != true && _bluetooth != true, Airplane));
+        toggles.Children.Add(Toggle(Glyph.Microphone, "Microphone", _app.Sound.HasMicrophone ? !_app.Sound.MicrophoneMuted : null, () => { _app.Sound.ToggleMicrophone(); Render(); }));
+        toggles.Children.Add(Toggle(Glyph.Coffee, "Keep awake", _app.Awake.IsOn, () => { if (_app.Awake.IsOn) _app.Awake.Stop(); else _app.Awake.Start(null, true); }));
         var grid = new UniformGrid { Columns = 3 };
         void Tile(string glyph, string label, Action action)
         {
@@ -545,7 +601,38 @@ public sealed class QuickPanel : Window
         Tile(Glyph.Note, "Scratchpad", () => { HidePanel(); _app.ShowScratchpad(); });
         Tile(Glyph.Broom, "Cleaning", () => { HidePanel(); CleaningMode.Start(); });
         Tile(Glyph.Search, "Command Bar", () => { HidePanel(); _app.Capsules.OpenCommand(); });
-        return grid;
+        return Ui.Column(8, toggles, grid);
+    }
+
+    readonly HashSet<string> _folded = new();
+
+    /// <summary>Linux's Controls widget: switches in groups that fold, each group with how many are on.</summary>
+    UIElement ControlsPage()
+    {
+        var column = Ui.Column(8);
+        foreach (var group in SystemSwitches.All.GroupBy(s => s.Group))
+        {
+            var name = group.Key;
+            var folded = _folded.Contains(name);
+            var on = group.Count(SystemSwitches.Read);
+            column.Children.Add(Ui.Row(6, Ui.Icon(folded ? Glyph.Right : Glyph.Down, 9, C.Secondary), Ui.Text(name.ToUpperInvariant(), 10, FontWeights.Black, C.Caption).Grow(),
+                                       Ui.Digits($"{on}/{group.Count()}", 10, FontWeights.Bold, C.Accent))
+                .OnClick(() => { if (!_folded.Remove(name)) _folded.Add(name); Render(); }));
+            if (folded) continue;
+            var rows = new List<UIElement?>();
+            foreach (var item in group)
+            {
+                var s = item;
+                rows.Add(Ui.Row(10, Ui.Icon(item.Glyph, 13, C.Secondary),
+                    Ui.Column(1, Ui.Semi(item.Title, 12), Ui.Text(item.Description, 10, color: C.Secondary, wrap: true)).Grow(),
+                    DarkWindow.Toggle(SystemSwitches.Read(item), value => { SystemSwitches.Write(s, value); Render(); })));
+            }
+            column.Children.Add(Block(rows.ToArray()));
+        }
+        column.Children.Add(Ui.Row(6, Ui.Pill("Mouse settings", () => CapsuleViews.Launch("ms-settings:mousetouchpad")),
+                                      Ui.Pill("Touchpad", () => CapsuleViews.Launch("ms-settings:devices-touchpad")),
+                                      Ui.Pill("Window layout", () => SetPage("windows"))));
+        return column;
     }
 }
 

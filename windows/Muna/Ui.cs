@@ -66,6 +66,7 @@ public static class Glyph
     public const string Coffee = "", Download = "", Window = "", Desktop = "", Edit = "";
     public const string More = "", Cpu = "", Memory = "", Disk = "", Link = "";
     public const string Sparkle = "", Mail = "", Video = "", VideoOff = "", Ruler = "";
+    public const string Sliders = "\uE9E9", Bluetooth = "\uE702", Airplane = "\uE709", Thermometer = "\uE9CA", Grid = "\uF0E2", Gesture = "\uED5F";
     public const string Broom = "", Calculator = "", Code = "", Terminal = "", Sun = "";
 }
 

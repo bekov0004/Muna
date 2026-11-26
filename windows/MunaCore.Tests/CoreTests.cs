@@ -553,6 +553,24 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void NightLightState()
+    {
+        // Windows' record with night light off: byte 18 is 0x13; "on" adds 0x10 0x00 after byte 22
+        var off = new byte[] { 0x43, 0x42, 0x01, 0x00, 0x0A, 0x02, 0x01, 0x00, 0x2A, 0x06, 0xA1, 0xB2, 0xC3, 0xD4, 0x06, 0x2A, 0x2B, 0x0E, 0x13, 0x43, 0x42, 0x01, 0x00, 0xCA, 0x14, 0x0E, 0x15, 0x00, 0x00, 0x00, 0x00 };
+        Assert.False(NightLightBlob.IsOn(off));
+        var on = NightLightBlob.With(off, true)!;
+        Assert.True(NightLightBlob.IsOn(on));
+        Assert.Equal(off.Length + 2, on.Length);
+        Assert.Equal(new byte[] { 0x10, 0x00 }, on[23..25]);
+        Assert.Equal(0xA2, on[10]);                       // the timestamp grew
+        var back = NightLightBlob.With(on, false)!;
+        Assert.False(NightLightBlob.IsOn(back));
+        Assert.Equal(off[19..], back[19..]);
+        Assert.Equal(0xA3, back[10]);
+        Assert.Null(NightLightBlob.With(new byte[] { 1, 2, 3 }, true));
+    }
+
+    [Fact]
     public void Reminders()
     {
         using var t = new TempFolder();

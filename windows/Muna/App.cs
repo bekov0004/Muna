@@ -400,6 +400,16 @@ public sealed class App : Application
         AutoStart.Refresh();
     }
 
+    public static void Log(string text)
+    {
+        try
+        {
+            System.IO.Directory.CreateDirectory(DataDirectory.Path);
+            System.IO.File.AppendAllText(System.IO.Path.Combine(DataDirectory.Path, "muna.log"), $"{DateTime.Now:s} {text}\n");
+        }
+        catch { /* nowhere to write */ }
+    }
+
     public static void Log(Exception exception)
     {
         try

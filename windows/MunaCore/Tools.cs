@@ -467,3 +467,33 @@ public static class PhoneAdb
         return builder.ToString();
     }
 }
+
+/// <summary>Windows keeps night light's state as a small CloudStore record: byte 18 is 0x15 when on
+/// (0x13 when off), and "on" carries two more bytes (0x10 0x00) after byte 22. Bytes 10–14 are a
+/// timestamp that must grow, or Windows ignores the change.</summary>
+public static class NightLightBlob
+{
+    public static bool IsOn(byte[] data) => data.Length > 18 && data[18] == 0x15;
+
+    public static byte[]? With(byte[] data, bool on)
+    {
+        if (data.Length < 25 || data[18] is not (0x13 or 0x15)) return null;
+        if (IsOn(data) == on) return data;
+        var list = new List<byte>(data);
+        if (on)
+        {
+            list[18] = 0x15;
+            list.InsertRange(23, new byte[] { 0x10, 0x00 });
+        }
+        else
+        {
+            list[18] = 0x13;
+            if (list[23] == 0x10 && list[24] == 0x00) list.RemoveRange(23, 2);
+        }
+        for (var i = 10; i < 15; i++)
+        {
+            if (list[i] != 0xff) { list[i]++; break; }
+        }
+        return list.ToArray();
+    }
+}

@@ -87,6 +87,9 @@ public sealed class Preferences
     /// <summary>The processor and the memory in the tooltip of Muna's tray icon.</summary>
     public bool MenuBarReadings { get => Get("menu-bar-readings", false); set => Set("menu-bar-readings", value); }
 
+    /// <summary>Each monitor switches its own desktops (Muna hides and shows the windows of the others).</summary>
+    public bool DesktopsPerMonitor { get => Get("desktops-per-monitor", false); set => Set("desktops-per-monitor", value); }
+
     // the Muna page
     public List<string> EnabledWidgets
     {

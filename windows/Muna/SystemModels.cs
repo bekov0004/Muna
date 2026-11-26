@@ -737,7 +737,96 @@ public sealed class PhoneModel : Model
 
     public void Unwatch()
     {
-        if (--_watchers <= 0) { _watchers = 0; _timer.Stop(); }
+        if (--_watchers <= 0) { _watchers = 0; _timer.Stop(); StopLive(); }
+    }
+
+    // --- the live picture: the phone's screenrecord (H.264) through adb, decoded by Windows ---------
+
+    public bool Live { get; private set; }
+    public string LiveError { get; private set; } = "";
+    WriteableBitmap? _liveBitmap;
+    System.Threading.Thread? _liveThread;
+    Process? _record;
+    volatile bool _liveOn;
+    (byte[] Pixels, int Width, int Height)? _frame;
+    int _framePosted;
+
+    public void StartLive()
+    {
+        if (Live || Current is not { } device || Adb is null) return;
+        Live = true;
+        LiveError = "";
+        _liveOn = true;
+        var serial = device.Serial;
+        _liveThread = new System.Threading.Thread(() => LiveLoop(serial)) { IsBackground = true, Name = "phone picture" };
+        _liveThread.Start();
+        Notify();
+    }
+
+    public void StopLive()
+    {
+        if (!Live) return;
+        Live = false;
+        _liveOn = false;
+        try { _record?.Kill(); } catch { /* gone */ }
+        Notify();
+    }
+
+    void LiveLoop(string serial)
+    {
+        var failures = 0;
+        while (_liveOn)
+        {
+            var width = (int)(Math.Round(Math.Min(540, RealWidth) / 16) * 16);
+            var height = (int)(Math.Round(RealHeight * width / RealWidth / 16) * 16);
+            var started = DateTime.Now;
+            try
+            {
+                using var decoder = new H264Decoder();
+                var info = new ProcessStartInfo(Adb!) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false, CreateNoWindow = true };
+                foreach (var a in new[] { "-s", serial, "exec-out", "screenrecord", "--output-format=h264", $"--size={width}x{height}", "--bit-rate=5000000", "-" })
+                    info.ArgumentList.Add(a);
+                using var process = Process.Start(info)!;
+                _record = process;
+                process.ErrorDataReceived += (_, _) => { };
+                process.BeginErrorReadLine();
+                var splitter = new AnnexB();
+                var stream = process.StandardOutput.BaseStream;
+                var chunk = new byte[16384];
+                int read;
+                while (_liveOn && (read = stream.Read(chunk, 0, chunk.Length)) > 0)
+                {
+                    foreach (var unit in splitter.Push(chunk.AsSpan(0, read)))
+                        decoder.Decode(unit, width, height, Show);
+                    failures = 0;
+                }
+            }
+            catch (Exception e)
+            {
+                failures++;
+                var message = e.Message;
+                Ui(() => { LiveError = message; Notify(); });
+                if (failures >= 6) { Ui(StopLive); return; }
+            }
+            // screenrecord stops after three minutes (or the screen changed state): again
+            if (_liveOn) System.Threading.Thread.Sleep((DateTime.Now - started).TotalSeconds < 2 ? 1200 : 300);
+        }
+    }
+
+    /// <summary>A decoded picture: only the newest one is drawn (the screen never lags behind).</summary>
+    void Show(byte[] pixels, int width, int height)
+    {
+        _frame = (pixels, width, height);
+        if (System.Threading.Interlocked.Exchange(ref _framePosted, 1) == 1) return;
+        Ui(() =>
+        {
+            _framePosted = 0;
+            if (_frame is not { } frame || !Live) return;
+            var fresh = _liveBitmap is null || _liveBitmap.PixelWidth != frame.Width || _liveBitmap.PixelHeight != frame.Height;
+            if (fresh) _liveBitmap = new WriteableBitmap(frame.Width, frame.Height, 96, 96, PixelFormats.Bgra32, null);
+            _liveBitmap!.WritePixels(new Int32Rect(0, 0, frame.Width, frame.Height), frame.Pixels, frame.Width * 4, 0);
+            if (fresh || Screen != _liveBitmap) { Screen = _liveBitmap; Notify(); }
+        });
     }
 
     byte[] Run(params string[] arguments)
@@ -764,6 +853,7 @@ public sealed class PhoneModel : Model
         if (_busy || Adb is null) return;
         _busy = true;
         var refreshDevices = _ticks++ % 5 == 0 || Devices.Count == 0;
+        var live = Live;
         Task.Run(() =>
         {
             var devices = refreshDevices ? PhoneAdb.ParseDevices(Text("devices", "-l")) : Devices;
@@ -773,7 +863,7 @@ public sealed class PhoneModel : Model
             if (current is not null)
             {
                 if (refreshDevices) battery = PhoneAdb.ParseBattery(Text("-s", current.Serial, "shell", "dumpsys", "battery"));
-                var png = Run("-s", current.Serial, "exec-out", "screencap", "-p");
+                var png = live ? Array.Empty<byte>() : Run("-s", current.Serial, "exec-out", "screencap", "-p");
                 if (png.Length > 100)
                 {
                     try
@@ -798,7 +888,7 @@ public sealed class PhoneModel : Model
             var (devices, battery, picture) = t.Result;
             Devices = devices;
             Battery = battery;
-            if (picture is not null) Screen = picture;
+            if (picture is not null && !Live) Screen = picture;
             Notify();
         }));
     }

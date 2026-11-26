@@ -357,9 +357,12 @@ public sealed class QuickPanel : Window
             else phone.Swipe(s, end, size, (DateTime.Now - startAt).TotalSeconds);
         };
         var keys = Ui.Row(6, Ui.Pill("Back", () => phone.Key(PhoneAdb.Back)), Ui.Pill("Home", () => phone.Key(PhoneAdb.Home)),
-                          Ui.Pill("Apps", () => phone.Key(PhoneAdb.Recents)), Ui.Pill("Wake", () => phone.Key(PhoneAdb.Wake)));
+                          Ui.Pill("Apps", () => phone.Key(PhoneAdb.Recents)), Ui.Pill("Wake", () => phone.Key(PhoneAdb.Wake)),
+                          Ui.Pill(phone.Live ? "Live" : "Still", () => { if (phone.Live) phone.StopLive(); else phone.StartLive(); }, active: phone.Live));
+        head.Children.Add(Ui.IconButton(Glyph.Wifi, phone.StartPairing, tip: "Pair another phone over Wi-Fi"));
         keys.HorizontalAlignment = HorizontalAlignment.Center;
-        return Block(head, phone.Screen is null ? Ui.Text("Getting the screen…", 11, color: C.Secondary) : picture, keys, Ui.Detach(_phoneText));
+        return Block(head, phone.Screen is null ? Ui.Text("Getting the screen…", 11, color: C.Secondary) : picture, keys,
+                     phone.LiveError.Length > 0 && phone.Live ? Ui.Text(phone.LiveError, 10, color: C.Warning, wrap: true) : null, Ui.Detach(_phoneText));
     }
 
     /// <summary>The QR code of a pairing, and what the phone must do.</summary>

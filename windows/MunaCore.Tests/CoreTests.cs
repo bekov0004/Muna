@@ -560,6 +560,24 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void H264AccessUnits()
+    {
+        byte[] Nal(int type, int length, bool four = true) =>
+            (four ? new byte[] { 0, 0, 0, 1 } : new byte[] { 0, 0, 1 }).Concat(new[] { (byte)type }).Concat(Enumerable.Repeat((byte)0x55, length)).ToArray();
+        var stream = Nal(7, 10).Concat(Nal(8, 4)).Concat(Nal(5, 300)).Concat(Nal(1, 120, false)).Concat(Nal(1, 80)).Concat(Nal(7, 10)).ToArray();
+        var splitter = new AnnexB();
+        var units = new List<byte[]>();
+        // in odd pieces, as a pipe gives them
+        for (var at = 0; at < stream.Length; at += 37) units.AddRange(splitter.Push(stream.AsSpan(at, Math.Min(37, stream.Length - at))));
+        Assert.Equal(3, units.Count);
+        Assert.Equal(7, AnnexB.FirstType(units[0]));              // SPS + PPS + IDR together
+        Assert.Equal(15 + 9 + 305, units[0].Length);
+        Assert.Equal(1, AnnexB.FirstType(units[1]));
+        Assert.Equal(124, units[1].Length);                      // the three-byte start code
+        Assert.Equal(85, units[2].Length);
+    }
+
+    [Fact]
     public void QrCodesAsLinux()
     {
         // made by linux/src/utils/qr.js with node: the same modules

@@ -176,8 +176,24 @@ final class KeepAwake: ObservableObject {
     /// nil: until switched off.
     @Published private(set) var until: Date?
     @Published var keepScreenOn = true
+    /// Also with the lid closed (Linux's "even with the lid closed"): macOS's sleep is switched off while
+    /// it is on, which needs the administrator's password (macOS asks).
+    @Published private(set) var lidClosed = false
+    @Published private(set) var lidProblem: String?
 
     private var assertion: IOPMAssertionID = 0
+
+    /// pmset's disablesleep, as administrator (macOS shows its own password dialog).
+    private func disableSleep(_ on: Bool) -> Bool {
+        var error: NSDictionary?
+        _ = NSAppleScript(source: "do shell script \"/usr/bin/pmset -a disablesleep \(on ? 1 : 0)\" with administrator privileges")?.executeAndReturnError(&error)
+        return error == nil
+    }
+
+    func setLidClosed(_ on: Bool) {
+        guard on != lidClosed else { return }
+        if disableSleep(on) { lidClosed = on; lidProblem = nil } else { lidProblem = "macOS did not allow it (the password was not given)" }
+    }
     private var timer: Timer?
 
     struct Choice: Hashable {
@@ -206,6 +222,7 @@ final class KeepAwake: ObservableObject {
     func stop() {
         timer?.invalidate()
         timer = nil
+        if lidClosed { _ = disableSleep(false); lidClosed = false }
         if isOn {
             IOPMAssertionRelease(assertion)
         }
@@ -655,6 +672,17 @@ struct AwakePage: View {
             Toggle("Keep the screen on too", isOn: $awake.keepScreenOn)
                 .toggleStyle(.switch)
                 .font(.system(size: 12))
+            Toggle("Even with the lid closed", isOn: Binding(get: { awake.lidClosed }, set: { on in
+                if on && !awake.isOn { awake.start(minutes: nil) }
+                awake.setLidClosed(on)
+            }))
+                .toggleStyle(.switch)
+                .font(.system(size: 12))
+            if let problem = awake.lidProblem {
+                Text(problem).font(.system(size: 10)).foregroundColor(MunaColor.warning)
+            } else {
+                Text("macOS asks for your password; sleep comes back when keep awake ends.").font(.system(size: 10)).foregroundColor(MunaColor.secondary)
+            }
         }
     }
 }

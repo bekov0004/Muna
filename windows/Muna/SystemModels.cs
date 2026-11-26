@@ -392,6 +392,47 @@ public sealed class KeepAwake : Model
 
     public KeepAwake() => _end.Tick += (_, _) => Stop();
 
+    /// Also with the lid closed (Linux's "even with the lid closed"): the power plan's lid action is
+    /// "do nothing" while it is on, and goes back to what it was afterwards.
+    public bool LidClosed { get; private set; }
+    (string Ac, string Dc)? _lidBefore;
+
+    static string PowerCfg(params string[] arguments)
+    {
+        try
+        {
+            var info = new ProcessStartInfo("powercfg") { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+            foreach (var a in arguments) info.ArgumentList.Add(a);
+            using var process = Process.Start(info)!;
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(4000);
+            return output;
+        }
+        catch { return ""; }
+    }
+
+    public void SetLidClosed(bool on)
+    {
+        if (on == LidClosed) return;
+        if (on)
+        {
+            // what the lid does now (AC, then DC), to give it back
+            var values = System.Text.RegularExpressions.Regex.Matches(PowerCfg("/QUERY", "SCHEME_CURRENT", "SUB_BUTTONS", "LIDACTION"), @"0x0000000(\d)")
+                .Select(m => m.Groups[1].Value).ToList();
+            _lidBefore = values.Count >= 2 ? (values[^2], values[^1]) : ("1", "1");
+            PowerCfg("/SETACVALUEINDEX", "SCHEME_CURRENT", "SUB_BUTTONS", "LIDACTION", "0");
+            PowerCfg("/SETDCVALUEINDEX", "SCHEME_CURRENT", "SUB_BUTTONS", "LIDACTION", "0");
+        }
+        else if (_lidBefore is { } before)
+        {
+            PowerCfg("/SETACVALUEINDEX", "SCHEME_CURRENT", "SUB_BUTTONS", "LIDACTION", before.Ac);
+            PowerCfg("/SETDCVALUEINDEX", "SCHEME_CURRENT", "SUB_BUTTONS", "LIDACTION", before.Dc);
+        }
+        PowerCfg("/SETACTIVE", "SCHEME_CURRENT");
+        LidClosed = on;
+        Notify();
+    }
+
     public void Start(int? minutes, bool screen = true)
     {
         KeepScreen = screen;
@@ -407,6 +448,7 @@ public sealed class KeepAwake : Model
     {
         _end.Stop();
         Native.SetThreadExecutionState(Native.ES_CONTINUOUS);
+        if (LidClosed) SetLidClosed(false);
         IsOn = false;
         Until = null;
         Notify();

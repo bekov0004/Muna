@@ -492,7 +492,9 @@ public sealed class QuickPanel : Window
             choices.Children.Add(pill);
         }
         var screen = Ui.Row(8, Ui.Text("Keep the screen on too", 12).Grow(), DarkWindow.Toggle(awake.KeepScreen, on => { if (awake.IsOn) awake.Start(awake.Until is { } u ? Math.Max(1, (int)(u - DateTime.Now).TotalMinutes) : null, on); else { awake.Start(null, on); awake.Stop(); } }));
-        return Block(status, choices, screen);
+        var lid = Ui.Row(8, Ui.Column(1, Ui.Text("Even with the lid closed", 12), Ui.Text("The lid does nothing while it is on; afterwards it does what it did.", 10, color: C.Secondary, wrap: true)).Grow(),
+            DarkWindow.Toggle(awake.LidClosed, on => { if (on && !awake.IsOn) awake.Start(null, awake.KeepScreen); awake.SetLidClosed(on); }));
+        return Block(status, choices, screen, lid);
     }
 
     UIElement FocusPage()

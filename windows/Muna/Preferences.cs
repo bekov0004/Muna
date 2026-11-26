@@ -28,7 +28,15 @@ public static class WidgetCatalog
     public static WidgetInfo? Info(string id) => All.FirstOrDefault(w => w.Id == id);
 
     /// <summary>Linux's default Muna page, without the widgets of the top-bar window.</summary>
-    public static readonly string[] DefaultEnabled = { "media", "calendar", "mirror", "timer" };
+    public static readonly string[] DefaultEnabled = { "media", "calendar", "mirror" };
+
+    /// <summary>The tabs of the tray icon's window (Linux: the top-bar button's window), in Linux's order.</summary>
+    public static readonly string[] MenuIds = { "awake", "reminders", "phone", "displays", "sound", "system", "network", "disks", "power",
+                                                "utilities", "controls", "toggles", "windows", "workspaces", "focus", "input", "downloads", "agents" };
+
+    /// <summary>Linux's enabled-widgets default: the capsule's widgets and the window's tabs in one list.</summary>
+    public static readonly string[] LinuxDefault = { "media", "calendar", "mirror", "awake", "phone", "displays", "sound", "system", "network",
+                                                     "disks", "power", "utilities", "controls", "toggles", "windows", "workspaces" };
 }
 
 /// <summary>Muna's settings, with the names and defaults of Muna on Linux (its GSettings schema),
@@ -247,15 +255,45 @@ public sealed class Preferences
     public void SetEdgeAction(string key, string action) => Set(key, action);
 
     // the Muna page
+    // enabled-widgets is one list for both, as on Linux: the capsule's widgets and the tabs of the
+    // tray icon's window, each part in its own order
+    List<string> AllWidgets => (_values["enabled-widgets"] as JsonArray)?.Select(n => n?.GetValue<string>()).OfType<string>().Distinct().ToList()
+                               ?? WidgetCatalog.LinuxDefault.ToList();
+
+    void SetAllWidgets(IEnumerable<string> island, IEnumerable<string> menu) =>
+        Set("enabled-widgets", new JsonArray(island.Concat(menu).Distinct().Select(v => (JsonNode?)v).ToArray()));
+
+    /// <summary>The capsule's widgets, in order.</summary>
     public List<string> EnabledWidgets
     {
         get
         {
             var known = WidgetCatalog.All.Select(w => w.Id).ToHashSet();
-            var list = (_values["enabled-widgets"] as JsonArray)?.Select(n => n?.GetValue<string>()).OfType<string>().ToList();
-            return (list ?? WidgetCatalog.DefaultEnabled.ToList()).Where(known.Contains).ToList();
+            return AllWidgets.Where(known.Contains).ToList();
         }
-        set => Set("enabled-widgets", new JsonArray(value.Select(v => (JsonNode?)v).ToArray()));
+        set => SetAllWidgets(value, MenuWidgets);
+    }
+
+    /// <summary>The tabs of the tray icon's window, in order (Linux's menuWidgets).</summary>
+    public List<string> MenuWidgets
+    {
+        get => AllWidgets.Where(WidgetCatalog.MenuIds.Contains).ToList();
+        set => SetAllWidgets(EnabledWidgets, value);
+    }
+
+    /// <summary>The whole enabled-widgets list at once (Linux's bundles).</summary>
+    public void SetWidgets(IEnumerable<string> ids)
+    {
+        var list = ids.ToList();
+        SetAllWidgets(list.Where(id => WidgetCatalog.Info(id) is not null), list.Where(WidgetCatalog.MenuIds.Contains));
+    }
+
+    /// <summary>Switches one tab of the tray icon's window on (at the end) or off.</summary>
+    public void SetMenuWidget(string id, bool on)
+    {
+        var list = MenuWidgets.Where(w => w != id).ToList();
+        if (on) list.Add(id);
+        MenuWidgets = list;
     }
 
     public Dictionary<string, int> WidgetCells

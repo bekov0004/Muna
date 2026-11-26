@@ -57,8 +57,8 @@ public sealed class QuickPanel : Window
     {
         get
         {
-            var p = Preferences.Shared;
-            var shown = Ordered(p.Strings("menu-order")).Where(t => !p.Has("menu-hidden", t.Id)).ToList();
+            // the enabled tabs in their order (Linux: enabled-widgets)
+            var shown = Preferences.Shared.MenuWidgets.Select(id => AllPages.FirstOrDefault(p => p.Id == id)).Where(p => p.Id is not null).ToList();
             return shown.Count > 0 ? shown : AllPages.Where(t => t.Id == "system").ToList();
         }
     }

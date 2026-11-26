@@ -368,19 +368,23 @@ public sealed class SettingsWindow : DarkWindow
 
     IEnumerable<UIElement> MenuBarPage()
     {
-        var order = QuickPanel.Ordered(_p.Strings("menu-order"));
+        // the shown tabs in their order (enabled-widgets, as on Linux), then the others
+        var shown = _p.MenuWidgets;
+        var order = QuickPanel.Ordered(shown);
         var rows = new List<UIElement>();
         for (var i = 0; i < order.Count; i++)
         {
             var (id, title, glyph, about) = order[i];
             var index = i;
-            rows.Add(new Border
+            var on = shown.Contains(id);
+            var row = Ui.Row(10, Ui.Icon(glyph, 14, on ? C.WinAccent : C.WinSecondary).Size(22), Ui.Column(2, Ui.Text(title, 13, color: C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true)).Grow());
+            if (on)
             {
-                Child = Ui.Row(10, Ui.Icon(glyph, 14, C.WinAccent).Size(22), Ui.Column(2, Ui.Text(title, 13, color: C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true)).Grow(),
-                    Ui.IconButton(Glyph.Up, () => MoveTab(order, index, -1), tip: "Earlier"), Ui.IconButton(Glyph.Down, () => MoveTab(order, index, 1), tip: "Later"),
-                    Toggle(!_p.Has("menu-hidden", id), on => _p.Toggle("menu-hidden", id, !on))),
-                Padding = new Thickness(14, 8, 14, 8),
-            });
+                row.Children.Add(Ui.IconButton(Glyph.Up, () => MoveTab(shown, index, -1), tip: "Earlier"));
+                row.Children.Add(Ui.IconButton(Glyph.Down, () => MoveTab(shown, index, 1), tip: "Later"));
+            }
+            row.Children.Add(Toggle(on, value => _p.SetMenuWidget(id, value)));
+            rows.Add(new Border { Child = row, Padding = new Thickness(14, 8, 14, 8) });
         }
         yield return Card("Tabs of the window", rows.ToArray());
         var colors = new[] { "#ff9500", "#ff3b30", "#34c759", "#0a84ff", "#bf5af2", "#ffffff" };
@@ -398,13 +402,13 @@ public sealed class SettingsWindow : DarkWindow
         yield return Ui.Text("Switch off anything you do not need; the arrows change the order.", 11, color: C.WinSecondary, wrap: true);
     }
 
-    void MoveTab(List<(string Id, string Title, string Glyph, string About)> order, int index, int step)
+    void MoveTab(List<string> shown, int index, int step)
     {
-        var ids = order.Select(o => o.Id).ToList();
+        var ids = shown.ToList();
         var target = index + step;
         if (target < 0 || target >= ids.Count) return;
         (ids[index], ids[target]) = (ids[target], ids[index]);
-        _p.SetStrings("menu-order", ids);
+        _p.MenuWidgets = ids;
     }
 
     IEnumerable<UIElement> CommandPage()
@@ -574,23 +578,22 @@ public sealed class SettingsWindow : DarkWindow
         var all = Features.All(_app);
         var presets = new (string Name, string About, string[] Widgets)[]
         {
-            ("Everything", "Every tool and widget.", WidgetCatalog.All.Select(w => w.Id).ToArray()),
-            ("Essentials", "Music, calendar and mirror in the capsule, with every tool in the window of Muna's icon.", new[] { "media", "calendar", "mirror", "timer" }),
-            ("Light island", "Only music and calendar.", new[] { "media", "calendar" }),
+            ("Everything", "Every tool and widget.", WidgetCatalog.All.Select(w => w.Id).Concat(WidgetCatalog.MenuIds).ToArray()),
+            ("Essentials", "Windows, quick toggles, focus, system and sound, with music, calendar and mirror.",
+                new[] { "media", "calendar", "mirror", "awake", "sound", "system", "utilities", "toggles", "windows" }),
+            ("Light island", "Only music and calendar; the tools window is empty.", new[] { "media", "calendar" }),
         };
         var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3 };
         foreach (var (name, about, widgets) in presets)
         {
             var list = widgets;
-            var light = name == "Light island";
             grid.Children.Add(Ui.Box(Ui.Column(6, Ui.Semi(name, 13, C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true),
                 Button("Apply", () =>
                 {
-                    _p.EnabledWidgets = list.ToList();
-                    _p.SetStrings("menu-hidden", light ? QuickPanel.Ordered(new List<string>()).Select(t => t.Id) : Array.Empty<string>());
+                    _p.SetWidgets(list);
                 })), C.White(0.05), 10, 10, 10).Margin(4, 4, 4, 4));
         }
-        var on = _p.EnabledWidgets.Count + QuickPanel.Ordered(new List<string>()).Count(t => !_p.Has("menu-hidden", t.Id));
+        var on = _p.EnabledWidgets.Count + _p.MenuWidgets.Count;
         var total = WidgetCatalog.All.Length + QuickPanel.Ordered(new List<string>()).Count;
         yield return Card("Start with a bundle", Ui.Column(8, Ui.Semi($"{on} of {total} tools and widgets are on", 13, C.WinText), grid).Margin(14, 10, 14, 10));
         var topics = Pages.Where(p => p.Id.StartsWith("feat-")).Select(p =>
@@ -1140,7 +1143,7 @@ public static class Features
         foreach (var (id, title, glyph, about) in QuickPanel.Ordered(new List<string>()))
         {
             var tab = id;
-            list.Add(new Feature(TopicOf.GetValueOrDefault(id, "feat-system"), Tools, title, about, glyph, () => !p.Has("menu-hidden", tab), on => p.Toggle("menu-hidden", tab, !on)));
+            list.Add(new Feature(TopicOf.GetValueOrDefault(id, "feat-system"), Tools, title, about, glyph, () => p.MenuWidgets.Contains(tab), on => p.SetMenuWidget(tab, on)));
         }
         foreach (var widget in WidgetCatalog.All)
         {

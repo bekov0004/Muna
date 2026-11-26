@@ -278,7 +278,8 @@ enum QuickTools {
 // --- the window -----------------------------------------------------------------------------------
 
 enum QuickPage: String, CaseIterable, Identifiable {
-    case system, network, sound, displays, awake, focus, reminders, downloads, windows, phone, agents, tools
+    // Linux's order of the tabs (linux/prefsWindow.js MENU_ORDER)
+    case awake, reminders, phone, displays, sound, system, network, disks, power, utilities, controls, toggles, windows, workspaces, focus, input, downloads, agents
 
     var id: String { rawValue }
 
@@ -295,7 +296,13 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .downloads: return "Downloads"
         case .windows: return "Windows"
         case .agents: return "AI agents"
-        case .tools: return "Tools"
+        case .disks: return "Disks"
+        case .power: return "Power"
+        case .utilities: return "Utilities"
+        case .controls: return "Controls"
+        case .toggles: return "Quick toggles"
+        case .workspaces: return "Desktops"
+        case .input: return "Input"
         }
     }
 
@@ -313,7 +320,13 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .downloads: return "Files arriving in Downloads."
         case .windows: return "Snap the window in front: halves, quarters, thirds, another screen."
         case .agents: return "Claude Code and Codex at work."
-        case .tools: return "Screenshots, colour picker, dark mode, trash and more."
+        case .disks: return "Free space and disk activity."
+        case .power: return "Battery, charging and power use."
+        case .utilities: return "Screenshots, colour picker and other tools."
+        case .controls: return "Switches for mouse, keyboard and windows."
+        case .toggles: return "Dark mode, microphone, trash and more."
+        case .workspaces: return "Create, switch and remove desktops."
+        case .input: return "Mouse and keyboard switches."
         }
     }
 
@@ -343,7 +356,13 @@ enum QuickPage: String, CaseIterable, Identifiable {
         case .downloads: return "arrow.down.circle"
         case .windows: return "rectangle.split.2x1"
         case .agents: return "sparkles"
-        case .tools: return "wrench.and.screwdriver"
+        case .disks: return "internaldrive"
+        case .power: return "battery.75"
+        case .utilities: return "wrench.and.screwdriver"
+        case .controls: return "switch.2"
+        case .toggles: return "circle.grid.2x2"
+        case .workspaces: return "rectangle.3.group"
+        case .input: return "keyboard"
         }
     }
 }
@@ -356,6 +375,8 @@ final class QuickPanelState: ObservableObject {
     var onCleaning: () -> Void = {}
     var onCommand: () -> Void = {}
     var onMic: () -> Void = {}
+    /// Any action by its name (the Utilities tab; set by the app).
+    var onRun: (String) -> Void = { _ in }
 }
 
 struct QuickPanelView: View {
@@ -368,7 +389,8 @@ struct QuickPanelView: View {
     var body: some View {
         VStack(spacing: 12) {
             ButterflyImage(height: 22).padding(.top, 4)
-            HStack(spacing: 2) {
+            // the tabs in rows of nine (Linux has eighteen)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: min(9, QuickPage.visible.count)), spacing: 2) {
                 ForEach(QuickPage.visible) { page in
                     Button { state.page = page } label: {
                         Image(systemName: page.symbol)
@@ -402,7 +424,13 @@ struct QuickPanelView: View {
                 case .downloads: DownloadsPage()
                 case .windows: WindowsPage()
                 case .agents: AgentsPage(openWindow: onAgents)
-                case .tools: ToolsPage()
+                case .utilities: UtilitiesPage()
+                case .controls: ControlsPage()
+                case .toggles: TogglesPage()
+                case .disks: DisksPage()
+                case .power: PowerPage()
+                case .workspaces: DesktopsPage()
+                case .input: InputPage()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)

@@ -120,6 +120,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         // what the settings window's buttons, the trackpad and the radial menu do
         settings.state.run = { [weak self] id in self?.perform(id) }
         quickState.onMic = { [weak self] in self?.app.sound.toggleMicrophone() }
+        quickState.onRun = { [weak self] id in
+            if !id.hasPrefix("quickpanel") { self?.popover.performClose(nil) }
+            self?.perform(id)
+        }
         let gestures = GestureActions(app: app)
         gestures.run = { [weak self] id in self?.perform(id) }
         gestures.apply()
@@ -269,6 +273,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         })
         .environmentObject(quickState)
         .environmentObject(Preferences.shared)
+        .environmentObject(DisksModel.shared)
+        .environmentObject(PowerModel.shared)
         .environmentObject(app.monitor)
         .environmentObject(app.awake)
         .environmentObject(app.focus)

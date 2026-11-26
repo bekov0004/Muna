@@ -859,8 +859,9 @@ enum Features {
     static var all: [Feature] {
         let topicOf: [String: String] = [
             "media": "feat-media", "sound": "feat-media", "mirror": "feat-media",
-            "system": "feat-system", "network": "feat-system", "awake": "feat-system", "displays": "feat-system", "tools": "feat-system",
-            "windows": "feat-windows",
+            "system": "feat-system", "network": "feat-system", "disks": "feat-system", "power": "feat-system", "awake": "feat-system",
+            "displays": "feat-system", "toggles": "feat-system", "utilities": "feat-system",
+            "windows": "feat-windows", "workspaces": "feat-windows", "controls": "feat-windows", "input": "feat-windows",
             "focus": "feat-work", "timer": "feat-work", "todo": "feat-work", "notes": "feat-work", "reminders": "feat-work",
             "shortcuts": "feat-work", "calendar": "feat-work", "agents": "feat-work",
             "downloads": "feat-files", "phone": "feat-files",

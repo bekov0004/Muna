@@ -133,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
 
         // what the settings window's buttons, the trackpad and the radial menu do
         settings.state.run = { [weak self] id in self?.perform(id) }
+        PhoneWindows.shared = PhoneWindowController(phone: app.phone, pairing: app.pairing)
         setCustomKeys()
         Preferences.shared.changed.sink { [weak self] key in
             if key.hasPrefix("shortcut-") || key == "*" { DispatchQueue.main.async { self?.setCustomKeys() } }

@@ -221,6 +221,7 @@ struct PhonePage: View {
                             Text("Muna Phone").font(.system(size: 10, weight: .bold)).foregroundColor(MunaColor.ok)
                         }
                         Spacer()
+                        Pill(label: "Window") { PhoneWindows.shared?.show() }
                         Pill(label: "Pair another") { pairing.start(phone) }
                     }
                     if !phone.linkState.isEmpty && phone.linkState != "link" && phone.linkState != "adb" {

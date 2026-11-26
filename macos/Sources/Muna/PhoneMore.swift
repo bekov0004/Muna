@@ -488,6 +488,7 @@ struct PhoneCardWidget: View {
                     VStack(spacing: 4) {
                         IconButton(symbol: "chevron.backward") { phone.key(PhoneADB.back) }
                         IconButton(symbol: "circle") { phone.key(PhoneADB.home) }
+                        IconButton(symbol: "arrow.up.left.and.arrow.down.right") { PhoneWindows.shared?.show() }
                     }
                 }
             }
@@ -495,4 +496,80 @@ struct PhoneCardWidget: View {
         .onAppear { phone.watch() }
         .onDisappear { phone.unwatch() }
     }
+}
+
+/// Linux's phone card taken out into a window: the phone's screen as tall as the phone, live, with
+/// taps, swipes, keys and typing; it floats above the other windows.
+final class PhoneWindowController {
+    private var window: NSWindow?
+    private let phone: PhoneModel
+    private let pairing: PhonePairing
+
+    init(phone: PhoneModel, pairing: PhonePairing) {
+        self.phone = phone
+        self.pairing = pairing
+    }
+
+    func show() {
+        if window == nil {
+            let view = PhoneWindowView().environmentObject(phone).environmentObject(pairing)
+            let window = NSWindow(contentViewController: NSHostingController(rootView: view))
+            window.title = "Phone"
+            window.styleMask = [.titled, .closable, .resizable, .fullSizeContentView]
+            window.titlebarAppearsTransparent = true
+            window.level = .floating
+            window.setContentSize(NSSize(width: 380, height: 820))
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.center()
+            self.window = window
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+struct PhoneWindowView: View {
+    @EnvironmentObject var phone: PhoneModel
+
+    var body: some View {
+        VStack(spacing: 10) {
+            GeometryReader { proxy in
+                ZStack {
+                    Color.black
+                    if let image = phone.screen { Image(nsImage: image).resizable().aspectRatio(contentMode: .fit) }
+                }
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 0).onEnded { drag in
+                    // the picture fills the height: its own size inside the view
+                    let ratio = phone.pixels.width / max(phone.pixels.height, 1)
+                    let h = min(proxy.size.height, proxy.size.width / ratio), w = h * ratio
+                    let offset = CGPoint(x: (proxy.size.width - w) / 2, y: (proxy.size.height - h) / 2)
+                    let start = CGPoint(x: drag.startLocation.x - offset.x, y: drag.startLocation.y - offset.y)
+                    let end = CGPoint(x: drag.location.x - offset.x, y: drag.location.y - offset.y)
+                    if hypot(drag.translation.width, drag.translation.height) < 6 { phone.tap(start, in: CGSize(width: w, height: h)) }
+                    else { phone.swipe(from: start, to: end, in: CGSize(width: w, height: h), seconds: 0.3) }
+                })
+            }
+            HStack(spacing: 6) {
+                Pill(label: "Back") { phone.key(PhoneADB.back) }
+                Pill(label: "Home") { phone.key(PhoneADB.home) }
+                Pill(label: "Apps") { phone.key(PhoneADB.recents) }
+                Pill(label: "Wake") { phone.key(PhoneADB.wake) }
+            }
+            HStack {
+                TextField("Type on the phone", text: $phone.textDraft).textFieldStyle(.roundedBorder).onSubmit { phone.sendText() }
+                Pill(label: "Send") { phone.sendText() }
+            }
+        }
+        .padding(12)
+        .background(Color.black)
+        .onAppear { phone.watch(); phone.startLive() }
+        .onDisappear { phone.unwatch() }
+    }
+}
+
+/// The one phone window of the app (made by the app delegate).
+enum PhoneWindows {
+    static var shared: PhoneWindowController?
 }

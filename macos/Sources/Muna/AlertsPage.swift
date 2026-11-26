@@ -23,11 +23,16 @@ struct AlertsPage: View {
                     VStack(spacing: 4) {
                         ForEach(alerts.alerts) { alert in
                             HStack(spacing: 10) {
-                                Image(systemName: alert.symbol)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(alert.ok ? MunaColor.ok : MunaColor.warning)
-                                    .frame(width: 22)
+                                if let bundle = alert.bundle, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
+                                    Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().frame(width: 20, height: 20).frame(width: 22)
+                                } else {
+                                    Image(systemName: alert.symbol)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundColor(alert.ok ? MunaColor.ok : MunaColor.warning)
+                                        .frame(width: 22)
+                                }
                                 VStack(alignment: .leading, spacing: 1) {
+                                    if let app = alert.app { Text(app.uppercased()).font(.system(size: 9, weight: .bold)).foregroundColor(MunaColor.caption) }
                                     Text(alert.title).font(.system(size: 12, weight: .semibold)).lineLimit(1)
                                     Text(alert.details).font(.system(size: 11)).foregroundColor(MunaColor.secondary).lineLimit(1)
                                 }
@@ -40,6 +45,13 @@ struct AlertsPage: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
                             .background(RoundedRectangle(cornerRadius: 12).fill(MunaColor.tile))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                // an app's notification: a click opens the app, as on Linux
+                                guard let bundle = alert.bundle, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) else { return }
+                                NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
+                                alerts.remove(alert)
+                            }
                         }
                     }
                 }

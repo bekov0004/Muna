@@ -80,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private var gestures: GestureActions?
     private var systemAlerts: SystemAlerts?
     private var keyboardCards: KeyboardCards?
+    private var appNotifications: AppNotifications?
     private var readingsTimer: Timer?
     private lazy var windowMap = WindowMapModel(windows: app.windows)
 
@@ -137,6 +138,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         systemAlerts?.start()
         keyboardCards = KeyboardCards { [weak self] title, symbol in self?.capsules?.tell(title, "", symbol: symbol, ok: true) }
         keyboardCards?.start()
+        // other apps' notifications in Alerts (Settings → General → Alerts)
+        let notifications = AppNotifications(alerts: app.alerts)
+        appNotifications = notifications
+        if Preferences.shared.bool("app-notifications") { notifications.start() }
+        Preferences.shared.changed.sink { [weak self] key in
+            guard key == "app-notifications" || key == "*" else { return }
+            DispatchQueue.main.async { if Preferences.shared.bool("app-notifications") { self?.appNotifications?.start() } else { self?.appNotifications?.stop() } }
+        }.store(in: &readingsObservers)
     }
 
     /// One action by its name (Linux's names: the "Try it" buttons, the radial menu, the gestures' "muna:…").

@@ -134,7 +134,7 @@ final class Preferences: ObservableObject {
         "peek-media-seconds": 2.5, "peek-files-seconds": 1.5, "peek-calendar-seconds": 6.0,
         "album-corner-radius": 8.0, "media-effect": "spectrum", "colored-effects": true,
         "show-caps-lock": true, "show-input-source": true,
-        "system-alerts": true, "agents-alerts": true,
+        "system-alerts": true, "agents-alerts": true, "app-notifications": true,
         "alert-cpu": 90.0, "alert-temp": 85.0, "alert-disk": 5.0, "alert-battery": 20.0, "alert-memory": 8.0,
         "monitor-interval": 2.0, "temp-unit": "C", "graph-scale": true,
         "bar-metrics": [String](), "system-blocks": ["temps", "cpu", "gpu", "memory", "uptime"],

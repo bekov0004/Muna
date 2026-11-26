@@ -549,6 +549,11 @@ struct GeneralSettings: View {
                 Button("Choose…") { chooseReceiveFolder(preferences) }
             }
         }
+        SettingsCard("Alerts") {
+            SettingsToggle(title: "Other apps' notifications", detail: "What apps tell you shows in the Alerts section too; a click opens the app. Muna reads macOS's notification list on this Mac (it needs Full Disk Access); nothing is sent anywhere.",
+                           isOn: preferences.boolBinding("app-notifications"))
+            SettingsRow("Full Disk Access", "macOS asks once; turn Muna on in the list.") { Button("Open") { AppNotifications.askForAccess() } }
+        }
         SettingsCard("Start") {
             SettingsToggle(title: "Open at login", detail: "Muna starts when you log in.",
                            isOn: Binding(get: { state.openAtLogin }, set: { state.setOpenAtLogin($0) }))

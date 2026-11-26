@@ -408,8 +408,8 @@ final class TimerModel: ObservableObject {
     }
 }
 
-/// The Alerts tab: what Muna told you lately (sendings, received files, the timer ...).
-/// (macOS lets no app read the notifications of the others, so these are Muna's own.)
+/// The Alerts tab: what Muna told you lately (sendings, received files, the timer ...) and the
+/// notifications of the other apps (AppNotifications).
 final class AlertsModel: ObservableObject {
     struct Alert: Identifiable, Equatable {
         let id = UUID()
@@ -418,6 +418,15 @@ final class AlertsModel: ObservableObject {
         let symbol: String
         let ok: Bool
         let at: Date
+        /// Another app's notification: its bundle id (a click opens it) and name.
+        var bundle: String? = nil
+        var app: String? = nil
+    }
+
+    func addFromApp(bundle: String, title: String, body: String, at: Date) {
+        let name = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle).map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") } ?? bundle
+        alerts.insert(Alert(title: title, details: body, symbol: "bell", ok: true, at: at, bundle: bundle, app: name), at: 0)
+        if alerts.count > 50 { alerts.removeLast(alerts.count - 50) }
     }
 
     @Published private(set) var alerts: [Alert] = []

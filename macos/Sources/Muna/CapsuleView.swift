@@ -227,7 +227,7 @@ struct ClosedContent: View {
     /// The butterfly, or the small "camera" circle when it is switched off.
     @ViewBuilder private var middle: some View {
         if preferences.capsuleButterfly {
-            FlappingButterfly(height: max(12, model.geometry.barHeight - 9))
+            MunaButterflyView(height: max(15, model.geometry.barHeight - 6))
         } else {
             Circle()
                 .fill(Color(red: 8 / 255, green: 8 / 255, blue: 12 / 255))
@@ -576,25 +576,6 @@ enum AlbumColor {
             }
         }
         return nil
-    }
-}
-
-/// The butterfly of the closed capsule: now and then it beats its wings (Settings → Appearance).
-struct FlappingButterfly: View {
-    @EnvironmentObject var preferences: Preferences
-    let height: CGFloat
-
-    var body: some View {
-        if preferences.bool("butterfly-flap") {
-            TimelineView(.animation(minimumInterval: 0.05)) { context in
-                let every = max(5, preferences.double("butterfly-flap-every"))
-                let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: every)
-                let flap = phase < 0.56 ? 1 - 0.7 * abs(sin(phase / 0.28 * .pi)) : 1
-                ButterflyImage(height: height).scaleEffect(x: flap, y: 1)
-            }
-        } else {
-            ButterflyImage(height: height)
-        }
     }
 }
 

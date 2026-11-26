@@ -180,6 +180,8 @@ final class CapsuleModel: ObservableObject {
     /// Files are dragged over the capsule: it opens to take them.
     @Published var isDropTarget = false
     @Published var card: CapsuleCard?
+    /// The butterfly of the closed capsule (its wing beats, blinks and warm wings).
+    let butterfly = ButterflyMotion()
     /// Music, the timer or a sending runs (it shows beside the notch).
     @Published var hasActivity = false
     /// A click on the closed capsule; the gear.
@@ -275,6 +277,7 @@ final class CapsuleController {
         let tracking = HoverView { [weak self] inside in self?.pointer(inside: inside) }
         let root = CapsuleView()
             .environmentObject(model)
+            .environmentObject(model.butterfly)
             .environmentObject(PanelState())
             .environmentObject(preferences)
             .environmentObject(app.nowPlaying)
@@ -366,6 +369,8 @@ final class CapsuleController {
             self.pinned = false
             if !self.preferences.autoCollapse || !self.keepsOpen { self.close() }
         }
+        // now and then the butterfly beats its wings, where it is seen: closed, no card over it (Linux)
+        scheduleFlap()
     }
 
     func show() {
@@ -444,9 +449,22 @@ final class CapsuleController {
         panel.makeKey()
     }
 
+    private func scheduleFlap() {
+        let every = max(5, Preferences.shared.double("butterfly-flap-every"))
+        DispatchQueue.main.asyncAfter(deadline: .now() + every) { [weak self] in
+            guard let self else { return }
+            let p = Preferences.shared
+            if p.capsuleButterfly && p.bool("butterfly-flap") && !self.model.isOpen && self.model.card == nil { self.model.butterfly.flap() }
+            self.scheduleFlap()
+        }
+    }
+
     /// A short message in the closed capsule (when it is open, the panel shows things itself).
     func showCard(_ card: CapsuleCard) {
         guard !model.isOpen else { return }
+        // something happened: warm wings and a beat of them, until the capsule opens (Linux's setActivity)
+        if !model.butterfly.warm { model.butterfly.flap() }
+        model.butterfly.warm = true
         withAnimation(CapsuleMetrics.animation) { model.card = card }
         cardTimer?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -601,6 +619,7 @@ final class CapsuleController {
         // the window takes the open size at once; the drawing grows into it
         panel.setFrame(model.geometry.frame(for: model.openSize), display: true)
         withAnimation(CapsuleMetrics.animation) { model.isOpen = true }
+        model.butterfly.warm = false
         app.panelOpened(on: model.tab)
     }
 

@@ -19,7 +19,7 @@ Neither port has been run on its system yet: ✅ means built (Windows) or writte
 | Media Player (`media`) | any player, cover, seek, lyrics, spectrum or waves in the album's colour, sideways swipe skips | 🟡 | ✅ | macOS gives "now playing" of other players to Apple's apps only: Music and Spotify ➖ |
 | Calendar (`calendar`) | days around today, events, next meeting card | ✅ | ✅ | Windows: Outlook and .ics links |
 | Mirror (`mirror`) | camera preview, the enlarged card | ✅ | ✅ | |
-| Phone (`phonecard`) | the phone's screen in the capsule, as tall as the phone, QR to connect, out into a window | 🟡 | 🟡 | in the capsule with control; the taller card and the window not yet |
+| Phone (`phonecard`) | the phone's screen in the capsule, as tall as the phone, QR to connect, out into a window | ✅ | ✅ | the tall picture is the window it is taken out into |
 | Timer (`timer`) | countdown in the capsule | ✅ | ✅ | |
 | Companion (`companion`) | eyes follow the pointer, sways to music, surprised by cards, sleeps | ✅ | ✅ | |
 | Shortcuts (`shortcuts`) | favourite apps | ✅ | ✅ | |
@@ -70,4 +70,4 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Linux's sections and pages, search, back and forward, Try it | ✅ | ✅ |
 | Shortcuts set by pressing keys (Linux's shortcut-* keys) | ✅ | ✅ |
 | Feature overview with bundles and topics | ✅ | ✅ |
-| Light, dark or the system's look for the window | ✅ | ⬜ (dark only) |
+| Light, dark or the system's look for the window | ✅ | ✅ |

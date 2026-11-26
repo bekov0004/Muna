@@ -36,14 +36,30 @@ public static class C
     public static readonly SolidColorBrush Clear = Rgb(0, 0, 0, 0);
     public static readonly SolidColorBrush Black = Rgb(0, 0, 0);
 
-    // the settings window and the quick panel (shared/design/colors.json "windows", dark)
-    public static readonly SolidColorBrush WinBackground = Rgb(0x10, 0x10, 0x12);
-    public static readonly SolidColorBrush WinSurface = Rgb(0x15, 0x15, 0x17);
-    public static readonly SolidColorBrush WinCard = Rgb(0x1d, 0x1d, 0x20);
-    public static readonly SolidColorBrush WinControl = Rgb(0x29, 0x29, 0x2c);
-    public static readonly SolidColorBrush WinBorder = White(0.09);
-    public static readonly SolidColorBrush WinText = Rgb(0xf5, 0xf5, 0xf7);
-    public static readonly SolidColorBrush WinSecondary = Rgb(0x98, 0x98, 0x9d);
+    // Muna's windows (settings, agents, scratchpad): dark or light, as Settings → General → Appearance
+    // chooses (Linux's color-scheme: "default" follows Windows' apps mode)
+    public static bool Light => Preferences.Shared.Text("color-scheme") switch
+    {
+        "light" => true,
+        "dark" => false,
+        _ => (Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize")?.GetValue("AppsUseLightTheme") as int? ?? 0) == 1,
+    };
+
+    static readonly SolidColorBrush DarkBackground = Rgb(0x10, 0x10, 0x12), LightBackground = Rgb(0xf5, 0xf5, 0xf7);
+    static readonly SolidColorBrush DarkSurface = Rgb(0x15, 0x15, 0x17), LightSurface = Rgb(0xeb, 0xeb, 0xef);
+    static readonly SolidColorBrush DarkCard = Rgb(0x1d, 0x1d, 0x20), LightCard = Rgb(0xff, 0xff, 0xff);
+    static readonly SolidColorBrush DarkControl = Rgb(0x29, 0x29, 0x2c), LightControl = Rgb(0xe3, 0xe3, 0xe8);
+    static readonly SolidColorBrush DarkBorder = White(0.09), LightBorder = Rgb(0, 0, 0, 0.1);
+    static readonly SolidColorBrush DarkText = Rgb(0xf5, 0xf5, 0xf7), LightText = Rgb(0x1d, 0x1d, 0x1f);
+    static readonly SolidColorBrush DarkSecondary = Rgb(0x98, 0x98, 0x9d), LightSecondary = Rgb(0x6e, 0x6e, 0x73);
+
+    public static SolidColorBrush WinBackground => Light ? LightBackground : DarkBackground;
+    public static SolidColorBrush WinSurface => Light ? LightSurface : DarkSurface;
+    public static SolidColorBrush WinCard => Light ? LightCard : DarkCard;
+    public static SolidColorBrush WinControl => Light ? LightControl : DarkControl;
+    public static SolidColorBrush WinBorder => Light ? LightBorder : DarkBorder;
+    public static SolidColorBrush WinText => Light ? LightText : DarkText;
+    public static SolidColorBrush WinSecondary => Light ? LightSecondary : DarkSecondary;
     public static readonly SolidColorBrush WinAccent = Rgb(0x12, 0x83, 0xff);
 }
 

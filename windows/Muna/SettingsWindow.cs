@@ -212,6 +212,10 @@ public sealed class SettingsWindow : DarkWindow
 
     IEnumerable<UIElement> General()
     {
+        var schemes = new[] { "default", "light", "dark" };
+        yield return Card("Appearance",
+            Setting("Muna's windows", "Applies to the settings window of Muna (and the agents and scratchpad windows), not to the whole desktop.",
+                Choice(new[] { "System", "Light", "Dark" }, Math.Max(0, Array.IndexOf(schemes, _p.Text("color-scheme"))), i => _p.SetValue("color-scheme", schemes[i]))));
         foreach (var card in TopBar()) yield return card;
         yield return Card("Muna",
             Switch("Open on hover", "Off: the capsule opens on click only.", _p.OpenOnHover, v => _p.OpenOnHover = v),

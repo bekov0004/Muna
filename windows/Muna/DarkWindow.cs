@@ -24,13 +24,24 @@ public class DarkWindow : Window
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
         SourceInitialized += (_, _) =>
         {
-            var hwnd = new WindowInteropHelper(this).Handle;
-            var on = 1;
-            Native.DwmSetWindowAttribute(hwnd, 20, ref on, 4);   // dark title bar
+            ApplyScheme();
             var round = 2;
-            Native.DwmSetWindowAttribute(hwnd, 33, ref round, 4); // round corners (Windows 11)
+            Native.DwmSetWindowAttribute(new WindowInteropHelper(this).Handle, 33, ref round, 4); // round corners (Windows 11)
         };
+        Preferences.Shared.Changed += key => { if (key is "color-scheme" or "*") Dispatcher.BeginInvoke(ApplyScheme); };
         try { Icon = Ui.LoadResource("Assets/Muna.ico"); } catch { /* no icon */ }
+    }
+
+    /// The window's colours and title bar follow Settings → General → Appearance.
+    void ApplyScheme()
+    {
+        Background = C.WinBackground;
+        Foreground = C.WinText;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        var dark = C.Light ? 0 : 1;
+        Native.DwmSetWindowAttribute(hwnd, 20, ref dark, 4);
+        OnShown();
     }
 
     public bool Quitting { get; set; }

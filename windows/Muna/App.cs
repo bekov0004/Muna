@@ -514,7 +514,7 @@ public sealed class App : Application
         SetUpKeys();
         Preferences.Shared.Changed += key =>
         {
-            if (key is "command-hotkey" or "radial-hotkey" or "section-hotkeys") Dispatcher.BeginInvoke(SetUpKeys);
+            if (key is "command-hotkey" or "radial-hotkey" or "section-hotkeys" or "*" || key.StartsWith("shortcut-")) Dispatcher.BeginInvoke(SetUpKeys);
         };
         var signal = new EventWaitHandle(false, EventResetMode.AutoReset, OpenSignal);
         new Thread(() =>
@@ -545,9 +545,40 @@ public sealed class App : Application
         catch { /* nowhere to write */ }
     }
 
+    /// Linux's shortcuts that you choose (Settings → General → Shortcuts): the key, and what it does.
+    public static readonly (string Key, string Title, string Action)[] Shortcuts =
+    {
+        ("shortcut-muna", "Open Muna", "capsule:Muna"), ("shortcut-tray", "File shelf", "capsule:Tray"), ("shortcut-clipboard", "Clipboard history", "capsule:Clipboard"),
+        ("shortcut-command", "Command Bar", "command"), ("shortcut-alerts", "Alerts", "capsule:Alerts"), ("shortcut-screenshot", "Screenshot", "screenshot"),
+        ("shortcut-recording", "Record the screen", "recording"), ("shortcut-color", "Colour picker", "color"), ("shortcut-mic", "Mute microphone", "mic"),
+        ("shortcut-cleaning", "Cleaning mode", "cleaning"), ("shortcut-awake", "Keep awake", "awake"), ("shortcut-radial", "Radial menu", "radial"),
+        ("shortcut-output", "Next sound output", "output"), ("shortcut-quickpanel", "Quick panel", "quickpanel"),
+    };
+
+    readonly List<int> _customKeys = new();
+
+    /// "<Control><Alt>t" → the modifiers and the key of RegisterHotKey.
+    public static (uint Modifiers, uint Key)? HotKeyOf(string accel)
+    {
+        if (GestureCatalog.ParseKeys(accel) is not { } keys || Muna.Keys.Code(keys.Key) is not { } code) return null;
+        uint modifiers = 0;
+        foreach (var m in keys.Modifiers)
+            modifiers |= m switch { "shift" => Native.MOD_SHIFT, "alt" => Native.MOD_ALT, "super" => Native.MOD_WIN, _ => Native.MOD_CONTROL };
+        return modifiers == 0 && code < 0x70 ? null : (modifiers, code);
+    }
+
     void SetUpKeys()
     {
         _keys ??= new HotKeys();
+        foreach (var id in _customKeys) _keys.Remove(id);
+        _customKeys.Clear();
+        foreach (var (key, _, action) in Shortcuts)
+        {
+            var accel = Preferences.Shared.Strings(key).FirstOrDefault();
+            if (accel is null || HotKeyOf(accel) is not { } hot) continue;
+            var a = action;
+            _customKeys.Add(_keys.Add(hot.Modifiers, hot.Key, () => State.Perform(a)));
+        }
         _keys.Remove(_commandKey);
         _keys.Remove(_radialKey);
         foreach (var id in _sectionKeys) _keys.Remove(id);

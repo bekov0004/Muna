@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Muna.Core;
 
@@ -99,6 +100,7 @@ public sealed class SettingsWindow : DarkWindow
         _calendarUrl.Text = _p.CalendarUrl;
         _alias.Text = _p.LocalSendAlias;
         _p.Changed += _ => Dispatcher.BeginInvoke(() => { if (IsVisible) Render(); });
+        PreviewKeyDown += (_, e) => RecordKey(e);
         _search.TextChanged += (_, _) =>
         {
             Render();
@@ -226,6 +228,8 @@ public sealed class SettingsWindow : DarkWindow
             Switch("Command Bar: Alt+Space", null, _p.CommandHotKey, v => _p.CommandHotKey = v),
             Switch("Radial menu: Ctrl+Alt+Space", null, _p.RadialHotKey, v => _p.RadialHotKey = v),
             Switch("Muna, Tray, LocalSend, Clipboard, Alerts: Ctrl+Alt+1 … 5", "Each opens the capsule on its own tab, from anywhere.", _p.SectionHotKeys, v => _p.SectionHotKeys = v));
+        yield return Card("Your shortcuts", App.Shortcuts.Select(s => ShortcutRow(s.Key, s.Title)).ToArray());
+        yield return Ui.Text("Works in any app, no extra permissions. Press keys…, then the keys you want (Escape: none).", 11, color: C.WinSecondary, wrap: true);
         yield return Card("LocalSend",
             Switch("Receive files", _app.LocalSend.ReceiveProblem ?? "Other computers and phones on this network can send you files; you accept every sending.", _p.LocalSendReceive, v => _p.LocalSendReceive = v),
             Setting("Save received files in", _p.ReceiveFolder, Button("Choose…", () =>
@@ -242,6 +246,50 @@ public sealed class SettingsWindow : DarkWindow
             Setting("Send feedback", "Send a bug report or a feature idea directly to the person who maintains Muna.", Button("Send feedback", () => CapsuleViews.Launch("https://github.com/bekov0004/Muna/issues/new"))));
         yield return Card(null,
             Setting("Reset all settings", "Every setting goes back to Muna's default. Your notes, to-dos and files stay.", Button("Reset all settings", _p.ResetAll)));
+    }
+
+    string? _recording;
+
+    /// A shortcut of Linux's list: what it is now, and "Press keys…" to set it.
+    UIElement ShortcutRow(string key, string title)
+    {
+        var current = _p.Strings(key).FirstOrDefault();
+        var label = _recording == key ? "Press the keys…" : current is null ? "Not set" : Pretty(current);
+        var row = Ui.Row(8, Button(_recording == key ? "Waiting…" : "Press keys…", () => { _recording = key; Render(); Focus(); }, accent: _recording == key));
+        if (current is not null) row.Children.Add(Ui.IconButton(Glyph.Close, () => _p.SetValue(key, null), tip: "No shortcut"));
+        return Setting(title, label, row);
+    }
+
+    static string Pretty(string accel) => GestureCatalog.ParseKeys(accel) is { } k
+        ? string.Join("+", k.Modifiers.Select(m => m switch { "control" or "ctrl" or "primary" => "Ctrl", "alt" => "Alt", "shift" => "Shift", "super" => "Win", _ => m }).Append(k.Key.Length == 1 ? k.Key.ToUpperInvariant() : k.Key))
+        : accel;
+
+    /// The keys pressed while a shortcut is being set: "<Control><Alt>t", as Linux writes it.
+    void RecordKey(KeyEventArgs e)
+    {
+        if (_recording is null) return;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin) return;
+        e.Handled = true;
+        var target = _recording;
+        _recording = null;
+        if (key == Key.Escape) { Render(); return; }
+        var name = key switch
+        {
+            >= Key.A and <= Key.Z => key.ToString().ToLowerInvariant(),
+            >= Key.D0 and <= Key.D9 => ((int)(key - Key.D0)).ToString(),
+            >= Key.F1 and <= Key.F24 => key.ToString(),
+            Key.Space => "space", Key.Left => "Left", Key.Right => "Right", Key.Up => "Up", Key.Down => "Down",
+            Key.PageUp => "Page_Up", Key.PageDown => "Page_Down", Key.Home => "Home", Key.End => "End", Key.Tab => "Tab", Key.Enter => "Return",
+            Key.Delete => "Delete", Key.Insert => "Insert", Key.OemPlus => "plus", Key.OemMinus => "minus", Key.PrintScreen or Key.Snapshot => "Print",
+            _ => null,
+        };
+        if (name is null) { Render(); return; }
+        var m = Keyboard.Modifiers;
+        var accel = (m.HasFlag(ModifierKeys.Control) ? "<Control>" : "") + (m.HasFlag(ModifierKeys.Alt) ? "<Alt>" : "") +
+                    (m.HasFlag(ModifierKeys.Shift) ? "<Shift>" : "") + (m.HasFlag(ModifierKeys.Windows) ? "<Super>" : "") + name;
+        if (App.HotKeyOf(accel) is null) { Render(); return; }
+        _p.SetStrings(target, new[] { accel });
     }
 
     IEnumerable<UIElement> MenuBarPage()

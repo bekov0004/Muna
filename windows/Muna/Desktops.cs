@@ -87,7 +87,7 @@ public static class Keys
         if (codes.Count > 0) Chord(codes.ToArray());
     }
 
-    static byte? Code(string name)
+    public static byte? Code(string name)
     {
         if (name.Length == 1 && char.IsLetterOrDigit(name[0])) return (byte)char.ToUpperInvariant(name[0]);
         if (name.Length is 2 or 3 && (name[0] is 'F' or 'f') && int.TryParse(name[1..], out var f) && f is >= 1 and <= 24) return (byte)(0x6F + f);

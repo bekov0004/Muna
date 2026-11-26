@@ -560,6 +560,22 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void Tiling()
+    {
+        Assert.Equal(new[] { (0.0, 0.0, 1 / 3.0, 1.0), (1 / 3.0, 0.0, 1 / 3.0, 1.0), (2 / 3.0, 0.0, 1 / 3.0, 1.0) }, TileSlots.For("columns", 3));
+        Assert.Equal((0.0, 0.5, 1.0, 0.5), TileSlots.For("rows", 2)[1]);
+        // 5 windows: 3 on top, 2 below (wider)
+        var grid = TileSlots.For("grid", 5);
+        Assert.Equal(5, grid.Count);
+        Assert.Equal((0.0, 0.5, 0.5, 0.5), grid[3]);
+        var main = TileSlots.For("main", 3);
+        Assert.Equal((0.0, 0.0, 0.6, 1.0), main[0]);
+        Assert.Equal((0.6, 0.5, 0.4, 0.5), main[2]);
+        Assert.Single(TileSlots.For("main", 1));
+        Assert.Empty(TileSlots.For("grid", 0));
+    }
+
+    [Fact]
     public void NightLightState()
     {
         // Windows' record with night light off: byte 18 is 0x13; "on" adds 0x10 0x00 after byte 22

@@ -510,3 +510,38 @@ public static class NightLightBlob
         return list.ToArray();
     }
 }
+
+/// <summary>How Linux arranges every window of a monitor (linux/src/windows/layout.js tile()): the share
+/// of the work area (0–1) each of n windows gets. columns: side by side; rows: stacked; grid: as square
+/// as possible, the last row widened; main: the first window on the left (60%), the others beside it.</summary>
+public static class TileSlots
+{
+    public static List<(double X, double Y, double W, double H)> For(string mode, int n)
+    {
+        var slots = new List<(double, double, double, double)>();
+        void Cells(double x, double y, double w, double h, int[] perRow)
+        {
+            var height = h / perRow.Length;
+            for (var row = 0; row < perRow.Length; row++)
+                for (var i = 0; i < perRow[row]; i++)
+                    slots.Add((x + i * w / perRow[row], y + row * height, w / perRow[row], height));
+        }
+        if (n <= 0) return slots;
+        if (mode == "columns") Cells(0, 0, 1, 1, new[] { n });
+        else if (mode == "rows") Cells(0, 0, 1, 1, Enumerable.Repeat(1, n).ToArray());
+        else if (mode == "main" && n > 1)
+        {
+            slots.Add((0, 0, 0.6, 1));
+            Cells(0.6, 0, 0.4, 1, Enumerable.Repeat(1, n - 1).ToArray());
+        }
+        else
+        {
+            var columns = (int)Math.Ceiling(Math.Sqrt(n));
+            var rows = (int)Math.Ceiling((double)n / columns);
+            var perRow = Enumerable.Repeat(columns, rows).ToArray();
+            perRow[rows - 1] = n - columns * (rows - 1);
+            Cells(0, 0, 1, 1, perRow);
+        }
+        return slots;
+    }
+}

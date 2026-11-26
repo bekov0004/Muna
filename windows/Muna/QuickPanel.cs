@@ -58,7 +58,7 @@ public sealed class QuickPanel : Window
         Deactivated += (_, _) => HidePanel();
         KeyDown += (_, e) => { if (e.Key == Key.Escape) HidePanel(); };
         SizeChanged += (_, _) => Place();
-        foreach (var model in new Model[] { app.Monitor, app.Awake, app.Focus, app.Reminders, app.Downloads, app.Sound, app.Agents, app.Windows, app.Displays, app.Phone })
+        foreach (var model in new Model[] { app.Monitor, app.Awake, app.Focus, app.Reminders, app.Downloads, app.Sound, app.Agents, app.Windows, app.Displays, app.Phone, app.Desktops })
             model.Changed += Queue;
         _reminderText.Submitted += AddReminder;
         _reminderTime.Submitted += AddReminder;
@@ -81,6 +81,7 @@ public sealed class QuickPanel : Window
         if (_page == "phone") _app.Phone.Watch();
         if (_page == "agents") _app.Agents.WatchSessions();
         if (_page == "tools") RefreshRadios();
+        if (_page == "windows") StartPictures();
         Render();
         Show();
         Place();
@@ -108,6 +109,7 @@ public sealed class QuickPanel : Window
         Hide();
         _app.Monitor.Unwatch();
         _app.Sound.Unwatch();
+        _pictureTimer.Stop();
         if (_page == "phone") _app.Phone.Unwatch();
         if (_page == "agents") _app.Agents.UnwatchSessions();
     }
@@ -149,6 +151,7 @@ public sealed class QuickPanel : Window
         if (page == "phone") { _app.Phone.Watch(); _app.Phone.ReadSize(); }
         if (page == "agents") _app.Agents.WatchSessions();
         if (page == "tools") RefreshRadios();
+        if (page == "windows") StartPictures(); else _pictureTimer.Stop();
         _message = null;
         Render();
     }
@@ -460,9 +463,95 @@ public sealed class QuickPanel : Window
         return Block(rows.ToArray());
     }
 
+    readonly System.Windows.Threading.DispatcherTimer _pictureTimer = new() { Interval = TimeSpan.FromSeconds(1.5) };
+    Dictionary<IntPtr, System.Windows.Media.Imaging.BitmapSource?> _pictures = new();
+    string? _mapScreen;
+    bool _picturing;
+
+    Forms.Screen MapScreen => Forms.Screen.AllScreens.FirstOrDefault(s => s.DeviceName == _mapScreen)
+                              ?? (_app.Windows.Target != IntPtr.Zero ? Forms.Screen.FromHandle(_app.Windows.Target) : Forms.Screen.PrimaryScreen ?? Forms.Screen.AllScreens[0]);
+
+    /// <summary>The windows' pictures of the map, renewed while the page is open.</summary>
+    void StartPictures()
+    {
+        if (_pictureTimer.IsEnabled) return;
+        _pictureTimer.Tick -= TakePictures;
+        _pictureTimer.Tick += TakePictures;
+        _pictureTimer.Start();
+        TakePictures(null, EventArgs.Empty);
+    }
+
+    void TakePictures(object? sender, EventArgs e)
+    {
+        if (_picturing || !IsVisible || _page != "windows") return;
+        _picturing = true;
+        var windows = Tiling.On(MapScreen).Take(12).ToList();
+        System.Threading.Tasks.Task.Run(() => windows.ToDictionary(h => h, h => Tiling.Picture(h, 220))).ContinueWith(t => Dispatcher.BeginInvoke(() =>
+        {
+            _picturing = false;
+            if (t.IsFaulted) return;
+            _pictures = t.Result;
+            Queue();
+        }));
+    }
+
     UIElement WindowsPage()
     {
         var windows = _app.Windows;
+        var screen = MapScreen;
+        var column = Ui.Column(8);
+        // which monitor
+        if (Forms.Screen.AllScreens.Length > 1)
+        {
+            var screens = Ui.Row(6);
+            var index = 1;
+            foreach (var s in Forms.Screen.AllScreens.OrderByDescending(s => s.Primary))
+            {
+                var id = s.DeviceName;
+                screens.Children.Add(Ui.Pill(s.Primary ? "Main screen" : $"Screen {index}", () => { _mapScreen = id; _pictures.Clear(); TakePictures(null, EventArgs.Empty); Render(); }, active: id == screen.DeviceName));
+                index++;
+            }
+            column.Children.Add(screens);
+        }
+        // the desktops of that monitor
+        var tabs = Ui.Row(4);
+        var desktops = _app.Desktops;
+        if (desktops.On)
+        {
+            var monitor = desktops.For(screen.DeviceName);
+            for (var i = 0; i < monitor.Count; i++)
+            {
+                var desk = i;
+                tabs.Children.Add(Ui.Pill($"Desktop {i + 1}", () => desktops.Switch(screen.DeviceName, desk), active: i == monitor.Current));
+            }
+            tabs.Children.Add(Ui.IconButton(Glyph.Add, () => desktops.Add(screen.DeviceName), tip: "Another desktop"));
+            if (monitor.Count > 1) tabs.Children.Add(Ui.IconButton(Glyph.Remove, () => desktops.RemoveLast(screen.DeviceName), tip: "Remove the last desktop"));
+        }
+        else
+        {
+            var (count, current) = VirtualDesktops.State();
+            for (var i = 0; i < count; i++)
+            {
+                var desk = i;
+                tabs.Children.Add(Ui.Pill($"Desktop {i + 1}", () => { VirtualDesktops.SwitchTo(desk); Queue(); }, active: i == current));
+            }
+            tabs.Children.Add(Ui.IconButton(Glyph.Add, () => { VirtualDesktops.New(); Queue(); }, tip: "New desktop"));
+        }
+        column.Children.Add(tabs);
+        // the map and the arrangements
+        var map = new WindowMap(screen, _pictures, () => Dispatcher.BeginInvoke(Queue, System.Windows.Threading.DispatcherPriority.Background));
+        var arrange = new UniformGrid { Columns = 3 };
+        foreach (var (id, label) in Tiling.Modes)
+        {
+            var mode = id;
+            arrange.Children.Add(Ui.Box(Ui.Row(6, TileIcon(id), Ui.Text(label, 10, color: C.Secondary)), C.White(0.06), 8, 6, 5).Margin(2, 2, 2, 2)
+                .OnClick(() => { var n = Tiling.Tile(mode, windows.Target, screen); Say(n == 0 ? "No windows on this screen" : $"{n} windows arranged"); }, C.White(0.12)));
+        }
+        arrange.Children.Add(Ui.Box(Ui.Row(6, Ui.Icon(Glyph.Back, 11, C.Secondary).Size(22), Ui.Text("Undo", 10, color: C.Secondary)), C.White(0.06), 8, 6, 5).Margin(2, 2, 2, 2)
+            .OnClick(() => Say(Tiling.Undo() ? "The windows are back" : "Nothing to undo"), C.White(0.12)));
+        column.Children.Add(Block(map.Align(HorizontalAlignment.Center), Ui.Text("Drag a window (an edge: half or a quarter, the top: all of it), click it to bring it forward, ✕ closes it.", 10, color: C.Secondary, wrap: true)));
+        column.Children.Add(Block(Ui.Text("ALL WINDOWS OF THIS SCREEN", 10, FontWeights.Black, C.Caption), arrange));
+        // one window
         var grid = new UniformGrid { Columns = 4 };
         foreach (var (id, label) in WindowsModel.Layouts)
         {
@@ -472,20 +561,26 @@ public sealed class QuickPanel : Window
             grid.Children.Add(tile.OnClick(() => windows.Apply(layout), C.White(0.12)));
         }
         var title = windows.TargetTitle;
-        return Ui.Column(8, Block(Ui.Text(title.Length == 0 ? "Click a window, then open this panel" : $"For: {title}", 12, color: C.Secondary), grid),
-            windows.Message is { } message ? Ui.Text(message, 11, color: C.Warning) : null,
-            Ui.Row(6, Ui.Pill("Task view", () => { Native.TapKey(0x5B); }), Ui.Pill("New desktop", NewDesktop)));
+        column.Children.Add(Block(Ui.Text(title.Length == 0 ? "Click a window, then open this panel" : $"For: {title}", 12, color: C.Secondary), grid));
+        if (windows.Message is { } message) column.Children.Add(Ui.Text(message, 11, color: C.Warning));
+        column.Children.Add(Ui.Row(6, Ui.Pill("Task view", VirtualDesktops.TaskView), Ui.Pill("Snap layouts", () => Keys.Chord(0x5B, 0x5A))));
+        return column;
     }
 
-    static void NewDesktop()
+    /// <summary>A small drawing of an arrangement: its cells.</summary>
+    static UIElement TileIcon(string mode)
     {
-        // Win+Ctrl+D
-        Native.keybd_event(0x5B, 0, 0, UIntPtr.Zero);
-        Native.keybd_event(0x11, 0, 0, UIntPtr.Zero);
-        Native.keybd_event(0x44, 0, 0, UIntPtr.Zero);
-        Native.keybd_event(0x44, 0, 2, UIntPtr.Zero);
-        Native.keybd_event(0x11, 0, 2, UIntPtr.Zero);
-        Native.keybd_event(0x5B, 0, 2, UIntPtr.Zero);
+        const double w = 22, h = 15;
+        var canvas = new Canvas { Width = w, Height = h };
+        canvas.Children.Add(new Rectangle { Width = w, Height = h, RadiusX = 2, RadiusY = 2, Stroke = C.White(0.35), StrokeThickness = 1 });
+        foreach (var s in Tiling.Slots(mode, 3))
+        {
+            var cell = new Rectangle { Width = Math.Max(1, s.Width * w - 3), Height = Math.Max(1, s.Height * h - 3), RadiusX = 1, RadiusY = 1, Fill = C.Accent };
+            Canvas.SetLeft(cell, s.X * w + 1.5);
+            Canvas.SetTop(cell, s.Y * h + 1.5);
+            canvas.Children.Add(cell);
+        }
+        return canvas;
     }
 
     /// <summary>A small screen with the part the window takes.</summary>

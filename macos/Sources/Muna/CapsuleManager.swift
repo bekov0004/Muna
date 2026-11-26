@@ -1,4 +1,5 @@
 import AppKit
+import LocalAuthentication
 import Combine
 import MunaCore
 import SwiftUI
@@ -49,23 +50,41 @@ final class CapsuleManager {
             self?.tell(title, details, symbol: "target", ok: true)
         }
         app.reminders.onDue = { [weak self] text in
-            NSSound(named: "Glass")?.play()
+            if Preferences.shared.bool("reminder-sound") { NSSound(named: "Glass")?.play() }
             self?.tell("Reminder", text, symbol: "bell.badge.fill", ok: true)
         }
         app.downloads.onFinished = { [weak self] url in
             self?.tell("Downloaded", url.lastPathComponent, symbol: "arrow.down.circle.fill", ok: true)
         }
-        app.agents.onPermission = { [weak self] _, _ in
-            guard let capsule = self?.current else { return }
-            capsule.model.tab = .agent
-            capsule.openNow()
+        app.agents.onPermission = { [weak self] task, permission in
+            guard let self else { return }
+            if let capsule = self.current {
+                capsule.model.tab = .agent
+                capsule.openNow()
+            }
+            // Settings → Touch ID → Claude Code's questions: a finger on the reader allows it
+            if Preferences.shared.bool("fingerprint-agents") { self.confirmWithTouchID(task, permission) }
         }
         app.agents.onFinished = { [weak self] task, ok in
+            guard Preferences.shared.bool("agents-alerts") else { return }
             self?.tell(ok ? "\(task.project) is done" : "\(task.project) stopped", ok ? task.current : task.error,
                        symbol: ok ? "sparkles" : "exclamationmark.triangle.fill", ok: ok)
         }
         app.command.onDone = { [weak self] in
             self?.controllers.filter { $0.model.isOpen && $0.model.tab == .command }.forEach { $0.close() }
+        }
+    }
+
+    private func confirmWithTouchID(_ task: ClaudeTask, _ permission: ClaudeTask.Permission) {
+        let context = LAContext()
+        var problem: NSError?
+        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &problem) else { return }
+        context.localizedCancelTitle = "Answer in the capsule"
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "allow Claude to \(permission.verb.lowercased()) \(permission.detail)") { [weak self] ok, _ in
+            DispatchQueue.main.async {
+                guard ok, let agents = self?.app.agents, agents.waiting?.permission.requestId == permission.requestId else { return }
+                agents.answer(task, permission, .allow)
+            }
         }
     }
 

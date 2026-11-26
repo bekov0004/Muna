@@ -191,6 +191,13 @@ final class PanelLayoutTests: XCTestCase {
         XCTAssertEqual(layout.pages.flatMap { $0.map(\.id) }, all)
         // wide enough for the notch and its ears
         XCTAssertEqual(PanelLayout(screenWidth: 1920, widgets: ["timer"], cells: { _ in 3 }, atLeast: 600).width, 600)
+        // a bigger size, other spacing; a fixed share of the screen
+        let big = PanelLayout(screenWidth: 1920, widgets: ["media", "calendar"], cells: { _ in 5 }, look: .init(scale: 1.2, gap: 10, padding: 20))
+        XCTAssertEqual(big.width, (10 * 44 * 1.2 + 10 + 40).rounded())
+        XCTAssertEqual(big.inset, 20)
+        let fixed = PanelLayout(screenWidth: 1920, widgets: ["timer"], cells: { _ in 3 }, look: .init(fixedShare: 0.5))
+        XCTAssertEqual(fixed.width, 960)
+        XCTAssertEqual(fixed.pages[0][0].width, 960 - 32)
     }
 }
 
@@ -229,5 +236,58 @@ final class CommandEngineTests: XCTestCase {
         XCTAssertEqual(CommandEngine.matchScore("Notes", "nts"), 0)        // as on Linux
         XCTAssertEqual(CommandEngine.matchScore("Finder", "fnd"), 20)
         XCTAssertEqual(CommandEngine.matchScore("Anything", ""), 0)
+    }
+}
+
+final class GestureTests: XCTestCase {
+    func testGesturesAsLinux() {
+        let g = TouchGestures()
+        g.aspect = 0.6
+        var t = 0.0
+        func fingers(_ at: [(Double, Double)]) -> [GestureEvent] {
+            t += 0.01
+            return g.frame(at.enumerated().map { Contact(id: $0.offset, x: $0.element.0, y: $0.element.1) }, time: t)
+        }
+        var events: [GestureEvent] = []
+        for i in 0...20 {
+            let x = 0.6 - Double(i) * 0.02
+            events += fingers([(x, 0.5), (x + 0.05, 0.45), (x + 0.1, 0.5)])
+        }
+        events += fingers([])
+        XCTAssertTrue(events.contains(.swipeLocked("swipe3-left")))
+        XCTAssertTrue(events.contains(.swipeTriggered("swipe3-left")))
+        XCTAssertEqual(events.last, .swipeEnded("swipe3-left"))
+        let moved = events.reduce(0.0) { if case .swipeMoved(_, let d) = $1 { return $0 + d } else { return $0 } }
+        XCTAssertEqual(moved, 0.4, accuracy: 0.01)
+        events = []
+        for i in 0...10 {
+            let d = 0.2 - Double(i) * 0.012
+            events += fingers([(0.5 - d, 0.5), (0.5 + d, 0.5), (0.5, 0.5 - d), (0.5, 0.5 + d)])
+        }
+        events += fingers([])
+        XCTAssertEqual(events, [.pinched("pinch4-in")])
+        events = []
+        for _ in 0..<40 { events += fingers([(0.4, 0.5), (0.5, 0.5), (0.6, 0.5)]) }
+        events += fingers([])
+        XCTAssertEqual(events, [.held("hold3")])
+        events = []
+        for i in 0...30 { events += fingers([(0.97, 0.8 - Double(i) * 0.01)]) }
+        events += fingers([])
+        XCTAssertEqual(events.first, .edgeBegan("right"))
+        XCTAssertEqual(events.filter { $0 == .edgeStep("right", 1) }.count, 3)
+        XCTAssertEqual(events.last, .edgeEnded("right"))
+        events = []
+        events += fingers([(0.5, 0.03)]); events += fingers([])
+        t += 0.1
+        events += fingers([(0.5, 0.03)]); events += fingers([])
+        XCTAssertEqual(events, [.edgeDoubleTap("top")])
+        events = []
+        events += fingers([(0.02, 0.5)])
+        events += g.tick(time: t + 0.6)
+        XCTAssertEqual(events, [.edgeHold("left")])
+        let keys = GestureCatalog.parseKeys("<Control><Shift>t")
+        XCTAssertEqual(keys?.modifiers, ["control", "shift"])
+        XCTAssertEqual(keys?.key, "t")
+        XCTAssertNil(GestureCatalog.parseKeys("<Hyper>x"))
     }
 }

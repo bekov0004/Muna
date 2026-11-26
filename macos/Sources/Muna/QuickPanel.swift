@@ -46,7 +46,7 @@ final class SystemMonitor: ObservableObject {
         watchers += 1
         guard timer == nil else { return }
         sample()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.sample() }
+        timer = Timer.scheduledTimer(withTimeInterval: max(1, Preferences.shared.double("monitor-interval")), repeats: true) { [weak self] _ in self?.sample() }
     }
 
     func unwatch() {
@@ -299,6 +299,37 @@ enum QuickPage: String, CaseIterable, Identifiable {
         }
     }
 
+    /// What the tab is for (Settings → Menu bar, as Linux's descriptions).
+    var about: String {
+        switch self {
+        case .system: return "Processor, graphics and memory at a glance."
+        case .network: return "Internet speed and its graph."
+        case .sound: return "Volume, output and microphone."
+        case .displays: return "Brightness of every screen, and where the screens stand."
+        case .phone: return "Phone screen on the computer, with control."
+        case .awake: return "Keeps your computer awake for as long as you want."
+        case .focus: return "A focus timer and a stopwatch."
+        case .reminders: return "The butterfly tells you something at a time you choose."
+        case .downloads: return "Files arriving in Downloads."
+        case .windows: return "Snap the window in front: halves, quarters, thirds, another screen."
+        case .agents: return "Claude Code and Codex at work."
+        case .tools: return "Screenshots, colour picker, dark mode, trash and more."
+        }
+    }
+
+    /// The tabs in the order chosen in Settings → Menu bar (new ones at the end).
+    static func ordered(_ order: [String]) -> [QuickPage] {
+        let chosen = order.compactMap(QuickPage.init(rawValue:))
+        return chosen + allCases.filter { !chosen.contains($0) }
+    }
+
+    /// The tabs shown: in their order, without the ones switched off.
+    static var visible: [QuickPage] {
+        let hidden = Preferences.shared.strings("menu-hidden")
+        let pages = ordered(Preferences.shared.strings("menu-order")).filter { !hidden.contains($0.rawValue) }
+        return pages.isEmpty ? [.system] : pages
+    }
+
     var symbol: String {
         switch self {
         case .system: return "waveform.path.ecg"
@@ -324,10 +355,12 @@ final class QuickPanelState: ObservableObject {
     var onScratchpad: () -> Void = {}
     var onCleaning: () -> Void = {}
     var onCommand: () -> Void = {}
+    var onMic: () -> Void = {}
 }
 
 struct QuickPanelView: View {
     @EnvironmentObject var state: QuickPanelState
+    @EnvironmentObject var preferences: Preferences
     let onSettings: () -> Void
     let onCommand: () -> Void
     let onAgents: () -> Void
@@ -336,7 +369,7 @@ struct QuickPanelView: View {
         VStack(spacing: 12) {
             ButterflyImage(height: 22).padding(.top, 4)
             HStack(spacing: 2) {
-                ForEach(QuickPage.allCases) { page in
+                ForEach(QuickPage.visible) { page in
                     Button { state.page = page } label: {
                         Image(systemName: page.symbol)
                             .font(.system(size: 13, weight: .semibold))
@@ -357,7 +390,7 @@ struct QuickPanelView: View {
                 .foregroundColor(MunaColor.caption)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Group {
-                switch state.page {
+                switch QuickPage.visible.contains(state.page) ? state.page : QuickPage.visible[0] {
                 case .system: SystemPage()
                 case .network: NetworkPage()
                 case .sound: SoundPage()
@@ -477,17 +510,37 @@ struct Graph: View {
 
 struct SystemPage: View {
     @EnvironmentObject var monitor: SystemMonitor
+    @EnvironmentObject var preferences: Preferences
 
     var body: some View {
+        // Settings → Monitor → In the panel: which blocks are shown
+        let blocks = preferences.strings("system-blocks")
+        let sensors = Sensors.shared
         VStack(spacing: 10) {
-            QuickBlock {
-                MeterRow(label: "Processor", share: monitor.cpu, value: "\(Int(monitor.cpu * 100))%")
-                Graph(values: monitor.cpuHistory, top: 1)
+            if blocks.contains("temps"), let temperature = sensors.temperature {
+                QuickBlock {
+                    MeterRow(label: "Processor temperature", share: min(temperature / 100, 1), value: Readings.temperature(temperature))
+                }
             }
-            QuickBlock {
-                MeterRow(label: "Memory", share: Double(monitor.memoryUsed) / Double(max(monitor.memoryTotal, 1)),
-                         value: "\(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryUsed), countStyle: .memory)) / \(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryTotal), countStyle: .memory))")
-                Graph(values: monitor.memoryHistory, top: 1)
+            if blocks.contains("cpu") {
+                QuickBlock {
+                    MeterRow(label: "Processor", share: monitor.cpu, value: "\(Int(monitor.cpu * 100))%")
+                    Graph(values: monitor.cpuHistory, top: 1)
+                    if preferences.bool("graph-scale") { Text("100%").font(.system(size: 9)).foregroundColor(MunaColor.secondary) }
+                }
+            }
+            if blocks.contains("gpu"), let gpu = sensors.gpu {
+                QuickBlock {
+                    MeterRow(label: "Graphics", share: gpu, value: "\(Int(gpu * 100))%")
+                }
+            }
+            if blocks.contains("memory") {
+                QuickBlock {
+                    MeterRow(label: "Memory", share: Double(monitor.memoryUsed) / Double(max(monitor.memoryTotal, 1)),
+                             value: "\(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryUsed), countStyle: .memory)) / \(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryTotal), countStyle: .memory))")
+                    Graph(values: monitor.memoryHistory, top: 1)
+                    if preferences.bool("graph-scale") { Text("100%").font(.system(size: 9)).foregroundColor(MunaColor.secondary) }
+                }
             }
             QuickBlock {
                 if monitor.diskTotal > 0 {
@@ -498,14 +551,20 @@ struct SystemPage: View {
                     MeterRow(label: battery.charging ? "Battery · charging" : battery.onPower ? "Battery · on power" : "Battery",
                              share: Double(battery.percent) / 100, value: "\(battery.percent)%")
                 }
-                HStack(spacing: 6) {
-                    Image(systemName: "clock")
-                    Text("Up for \(Self.uptime(ProcessInfo.processInfo.systemUptime))")
+                if let watts = sensors.watts {
+                    MeterRow(label: "Power draw", share: min(watts / 60, 1), value: String(format: "%.1f W", watts))
                 }
-                .font(.system(size: 11))
-                .foregroundColor(MunaColor.secondary)
+                if blocks.contains("uptime") {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock")
+                        Text("Up for \(Self.uptime(ProcessInfo.processInfo.systemUptime))")
+                    }
+                    .font(.system(size: 11))
+                    .foregroundColor(MunaColor.secondary)
+                }
             }
         }
+        .onAppear { Sensors.shared.sample() }
     }
 
     static func uptime(_ seconds: TimeInterval) -> String {
@@ -582,8 +641,13 @@ struct ToolsPage: View {
                 ToolTile(symbol: "trash", label: "Empty trash") { QuickTools.emptyTrash() }
                 ToolTile(symbol: "display", label: "Screen off") { QuickTools.displaySleep() }
                 ToolTile(symbol: "eject", label: volumes.isEmpty ? "No disks" : "Eject all") {
-                    volumes.forEach(QuickTools.eject)
+                    // the drives excluded in Settings → Quick toggles stay
+                    let excluded = Preferences.shared.strings("eject-excluded")
+                    volumes.filter { !excluded.contains($0.path) }.forEach(QuickTools.eject)
                 }
+                ToolTile(symbol: "moon", label: NightShift.isOn ? "Night Shift on" : "Night Shift") { NightShift.set(!NightShift.isOn) }
+                ToolTile(symbol: "mic.slash", label: "Microphone") { state.onMic() }
+                ToolTile(symbol: "lock", label: "Lock") { Keyboard.press("<Super><Control>q") }
                 ToolTile(symbol: "note.text", label: "Scratchpad") { state.onScratchpad() }
                 ToolTile(symbol: "sparkles.rectangle.stack", label: "Cleaning") { state.onCleaning() }
                 ToolTile(symbol: "magnifyingglass", label: "Command Bar") { state.onCommand() }

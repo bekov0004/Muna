@@ -76,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private let quickState = QuickPanelState()
     private var readingsObservers: [AnyCancellable] = []
     private var readingsOn = false
+    private var gestures: GestureActions?
+    private var systemAlerts: SystemAlerts?
+    private var keyboardCards: KeyboardCards?
+    private var readingsTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         app.start()
@@ -112,25 +116,78 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         Preferences.shared.$sectionHotKeys.dropFirst().removeDuplicates().sink { [weak self] on in
             self?.setSectionKeys(on)
         }.store(in: &readingsObservers)
+
+        // what the settings window's buttons, the trackpad and the radial menu do
+        settings.state.run = { [weak self] id in self?.perform(id) }
+        quickState.onMic = { [weak self] in self?.app.sound.toggleMicrophone() }
+        let gestures = GestureActions(app: app)
+        gestures.run = { [weak self] id in self?.perform(id) }
+        gestures.apply()
+        self.gestures = gestures
+        let tell: (String, String, String) -> Void = { [weak self] title, details, symbol in
+            self?.capsules?.tell(title, details, symbol: symbol, ok: false)
+        }
+        systemAlerts = SystemAlerts(monitor: app.monitor, tell: tell)
+        systemAlerts?.start()
+        keyboardCards = KeyboardCards { [weak self] title, symbol in self?.capsules?.tell(title, "", symbol: symbol, ok: true) }
+        keyboardCards?.start()
+    }
+
+    /// One action by its name (Linux's names: the "Try it" buttons, the radial menu, the gestures' "muna:…").
+    func perform(_ id: String) {
+        switch id {
+        case "quickpanel": showQuickPanel(nil)
+        case _ where id.hasPrefix("quickpanel:"): showQuickPanel(QuickPage(rawValue: String(id.dropFirst(11))))
+        case "command": capsules?.openCommand()
+        case "radial": radial?.toggle()
+        case "cleaning": DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { CleaningMode.shared.start() }
+        case "scratchpad": scratchpadWindow?.show()
+        case "screenshot": QuickTools.screenshot()
+        case "record", "recording": NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Screenshot.app"))
+        case "color": QuickTools.pickColor { [weak self] hex in self?.capsules?.tell("Colour copied", hex, symbol: "eyedropper", ok: true) }
+        case "dark": QuickTools.toggleDarkMode()
+        case "night": NightShift.set(!NightShift.isOn)
+        case "output": app.sound.nextOutput()
+        case "mic": app.sound.refresh(); app.sound.toggleMicrophone()
+        case "awake": if app.awake.isOn { app.awake.stop() } else { app.awake.start(minutes: nil) }
+        case "lock": Keyboard.press("<Super><Control>q")
+        case "downloads": NSWorkspace.shared.open(FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0])
+        case "clipboard": capsules?.open(on: .clipboard)
+        case "muna": capsules?.open(on: .muna)
+        case "tray": capsules?.open(on: .tray)
+        case "notifications": capsules?.open(on: .alerts)
+        case "play-pause": app.nowPlaying.playPause()
+        case "next": app.nowPlaying.next()
+        case "prev": app.nowPlaying.previous()
+        case _ where id.hasPrefix("capsule:"):
+            if let tab = PanelTab(rawValue: String(id.dropFirst(8))) { capsules?.open(on: tab) }
+        default: break
+        }
+    }
+
+    /// The quick panel under Muna's item, on a page (or as it was).
+    private func showQuickPanel(_ page: QuickPage?) {
+        if let page { quickState.page = page }
+        guard let button = statusItem?.button else { return }
+        if popover.isShown { return }
+        app.monitor.watch()
+        app.sound.watch()
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
     /// ⌃⌥Space: a ring of actions around the pointer.
     private func setUpRadial() {
+        // the actions chosen in Settings → Radial menu, in their order
         radial = RadialMenu { [weak self] in
             guard let self else { return [] }
-            return [
-                RadialAction(id: "shot", symbol: "camera.viewfinder", label: "Screenshot") { QuickTools.screenshot() },
-                RadialAction(id: "colour", symbol: "eyedropper", label: "Colour") { QuickTools.pickColor { _ in } },
-                RadialAction(id: "command", symbol: "magnifyingglass", label: "Command") { self.capsules?.openCommand() },
-                RadialAction(id: "scratch", symbol: "note.text", label: "Scratchpad") { self.scratchpadWindow?.show() },
-                RadialAction(id: "dark", symbol: "circle.lefthalf.filled", label: "Dark mode") { QuickTools.toggleDarkMode() },
-                RadialAction(id: "awake", symbol: self.app.awake.isOn ? "cup.and.saucer.fill" : "cup.and.saucer",
-                             label: self.app.awake.isOn ? "Sleep" : "Awake 1 h") {
-                    if self.app.awake.isOn { self.app.awake.stop() } else { self.app.awake.start(minutes: 60) }
-                },
-                RadialAction(id: "screen", symbol: "display", label: "Screen off") { QuickTools.displaySleep() },
-                RadialAction(id: "clip", symbol: "doc.on.clipboard", label: "Clipboard") { self.capsules?.open(on: .clipboard) },
-            ]
+            return Preferences.shared.strings("radial-actions").compactMap { id in
+                guard let info = RadialCatalog.info(id) else { return nil }
+                let awake = id == "awake" && self.app.awake.isOn
+                return RadialAction(id: id, symbol: awake ? "cup.and.saucer.fill" : info.symbol, label: awake ? "Sleep" : info.title) { [weak self] in
+                    self?.perform(id)
+                }
+            }
         }
         let apply: (Bool) -> Void = { [weak self] on in
             self?.radialKey = on
@@ -198,6 +255,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         }
         menu.delegate = self
         statusItem = item
+        applyIcon()
 
         let panel = QuickPanelView(onSettings: { [weak self] in
             self?.popover.performClose(nil)
@@ -210,6 +268,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             self?.agentsWindow?.show()
         })
         .environmentObject(quickState)
+        .environmentObject(Preferences.shared)
         .environmentObject(app.monitor)
         .environmentObject(app.awake)
         .environmentObject(app.focus)
@@ -225,9 +284,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         popover.appearance = NSAppearance(named: .darkAqua)
         popover.delegate = self
 
-        setReadings(Preferences.shared.menuBarReadings)
+        setReadings(Preferences.shared.menuBarReadings || !Preferences.shared.strings("bar-metrics").isEmpty)
         Preferences.shared.$menuBarReadings.dropFirst().removeDuplicates().sink { [weak self] on in
-            self?.setReadings(on)
+            self?.setReadings(on || !Preferences.shared.strings("bar-metrics").isEmpty)
+        }.store(in: &readingsObservers)
+        // Settings → Monitor (what is written) and Menu bar (the icon)
+        Preferences.shared.changed.sink { [weak self] key in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if key == "bar-metrics" || key == "*" { self.setReadings(Preferences.shared.menuBarReadings || !Preferences.shared.strings("bar-metrics").isEmpty) }
+                if key == "bar-icon" || key == "*" { self.applyIcon() }
+            }
         }.store(in: &readingsObservers)
         app.monitor.cpuPublisher.sink { [weak self] _ in
             DispatchQueue.main.async { self?.updateReadings() }
@@ -260,6 +327,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         app.sound.unwatch()
     }
 
+    /// Settings → Menu bar → Menu bar icon: the butterfly or a symbol.
+    private func applyIcon() {
+        guard let button = statusItem?.button else { return }
+        let choice = Preferences.shared.string("bar-icon")
+        if choice != "butterfly", let symbol = NSImage(systemSymbolName: choice, accessibilityDescription: "Muna") {
+            button.image = symbol
+        } else if let image = ButterflyImage.image?.copy() as? NSImage {
+            image.size = NSSize(width: 18, height: 16)
+            button.image = image
+        }
+    }
+
     private func setReadings(_ on: Bool) {
         guard on != readingsOn else { return }
         readingsOn = on
@@ -274,11 +353,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             return
         }
         let monitor = app.monitor
-        let memory = monitor.memoryTotal > 0 ? Int(Double(monitor.memoryUsed) / Double(monitor.memoryTotal) * 100) : 0
+        var chosen = Preferences.shared.strings("bar-metrics")
+        if chosen.isEmpty { chosen = ["cpu", "mem"] }
+        if chosen.contains(where: { ["cputemp", "gpu", "diskio", "power"].contains($0) }) { Sensors.shared.sample() }
         let small = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
         let dim = NSFont.systemFont(ofSize: 8, weight: .bold)
         let text = NSMutableAttributedString()
-        for (label, value) in [("CPU", "\(Int(monitor.cpu * 100))%"), ("RAM", "\(memory)%")] {
+        let pairs: [(String, String)] = Readings.all.filter { chosen.contains($0.id) }.compactMap { reading in reading.value(monitor).map { (reading.label, $0) } }
+        for (label, value) in pairs {
             text.append(NSAttributedString(string: " \(label) ", attributes: [.font: dim, .foregroundColor: NSColor.secondaryLabelColor]))
             text.append(NSAttributedString(string: value, attributes: [.font: small]))
         }
@@ -340,6 +422,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     }
 
     @objc private func showAbout() {
-        settings?.show(page: .about)
+        settings?.show(page: "about")
     }
 }

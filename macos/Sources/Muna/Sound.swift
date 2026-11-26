@@ -95,6 +95,18 @@ final class SoundModel: ObservableObject {
 
     func toggleMicrophone() { setMicrophoneMuted(!microphoneMuted) }
 
+    /// The next output, skipping the ones switched off in Settings → Output switcher.
+    func nextOutput() {
+        refresh()
+        let skipped = Preferences.shared.strings("output-skipped")
+        let cycle = outputs.filter { !skipped.contains($0.name) || $0.id == currentOutput }
+        guard cycle.count > 1, let index = cycle.firstIndex(where: { $0.id == currentOutput }) else {
+            if let first = cycle.first(where: { $0.id != currentOutput }) { selectOutput(first.id) }
+            return
+        }
+        selectOutput(cycle[(index + 1) % cycle.count].id)
+    }
+
     func selectOutput(_ device: AudioDeviceID) {
         var address = Self.address(kAudioHardwarePropertyDefaultOutputDevice)
         var data = device

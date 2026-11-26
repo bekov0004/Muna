@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import MunaCore
 
 /// One widget of the capsule's Muna page, as Muna on Linux has it (linux/src/utils/widgetInfo.js).
 struct WidgetInfo: Identifiable {
@@ -112,6 +113,64 @@ final class Preferences: ObservableObject {
         clipboardCleanUrls = bool("clipboard-clean-urls", false)
         // an earlier build of the Mac version called it "tray-keep"
         trayKeepFiles = defaults.object(forKey: "tray-keep-files") == nil ? bool("tray-keep", true) : defaults.bool(forKey: "tray-keep-files")
+    }
+
+    // --- every other setting of Linux, by its key (linux/schemas), with Linux's defaults ----------
+
+    /// The keys the settings window and the app read with bool(_:), double(_:) …, and their defaults.
+    static let linuxDefaults: [String: Any] = [
+        "color-scheme": "default",
+        "size-scale": 1.0, "row-height": 112.0, "content-padding": 16.0, "widget-spacing": 16.0, "show-dividers": true,
+        "width-mode": "auto", "fixed-width": 0.4, "shadow-strength": 0.6, "collapsed-width-adjust": 0.0,
+        "butterfly-flap": true, "butterfly-flap-every": 30.0,
+        "panel-color": "#000000", "panel-opacity": 0.5, "topbar-hide": "never",
+        "gestures-swipe-open": true, "gestures-swipe-close": true, "gestures-invert": false, "gestures-media-swipe": true,
+        "gestures-middle-click": "none",
+        "touchpad-gestures": true, "edge-gestures": true, "gesture-sensitivity": 100.0, "gesture-desktops": "fingers",
+        "fingerprint-agents": true, "fingerprint-private": true,
+        "reminder-sound": true, "awake-on-start": false,
+        "activity-media": true, "activity-timer": true, "activity-calendar": true, "activity-files": true, "activity-downloads": true,
+        "peek-media-seconds": 2.5, "peek-files-seconds": 1.5, "peek-calendar-seconds": 6.0,
+        "album-corner-radius": 8.0, "media-effect": "spectrum", "colored-effects": true,
+        "show-caps-lock": true, "show-input-source": true,
+        "system-alerts": true, "agents-alerts": true,
+        "alert-cpu": 90.0, "alert-temp": 85.0, "alert-disk": 5.0, "alert-battery": 20.0, "alert-memory": 8.0,
+        "monitor-interval": 2.0, "temp-unit": "C", "graph-scale": true,
+        "bar-metrics": [String](), "system-blocks": ["temps", "cpu", "gpu", "memory", "uptime"],
+        "bar-icon": "butterfly", "menu-hidden": [String](), "menu-order": [String](),
+        "radial-actions": ["play-pause", "next", "screenshot", "downloads", "color", "prev"],
+        "output-skipped": [String](), "eject-excluded": [String](), "cleaning-visible": false,
+        "clipboard-click-pastes": false, "phone-dark-screen": true,
+        "desktops-per-monitor": false,
+    ]
+
+    /// Tells which key changed (the app's parts listen for the ones they use).
+    let changed = PassthroughSubject<String, Never>()
+
+    func value(_ key: String) -> Any? { defaults.object(forKey: key) ?? Self.linuxDefaults[key] }
+    func bool(_ key: String) -> Bool { value(key) as? Bool ?? false }
+    func double(_ key: String) -> Double { (value(key) as? NSNumber)?.doubleValue ?? 0 }
+    func string(_ key: String) -> String { value(key) as? String ?? "" }
+    func strings(_ key: String) -> [String] { value(key) as? [String] ?? [] }
+
+    func set(_ key: String, _ newValue: Any?) {
+        objectWillChange.send()
+        if let newValue { defaults.set(newValue, forKey: key) } else { defaults.removeObject(forKey: key) }
+        changed.send(key)
+    }
+
+    /// Settings → General → Reset all settings: every key back to Linux's default.
+    func resetAll() {
+        for key in defaults.dictionaryRepresentation().keys where key.contains("-") { defaults.removeObject(forKey: key) }
+        objectWillChange.send()
+        changed.send("*")
+    }
+
+    /// The look of the capsule's widgets (Settings → Widgets and Appearance).
+    var look: PanelLayout.Look {
+        PanelLayout.Look(scale: CGFloat(min(max(double("size-scale"), 0.85), 1.25)), gap: CGFloat(double("widget-spacing")),
+                         padding: CGFloat(double("content-padding")), rowHeight: CGFloat(min(max(double("row-height"), 90), 220)),
+                         dividers: bool("show-dividers"), fixedShare: string("width-mode") == "fixed" ? CGFloat(double("fixed-width")) : nil)
     }
 
     /// How many cells wide a widget is (its own choice, else Linux's default).

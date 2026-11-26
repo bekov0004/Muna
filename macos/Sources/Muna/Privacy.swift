@@ -22,6 +22,8 @@ final class PrivacyModel: ObservableObject {
     /// Asks for Touch ID (or the password) and opens the private items.
     func unlock() {
         guard !unlocked else { return }
+        // Settings → Touch ID → Ask for Touch ID: off, private items open without asking
+        if !Preferences.shared.bool("fingerprint-private") { open(); return }
         let context = LAContext()
         var problem: NSError?
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &problem) else { return }

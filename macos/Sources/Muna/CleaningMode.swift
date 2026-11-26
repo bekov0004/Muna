@@ -71,8 +71,11 @@ final class CleaningMode {
     // MARK: - Screens
 
     private func showWindows() {
+        // Settings → Cleaning Mode → Keep screen visible: a small sign in a corner instead of black
+        let visible = Preferences.shared.bool("cleaning-visible")
         for screen in NSScreen.screens {
-            let window = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
+            let frame = visible ? NSRect(x: screen.frame.maxX - 380, y: screen.frame.minY + 30, width: 350, height: 44) : screen.frame
+            let window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
             window.level = .screenSaver
             window.backgroundColor = .black
             window.isOpaque = true
@@ -80,16 +83,18 @@ final class CleaningMode {
             window.ignoresMouseEvents = true
             window.isReleasedWhenClosed = false
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
-            window.setFrame(screen.frame, display: true)
+            window.setFrame(frame, display: true)
 
             let label = NSTextField(labelWithString: "")
             label.font = NSFont.systemFont(ofSize: 15, weight: .medium)
             label.textColor = NSColor.white.withAlphaComponent(0.45)
             label.alignment = .center
             label.translatesAutoresizingMaskIntoConstraints = false
-            let content = NSView(frame: NSRect(origin: .zero, size: screen.frame.size))
+            let content = NSView(frame: NSRect(origin: .zero, size: frame.size))
             content.wantsLayer = true
-            content.layer?.backgroundColor = NSColor.black.cgColor
+            content.layer?.backgroundColor = NSColor.black.withAlphaComponent(visible ? 0.8 : 1).cgColor
+            content.layer?.cornerRadius = visible ? 12 : 0
+            if visible { window.isOpaque = false; window.backgroundColor = .clear }
             content.addSubview(label)
             NSLayoutConstraint.activate([
                 label.centerXAnchor.constraint(equalTo: content.centerXAnchor),

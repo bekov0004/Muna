@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import ApplicationServices
 import Combine
 import EventKit
 import MunaCore
@@ -128,6 +129,15 @@ final class ClipboardModel: ObservableObject {
         let pasteboard = NSPasteboard.general
         guard pasteboard.changeCount != changeCount else { return }
         changeCount = pasteboard.changeCount
+        // Settings → Clipboard → A click pastes: ⌘V into the app that was in front (after the capsule let go)
+        if Preferences.shared.bool("clipboard-click-pastes") {
+            if AXIsProcessTrusted() {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { Keyboard.tap(9, flags: .maskCommand) }   // kVK_ANSI_V
+            } else {
+                let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+                _ = AXIsProcessTrustedWithOptions(options)
+            }
+        }
         let types = Set((pasteboard.types ?? []).map(\.rawValue))
         guard types.isDisjoint(with: Self.secretTypes) else { return }
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],

@@ -122,7 +122,7 @@ enum PanelTab: String, CaseIterable, Identifiable {
     /// The height of the section under the tabs.
     var bodyHeight: CGFloat {
         switch self {
-        case .muna, .tray: return PanelLayout.rowHeight
+        case .muna, .tray: return Preferences.shared.look.rowHeight
         case .localSend: return 138
         case .clipboard, .alerts: return 236
         case .command: return 250
@@ -202,7 +202,7 @@ final class CapsuleModel: ObservableObject {
         // with a notch, the tabs must clear it: never narrower than the closed capsule and a bit
         let atLeast = geometry.hasNotch ? geometry.earsSize.width + 2 * CapsuleGeometry.earWidth : 0
         return PanelLayout(screenWidth: geometry.screenFrame.width, widgets: preferences.enabledWidgets,
-                           cells: { preferences.cells($0) }, atLeast: atLeast)
+                           cells: { preferences.cells($0) }, atLeast: atLeast, look: preferences.look)
     }
 
     /// Beside a notch, the date and time (or what runs) show only when there is a reason.
@@ -213,6 +213,8 @@ final class CapsuleModel: ObservableObject {
     var closedSize: CGSize {
         var size = showsEars ? geometry.earsSize : geometry.restingSize
         if isHovering && !isOpen { size.width += CapsuleGeometry.hoverGrow }
+        // Settings → General → Collapsed width (beside a notch the notch decides)
+        if !geometry.hasNotch { size.width = max(120, size.width + CGFloat(Preferences.shared.double("collapsed-width-adjust"))) }
         if card != nil {
             size.width = max(size.width, 380)
             size.height += Self.cardHeight
@@ -309,6 +311,18 @@ final class CapsuleController {
         preferences.$widgetCells.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async { self?.layoutChanged() }
         }.store(in: &observers)
+        // the look of Settings → Widgets and Appearance
+        preferences.changed.sink { [weak self] key in
+            let layoutKeys: Set<String> = ["size-scale", "row-height", "content-padding", "widget-spacing", "show-dividers", "width-mode", "fixed-width", "*"]
+            DispatchQueue.main.async {
+                guard let self else { return }
+                if layoutKeys.contains(key) { self.layoutChanged() }
+                if key == "collapsed-width-adjust" || key == "*" { self.placeClosed() }
+                if key.hasPrefix("activity-") || key == "*" { self.activityChanged() }
+                if key == "shadow-strength" || key == "*" { self.applyShadow() }
+            }
+        }.store(in: &observers)
+        applyShadow()
         app.localSend.incomingPublisher.dropFirst().sink { [weak self] _ in
             self?.scheduleUpdate()
         }.store(in: &observers)
@@ -375,8 +389,11 @@ final class CapsuleController {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             let session = self.app.localSend.session
-            let active = self.preferences.activitiesInCollapsed
-                && (self.app.nowPlaying.track != nil || self.app.timer.active || session.phase == .sending)
+            // Settings → Live Activities: each kind can be switched off
+            let p = self.preferences
+            let active = p.activitiesInCollapsed
+                && ((p.bool("activity-media") && self.app.nowPlaying.track != nil) || (p.bool("activity-timer") && self.app.timer.active)
+                    || session.phase == .sending)
             guard active != self.model.hasActivity else { return }
             withAnimation(CapsuleMetrics.animation) { self.model.hasActivity = active }
             self.placeClosed()
@@ -425,6 +442,12 @@ final class CapsuleController {
         (hovering && preferences.autoCollapse) || pinned || model.isEditing || model.isDropTarget
             || app.localSend.incoming?.state == .asking || (!preferences.autoCollapse && model.isOpen)
             || (model.tab == .agent && app.agents.waiting != nil)
+    }
+
+    /// Linux's shadow under the capsule (macOS draws it from the capsule's shape).
+    private func applyShadow() {
+        panel.hasShadow = preferences.double("shadow-strength") > 0.05
+        panel.invalidateShadow()
     }
 
     private func layoutChanged() {

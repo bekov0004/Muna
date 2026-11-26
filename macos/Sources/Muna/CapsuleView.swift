@@ -264,7 +264,7 @@ struct OpenPanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .padding(.top, model.geometry.topInset)
-        .padding(.horizontal, PanelLayout.padding + 4)
+        .padding(.horizontal, model.layout.inset + 4)
         .padding(.bottom, CapsuleModel.bottomPadding)
         .foregroundColor(MunaColor.text)
     }
@@ -338,13 +338,14 @@ struct MunaPage: View {
     var body: some View {
         let pages = model.layout.pages
         let slots = pages.indices.contains(model.pageIndex) ? pages[model.pageIndex] : (pages.first ?? [])
-        HStack(alignment: .top, spacing: PanelLayout.gap) {
+        let layout = model.layout
+        HStack(alignment: .top, spacing: layout.spacing) {
             ForEach(Array(slots.enumerated()), id: \.element.id) { index, slot in
                 WidgetView(id: slot.id)
-                    .frame(width: slot.width, height: PanelLayout.rowHeight, alignment: .topLeading)
+                    .frame(width: slot.width, height: layout.height, alignment: .topLeading)
                     .overlay(alignment: .leading) {
-                        if index > 0 {
-                            Rectangle().fill(MunaColor.divider).frame(width: 1).offset(x: -PanelLayout.gap / 2)
+                        if index > 0 && layout.look.dividers {
+                            Rectangle().fill(MunaColor.divider).frame(width: 1).offset(x: -layout.spacing / 2)
                         }
                     }
             }

@@ -45,7 +45,7 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | AI Agents (`agents`) | working now, tokens 5 h and week, cards, Codex | ✅ | ✅ | |
 | Phone (`phone`) | live screen, control, QR pairing, Muna Phone link, dark screen | ✅ | ✅ | |
 | Keep awake (`awake`) | for a while or until off, lid closed, icon and colour | 🟡 | 🟡 | the icon and colour in the menu bar / tray ✅; lid closed needs administrator rights ➖ |
-| Displays (`displays`) | brightness of every monitor and keyboard light, night light, arrangement (drag, main, mirror, only one) | 🟡 | 🟡 | arranging by dragging, main, mirror not yet; Windows has no keyboard light API ➖ |
+| Displays (`displays`) | brightness of every monitor and keyboard light, night light, auto brightness, arrangement (main, sides, mirror, only one) | 🟡 | 🟡 | arrangement ✅ (main, the side of each, joined, mirrored; Windows also only one); Mac: no automatic-brightness switch yet; Windows has no keyboard light API ➖ |
 | Utilities (`utilities`) | every tool in one list, reordered and hidden | ✅ | ✅ | |
 | Controls (`controls`) | switches for windows, mouse, keyboard, files, with counters | ✅ | ✅ | |
 | Quick toggles (`toggles`) | dark mode, keyboard light, microphone, trash, disks, hidden files, lock, screen | ✅ | ✅ | also Wi-Fi, Bluetooth, night light, airplane on Windows |

@@ -132,6 +132,22 @@ public class DarkWindow : Window
         return box;
     }
 
+    /// <summary>An entry with a grey hint inside while it is empty (made once per entry).</summary>
+    public static Grid WithHint(TextBox box, string hint)
+    {
+        var text = Ui.Text(hint, 13, color: C.WinSecondary);
+        text.IsHitTestVisible = false;
+        text.VerticalAlignment = VerticalAlignment.Center;
+        text.Margin = new Thickness(10, 0, 0, 0);
+        void Show() => text.Visibility = box.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        box.TextChanged += (_, _) => Show();
+        Show();
+        var grid = new Grid();
+        grid.Children.Add(box);
+        grid.Children.Add(text);
+        return grid;
+    }
+
     public static Border Button(string label, Action action, bool accent = false, bool disabled = false)
     {
         var button = Ui.Box(Ui.Semi(label, 12, accent ? Brushes.White : C.WinText), accent ? C.WinAccent : C.WinControl, 7, 12, 6);

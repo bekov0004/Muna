@@ -79,6 +79,7 @@ public sealed class SettingsWindow : DarkWindow
     string? _drawnPage, _drawnQuery;
     readonly TextBox _reminderText = Input();
     readonly TextBox _reminderTime = Input();
+    Grid? _reminderTextHolder, _reminderTimeHolder;
     string _reminderRepeat = "once";
 
     void SaveReminders(IEnumerable<ButterflyReminders.Reminder> list) => _p.SetValue("reminders", ButterflyReminders.ToJson(list));
@@ -748,12 +749,16 @@ public sealed class SettingsWindow : DarkWindow
             };
         }).ToList();
         if (list.Count == 0) list.Add(Ui.Text("No reminders yet.", 12, color: C.WinSecondary).Margin(14, 10, 14, 10));
-        _reminderText.Width = 240;
-        _reminderTime.Width = 70;
+        _reminderTime.Width = 80;
+        _reminderTextHolder ??= WithHint(_reminderText, "What the butterfly says");
+        _reminderTimeHolder ??= WithHint(_reminderTime, "18:30");
+        _reminderText.Background = _reminderTime.Background = C.WinControl;
+        _reminderText.Foreground = _reminderTime.Foreground = C.WinText;
         var repeats = new[] { "once", "daily", "weekdays" };
+        // the text and the time on one line, how often and the buttons on the next
         list.Add(new Border
         {
-            Child = Ui.Row(8, Ui.Detach(_reminderText), Ui.Detach(_reminderTime),
+            Child = Ui.Column(8, Ui.Row(8, Ui.Detach(_reminderTextHolder).Grow(), Ui.Detach(_reminderTimeHolder)), Ui.Row(8,
                 Choice(new[] { "Once", "Every day", "Weekdays" }, Array.IndexOf(repeats, _reminderRepeat), i => _reminderRepeat = repeats[i]),
                 Button("Add", () =>
                 {
@@ -765,8 +770,8 @@ public sealed class SettingsWindow : DarkWindow
                     }
                     catch (ArgumentException) { _reminderTime.Text = ""; _reminderTime.ToolTip = "Write the time as 18:30"; }
                 }, accent: true),
-                Button("Show it now", () => _app.Capsules.Tell("Reminder", _reminderText.Text.Trim().Length == 0 ? "Hello! I am your Muna butterfly." : _reminderText.Text, Glyph.Bell, true, 8))),
-            Padding = new Thickness(14, 8, 14, 8),
+                Button("Show it now", () => _app.Capsules.Tell("Reminder", _reminderText.Text.Trim().Length == 0 ? "Hello! I am your Muna butterfly." : _reminderText.Text, Glyph.Bell, true, 8)))),
+            Padding = new Thickness(14, 10, 14, 10),
         });
         yield return Card("Reminders",
             Switch("A sound with a reminder", "At the time you choose the butterfly flies out of the capsule, grows and shows your text. Also in the quick panel (Reminders).", _p.ReminderSound, v => _p.ReminderSound = v));

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -380,7 +381,7 @@ public static class Ui
     /// <summary>The shell's icon of a file (by extension, folders and programs by path).</summary>
     public static ImageSource? FileIcon(string path)
     {
-        var ext = Path.GetExtension(path).ToLowerInvariant();
+        var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
         var key = Directory.Exists(path) ? "<folder>" : ext is ".exe" or ".lnk" or ".ico" or "" ? path : ext;
         if (IconCache.TryGetValue(key, out var cached)) return cached;
         ImageSource? result = null;
@@ -393,7 +394,7 @@ public static class Ui
         return result;
     }
 
-    public static UIElement FileIconView(string path, double size = 32)
+    public static FrameworkElement FileIconView(string path, double size = 32)
     {
         var source = FileIcon(path);
         return source is null

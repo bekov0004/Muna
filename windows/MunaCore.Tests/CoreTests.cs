@@ -527,3 +527,57 @@ public class CalendarTests
         Assert.Equal(local, all[0].Start);
     }
 }
+
+public class MoreFileTests
+{
+    [Fact]
+    public void FocusLikeLinux()
+    {
+        using var t = new TempFolder();
+        var now = 1764060000000.0;
+        t.File("focus.json", """{"version":1,"stopwatch":{"state":"paused","since":0,"elapsed":12000,"laps":[5000]},"pomo":{"state":"running","phase":"work","endAt":1764059000000,"remaining":5,"round":2,"done":1,"config":{"work":500,"short":0,"long":15,"every":1}}}""");
+        var focus = new FocusFile(t.Store("focus.json"), now);
+        Assert.Equal("paused", focus.Stopwatch.State);
+        Assert.Equal("idle", focus.Pomo.State);                       // it ran out while closed
+        Assert.Equal(180, focus.Pomo.Config.Work);
+        Assert.Equal(1, focus.Pomo.Config.Short);
+        Assert.Equal(2, focus.Pomo.Config.Every);
+        Assert.Equal("break", focus.Advance(now));
+        Assert.Equal("work", focus.Advance(now));
+        Assert.Equal(2, focus.Pomo.Round);
+        Assert.Equal("long", focus.Advance(now));
+        Assert.Equal("work", focus.Advance(now));
+        Assert.Equal(1, focus.Pomo.Round);
+        focus.Save();
+        Assert.Equal(2, new FocusFile(t.Store("focus.json"), now).Pomo.Done);
+    }
+
+    [Fact]
+    public void Reminders()
+    {
+        using var t = new TempFolder();
+        var store = new RemindersStore(t.Store("r.json"));
+        var now = new DateTime(2026, 11, 25, 15, 0, 0);
+        Assert.Equal(new DateTime(2026, 11, 26, 9, 0, 0), RemindersStore.NextAt(9, 0, now));
+        Assert.Equal(new DateTime(2026, 11, 25, 16, 30, 0), RemindersStore.NextAt(16, 30, now));
+        store.Add("Later", now.AddHours(2));
+        store.Add("Soon", now.AddMinutes(1));
+        Assert.Throws<ArgumentException>(() => store.Add(" ", now));
+        Assert.Equal(new[] { "Soon", "Later" }, new RemindersStore(t.Store("r.json")).Reminders.Select(r => r.Text));
+        Assert.Equal(new[] { "Soon" }, store.TakeDue(now.AddMinutes(5)).Select(r => r.Text));
+        Assert.Equal(new[] { "Later" }, new RemindersStore(t.Store("r.json")).Reminders.Select(r => r.Text));
+    }
+
+    [Fact]
+    public void Scratchpad()
+    {
+        using var t = new TempFolder();
+        t.File("s.json", """{"version":1,"notes":[{"text":"first","at":1},{"text":"second","at":2}]}""");
+        var pad = new ScratchpadStore(t.Store("s.json"));
+        Assert.Equal("first", pad.Text);
+        pad.SetText("changed");
+        var file = File.ReadAllText(System.IO.Path.Combine(t.Path, "s.json"));
+        Assert.Contains("changed", file);
+        Assert.Contains("second", file);
+    }
+}

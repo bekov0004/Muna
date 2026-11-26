@@ -16,10 +16,11 @@
     <Product>Muna</Product>
     <Company>Muna</Company>
     <Description>A Dynamic Island for the desktop</Description>
-    <NoWarn>CA1416;WFAC010</NoWarn>
+    <NoWarn>CA1416;WFAC010;WFO0003</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\MunaCore\MunaCore.csproj" />
+    <PackageReference Include="System.Management" Version="9.0.0" />
     <Resource Include="Assets\butterfly.png" />
     <Resource Include="Assets\Tray.ico" />
     <Resource Include="Assets\Muna.ico" />

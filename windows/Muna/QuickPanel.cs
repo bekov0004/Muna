@@ -1,0 +1,580 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Shapes;
+using System.Windows.Threading;
+using Muna.Core;
+using Forms = System.Windows.Forms;
+
+namespace Muna;
+
+/// <summary>The top-bar window of Muna on Linux (linux/src/ui/toolsMenu.js): on Windows it opens from
+/// Muna's icon in the notification area. System, network, sound, displays, the phone, keep awake,
+/// focus, reminders, downloads, windows, agents and quick tools.</summary>
+public sealed class QuickPanel : Window
+{
+    static readonly (string Id, string Title, string Glyph)[] Pages =
+    {
+        ("system", "System", Glyph.Cpu), ("network", "Network", Glyph.Network), ("sound", "Sound", Glyph.Volume),
+        ("displays", "Displays", Glyph.Brightness), ("phone", "Phone", Glyph.Phone), ("awake", "Keep awake", Glyph.Coffee),
+        ("focus", "Focus", Glyph.Flag), ("reminders", "Reminders", Glyph.Bell), ("downloads", "Downloads", Glyph.Download),
+        ("windows", "Windows", Glyph.Window), ("agents", "AI agents", Glyph.Sparkle), ("tools", "Tools", Glyph.Settings),
+    };
+
+    readonly AppState _app;
+    string _page = "system";
+    string? _message;
+    bool _queued;
+    DateTime _hiddenAt;
+    readonly Field _reminderText = new("Remind me to…");
+    readonly Field _reminderTime = new("HH:MM");
+    readonly Field _phoneText = new("Type on the phone, Enter sends");
+    readonly Border _root = new() { Background = Brushes.Black, CornerRadius = new CornerRadius(14), BorderBrush = C.White(0.1), BorderThickness = new Thickness(1), Padding = new Thickness(14) };
+
+    public QuickPanel(AppState app)
+    {
+        _app = app;
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
+        Background = Brushes.Transparent;
+        Topmost = true;
+        ShowInTaskbar = false;
+        ResizeMode = ResizeMode.NoResize;
+        Width = 360;
+        SizeToContent = SizeToContent.Height;
+        FontFamily = Ui.Font;
+        Title = "Muna";
+        Content = _root;
+        Deactivated += (_, _) => HidePanel();
+        KeyDown += (_, e) => { if (e.Key == Key.Escape) HidePanel(); };
+        SizeChanged += (_, _) => Place();
+        foreach (var model in new Model[] { app.Monitor, app.Awake, app.Focus, app.Reminders, app.Downloads, app.Sound, app.Agents, app.Windows, app.Displays, app.Phone })
+            model.Changed += Queue;
+        _reminderText.Submitted += AddReminder;
+        _reminderTime.Submitted += AddReminder;
+        _phoneText.Box.TextChanged += (_, _) => app.Phone.Draft = _phoneText.Text;
+        _phoneText.Submitted += () => { app.Phone.SendText(); _phoneText.Text = ""; };
+        foreach (var field in new[] { _reminderText, _reminderTime, _phoneText })
+            field.Box.PreviewMouseLeftButtonDown += (_, _) => { Activate(); field.Box.Focus(); };
+    }
+
+    public void Toggle()
+    {
+        // a click on the icon while open closes it (the click itself deactivated it a moment ago)
+        if (IsVisible || (DateTime.Now - _hiddenAt).TotalMilliseconds < 300) { HidePanel(); return; }
+        _app.Windows.Remember();
+        _message = null;
+        _app.Monitor.Watch();
+        _app.Sound.Watch();
+        _app.Displays.Refresh();
+        _app.Downloads.Refresh();
+        if (_page == "phone") _app.Phone.Watch();
+        if (_page == "agents") _app.Agents.WatchSessions();
+        Render();
+        Show();
+        Place();
+        Activate();
+    }
+
+    void HidePanel()
+    {
+        if (!IsVisible) return;
+        _hiddenAt = DateTime.Now;
+        Hide();
+        _app.Monitor.Unwatch();
+        _app.Sound.Unwatch();
+        if (_page == "phone") _app.Phone.Unwatch();
+        if (_page == "agents") _app.Agents.UnwatchSessions();
+    }
+
+    /// <summary>Above the notification area (the corner of the main screen where the taskbar is).</summary>
+    void Place()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        var screen = Forms.Screen.PrimaryScreen ?? Forms.Screen.AllScreens[0];
+        var area = screen.WorkingArea;
+        var bounds = screen.Bounds;
+        var scale = Native.Scale(Native.MonitorAt(area.Right - 1, area.Bottom - 1));
+        int w = (int)(ActualWidth * scale), h = (int)(ActualHeight * scale), gap = (int)(12 * scale);
+        var x = area.Right - w - gap;
+        var y = area.Bottom - h - gap;
+        if (area.Top > bounds.Top) y = area.Top + gap;           // the taskbar is on top
+        if (area.Left > bounds.Left) x = area.Left + gap;        // on the left
+        Native.SetWindowPos(hwnd, Native.HWND_TOPMOST, x, Math.Max(area.Top, y), 0, 0, Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+    }
+
+    void Queue()
+    {
+        if (_queued || !IsVisible) return;
+        _queued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            _queued = false;
+            if (Mouse.LeftButton == MouseButtonState.Pressed && IsMouseOver) { Queue(); return; }
+            Render();
+        });
+    }
+
+    void SetPage(string page)
+    {
+        if (_page == "phone") _app.Phone.Unwatch();
+        if (_page == "agents") _app.Agents.UnwatchSessions();
+        _page = page;
+        if (page == "phone") { _app.Phone.Watch(); _app.Phone.ReadSize(); }
+        if (page == "agents") _app.Agents.WatchSessions();
+        _message = null;
+        Render();
+    }
+
+    void Say(string message)
+    {
+        _message = message;
+        Render();
+    }
+
+    void Render()
+    {
+        var tabs = new UniformGrid { Columns = 6 };
+        foreach (var (id, title, glyph) in Pages)
+        {
+            var selected = id == _page;
+            var page = id;
+            tabs.Children.Add(Ui.Box(Ui.Icon(glyph, 13, selected ? C.Accent : C.White(0.75)), selected ? C.White(0.1) : C.Clear, 10).Size(height: 30).Tip(title)
+                .OnClick(() => SetPage(page), C.White(0.06)));
+        }
+        var column = Ui.Column(12,
+            Ui.Butterfly(22).Align(HorizontalAlignment.Center),
+            Ui.Box(tabs, C.White(0.05), 14, 4, 4),
+            Ui.Text(Pages.First(p => p.Id == _page).Title.ToUpperInvariant(), 10, FontWeights.Black, C.Caption));
+        UIElement body = _page switch
+        {
+            "system" => SystemPage(),
+            "network" => NetworkPage(),
+            "sound" => SoundPage(),
+            "displays" => DisplaysPage(),
+            "phone" => PhonePage(),
+            "awake" => AwakePage(),
+            "focus" => FocusPage(),
+            "reminders" => RemindersPage(),
+            "downloads" => DownloadsPage(),
+            "windows" => WindowsPage(),
+            "agents" => AgentsPage(),
+            _ => ToolsPage(),
+        };
+        column.Children.Add(body);
+        if (_message is not null) column.Children.Add(Ui.Text(_message, 11, color: C.Ok, wrap: true));
+        column.Children.Add(Ui.Row(8,
+            Footer(Glyph.Settings, "Settings", () => { HidePanel(); _app.ShowSettings(); }).Grow(),
+            Footer(Glyph.Search, "Command Bar", () => { HidePanel(); _app.Capsules.OpenCommand(); }).Grow(),
+            Footer(Glyph.Power, "Quit", () => Application.Current.Dispatcher.BeginInvoke(() => { HidePanel(); QuitApp(); })).Grow()));
+        TextElement.SetForeground(column, C.Text);
+        _root.Child = column;
+    }
+
+    static void QuitApp()
+    {
+        App.State.Shutdown();
+        Application.Current.Shutdown();
+    }
+
+    static Border Footer(string glyph, string label, Action action) =>
+        Ui.Box(Ui.Row(6, Ui.Icon(glyph, 11), Ui.Semi(label, 12)).Align(HorizontalAlignment.Center), C.White(0.08), 10).Size(height: 30).OnClick(action, C.White(0.14));
+
+    /// <summary>A block of the quick panel.</summary>
+    static Border Block(params UIElement?[] rows) => Ui.Box(Ui.Column(8, rows), C.White(0.06), 12, 12, 12);
+
+    /// <summary>A row: a name, a bar, a value.</summary>
+    static UIElement Meter(string label, double share, string value) => Ui.Column(4,
+        Ui.Row(4, Ui.Semi(label, 12), Ui.Spacer(), Ui.Digits(value, 12, color: C.Secondary)),
+        AgentsWindow.Meter(share));
+
+    /// <summary>A small line graph of the last minute.</summary>
+    static UIElement Graph(List<double> values, double? top = null)
+    {
+        var canvas = new Grid { Height = 44 };
+        canvas.SizeChanged += (_, _) =>
+        {
+            canvas.Children.Clear();
+            if (values.Count < 2) return;
+            var maximum = Math.Max(top ?? values.Max(), 0.0001);
+            var step = canvas.ActualWidth / 59;
+            var start = canvas.ActualWidth - step * (values.Count - 1);
+            var line = new Polyline { Stroke = C.Accent, StrokeThickness = 1.5 };
+            for (var i = 0; i < values.Count; i++)
+                line.Points.Add(new Point(start + step * i, canvas.ActualHeight * (1 - Math.Min(values[i] / maximum, 1))));
+            canvas.Children.Add(line);
+        };
+        return canvas;
+    }
+
+    static string Speed(double bytes) => bytes < 1000 ? $"{bytes:0} B/s" : $"{Ui.SizeText((long)bytes)}/s";
+
+    // --- pages -------------------------------------------------------------------------------------
+
+    UIElement SystemPage()
+    {
+        var m = _app.Monitor;
+        var (free, total) = SystemMonitor.SystemDisk();
+        var battery = SystemMonitor.Battery();
+        var up = SystemMonitor.Uptime;
+        return Ui.Column(10,
+            Block(Meter("Processor", m.Cpu, $"{(int)(m.Cpu * 100)}%"), Graph(m.CpuHistory, 1)),
+            Block(Meter("Memory", m.MemoryTotal > 0 ? (double)m.MemoryUsed / m.MemoryTotal : 0, $"{Ui.SizeText((long)m.MemoryUsed)} of {Ui.SizeText((long)m.MemoryTotal)}"), Graph(m.MemoryHistory, 1)),
+            Block(total > 0 ? Meter("Disk", 1 - (double)free / total, $"{Ui.SizeText(free)} free") : null,
+                  battery.HasBattery ? Meter("Battery", battery.Percent / 100.0, $"{battery.Percent}%{(battery.Charging ? " · charging" : battery.MinutesLeft > 0 ? $" · {battery.MinutesLeft / 60} h {battery.MinutesLeft % 60} min" : "")}") : null,
+                  Ui.Text($"Up for {(up.Days > 0 ? $"{up.Days} d " : "")}{up.Hours} h {up.Minutes} min", 11, color: C.Secondary)));
+    }
+
+    UIElement NetworkPage()
+    {
+        var m = _app.Monitor;
+        return Block(
+            Ui.Row(6, Ui.Semi(m.NetworkName, 12).Grow(), Ui.Digits(m.Address, 12, color: C.Secondary)),
+            Ui.Row(6, Ui.Icon(Glyph.Down, 11, C.Accent), Ui.Digits(Speed(m.DownPerSecond), 12), Ui.Spacer(), Ui.Icon(Glyph.Up, 11, C.Muna), Ui.Digits(Speed(m.UpPerSecond), 12)),
+            Graph(m.DownHistory),
+            Ui.Pill("Network settings", () => CapsuleViews.Launch("ms-settings:network")));
+    }
+
+    UIElement SoundPage()
+    {
+        var s = _app.Sound;
+        var volume = DarkWindow.Slider(0, 1, s.Volume, v => s.SetVolume(v));
+        volume.Width = double.NaN;
+        var rows = new List<UIElement?>
+        {
+            Ui.Row(8, Ui.ControlButton(s.Muted ? Glyph.Mute : Glyph.Volume, s.ToggleMute, 14, 30, 30), volume.Grow(), Ui.Digits($"{(int)Math.Round(s.Volume * 100)}%", 12, color: C.Secondary)),
+            s.HasMicrophone ? Ui.Row(8, Ui.ControlButton(Glyph.Microphone, s.ToggleMicrophone, 14, 30, 30, s.MicrophoneMuted ? C.Warning : null),
+                                     Ui.Text(s.MicrophoneMuted ? "Microphone muted" : "Microphone on", 12)) : null,
+        };
+        var outputs = Ui.Column(2, Ui.Text("OUTPUT", 10, FontWeights.Black, C.Caption));
+        foreach (var output in s.Outputs)
+        {
+            var o = output;
+            var on = output.Id == s.DefaultOutput;
+            outputs.Children.Add(Ui.Box(Ui.Row(8, Ui.Icon(on ? Glyph.Check : Glyph.Volume, 11, on ? C.Accent : C.Secondary), Ui.Text(output.Name, 12).Grow()), on ? C.White(0.06) : C.Clear, 8, 8, 5)
+                .OnClick(() => s.SelectOutput(o.Id), C.White(0.08)));
+        }
+        rows.Add(outputs);
+        return Block(rows.ToArray());
+    }
+
+    UIElement DisplaysPage()
+    {
+        var displays = _app.Displays.Displays;
+        var column = Ui.Column(10);
+        // the arrangement
+        if (displays.Count > 0)
+        {
+            int left = displays.Min(d => d.Bounds.Left), top = displays.Min(d => d.Bounds.Top);
+            int right = displays.Max(d => d.Bounds.Right), bottom = displays.Max(d => d.Bounds.Bottom);
+            var scale = Math.Min(300.0 / Math.Max(1, right - left), 80.0 / Math.Max(1, bottom - top));
+            var canvas = new Canvas { Height = (bottom - top) * scale, Width = (right - left) * scale, HorizontalAlignment = HorizontalAlignment.Center };
+            for (var i = 0; i < displays.Count; i++)
+            {
+                var d = displays[i];
+                var box = Ui.Box(Ui.Bold($"{i + 1}", 11, d.Primary ? Brushes.White : C.Secondary).Align(HorizontalAlignment.Center, VerticalAlignment.Center),
+                                 d.Primary ? C.Rgb(77, 141, 255, 0.35) : C.White(0.08), 4).Size(Math.Max(10, d.Bounds.Width * scale - 3), Math.Max(10, d.Bounds.Height * scale - 3));
+                box.BorderBrush = C.White(0.2);
+                box.BorderThickness = new Thickness(1);
+                Canvas.SetLeft(box, (d.Bounds.Left - left) * scale);
+                Canvas.SetTop(box, (d.Bounds.Top - top) * scale);
+                canvas.Children.Add(box);
+            }
+            column.Children.Add(Block(canvas));
+        }
+        foreach (var display in displays)
+        {
+            var d = display;
+            var slider = DarkWindow.Slider(0.05, 1, display.Brightness, v => _app.Displays.Set(d, v));
+            slider.Width = double.NaN;
+            var how = display.How switch { DisplaysModel.Kind.Builtin => "The screen's own brightness", DisplaysModel.Kind.Ddc => "The monitor's own brightness (DDC/CI)", _ => "Dimmed by Muna" };
+            column.Children.Add(Block(Ui.Row(6, Ui.Semi(display.Name, 12).Grow(), Ui.Digits($"{(int)Math.Round(display.Brightness * 100)}%", 12, color: C.Secondary)),
+                                      Ui.Row(8, Ui.Icon(Glyph.Brightness, 12, C.Secondary), slider.Grow()), Ui.Text(how, 10, color: C.Secondary)));
+        }
+        column.Children.Add(Ui.Row(6, Ui.Pill("Night light", () => CapsuleViews.Launch("ms-settings:nightlight")), Ui.Pill("Display settings", () => CapsuleViews.Launch("ms-settings:display"))));
+        return column;
+    }
+
+    UIElement PhonePage()
+    {
+        var phone = _app.Phone;
+        if (phone.Adb is null)
+            return Block(Ui.Text("adb was not found. Install Android's platform-tools (winget install Google.PlatformTools) and turn on USB debugging on the phone.", 12, color: C.Secondary, wrap: true));
+        if (phone.Current is not { } device)
+        {
+            var waiting = phone.Devices.FirstOrDefault();
+            return Block(Ui.Text(waiting is not null && !waiting.Ready
+                ? $"{waiting.Model}: allow USB debugging on the phone ({waiting.State})"
+                : "No phone. Connect one with USB debugging on (or pair it over Wi-Fi with adb).", 12, color: C.Secondary, wrap: true));
+        }
+        var head = Ui.Row(8, Ui.Icon(Glyph.Phone, 13, C.Accent), Ui.Semi(device.Model, 12).Grow());
+        if (phone.Battery is { } battery) head.Children.Add(Ui.Digits($"{battery.Percent}%{(battery.Charging ? " ⚡" : "")}", 12, color: C.Secondary));
+        var picture = new Image { Source = phone.Screen, Height = 300, Stretch = Stretch.Uniform, Cursor = Cursors.Hand };
+        Point? start = null;
+        DateTime startAt = DateTime.Now;
+        picture.MouseLeftButtonDown += (_, e) => { start = e.GetPosition(picture); startAt = DateTime.Now; picture.CaptureMouse(); e.Handled = true; };
+        picture.MouseLeftButtonUp += (_, e) =>
+        {
+            picture.ReleaseMouseCapture();
+            if (start is not { } s) return;
+            start = null;
+            var end = e.GetPosition(picture);
+            var size = new Size(picture.ActualWidth, picture.ActualHeight);
+            if ((end - s).Length < 8) phone.Tap(s, size);
+            else phone.Swipe(s, end, size, (DateTime.Now - startAt).TotalSeconds);
+        };
+        var keys = Ui.Row(6, Ui.Pill("Back", () => phone.Key(PhoneAdb.Back)), Ui.Pill("Home", () => phone.Key(PhoneAdb.Home)),
+                          Ui.Pill("Apps", () => phone.Key(PhoneAdb.Recents)), Ui.Pill("Wake", () => phone.Key(PhoneAdb.Wake)));
+        keys.HorizontalAlignment = HorizontalAlignment.Center;
+        return Block(head, phone.Screen is null ? Ui.Text("Getting the screen…", 11, color: C.Secondary) : picture, keys, Ui.Detach(_phoneText));
+    }
+
+    UIElement AwakePage()
+    {
+        var awake = _app.Awake;
+        var status = awake.IsOn
+            ? Ui.Row(8, Ui.Icon(Glyph.Coffee, 14, C.Amber), Ui.Semi(awake.Until is { } until ? $"Awake until {until.ToString("t", CultureInfo.CurrentCulture)}" : "Awake until you turn it off", 12).Grow(), Ui.Pill("Off", awake.Stop))
+            : Ui.Row(8, Ui.Icon(Glyph.Moon, 14, C.Secondary), Ui.Text("The computer sleeps as usual", 12).Grow());
+        var choices = new WrapPanel();
+        foreach (var (label, minutes) in new (string, int?)[] { ("30 min", 30), ("1 h", 60), ("2 h", 120), ("5 h", 300), ("Until off", null) })
+        {
+            var m = minutes;
+            var pill = Ui.Pill(label, () => awake.Start(m, awake.KeepScreen));
+            pill.Margin = new Thickness(0, 0, 6, 6);
+            choices.Children.Add(pill);
+        }
+        var screen = Ui.Row(8, Ui.Text("Keep the screen on too", 12).Grow(), DarkWindow.Toggle(awake.KeepScreen, on => { if (awake.IsOn) awake.Start(awake.Until is { } u ? Math.Max(1, (int)(u - DateTime.Now).TotalMinutes) : null, on); else { awake.Start(null, on); awake.Stop(); } }));
+        return Block(status, choices, screen);
+    }
+
+    UIElement FocusPage()
+    {
+        var focus = _app.Focus;
+        var pomo = focus.Pomo;
+        var remaining = Ui.Digits(FocusModel.Clock(focus.PomoRemainingMs), 30, FontWeights.Light, Brushes.White);
+        var buttons = Ui.Row(6);
+        if (pomo.State == "running") buttons.Children.Add(Ui.Pill("Pause", focus.PomoPause, accent: true));
+        else buttons.Children.Add(Ui.Pill(pomo.State == "paused" ? "Resume" : "Start", focus.PomoStart, accent: true));
+        if (pomo.State != "idle") { buttons.Children.Add(Ui.Pill("Skip", focus.PomoSkip)); buttons.Children.Add(Ui.Pill("Reset", focus.PomoReset)); }
+        var pomoBlock = Block(
+            Ui.Row(6, Ui.Semi(FocusModel.PhaseName(pomo.Phase), 12).Grow(), Ui.Text($"Round {pomo.Round} · {pomo.Done} done", 11, color: C.Secondary)),
+            remaining, AgentsWindow.Meter(focus.PomoProgress, pomo.Phase == "work" ? C.Accent : C.Ok), buttons,
+            pomo.State == "idle" ? FocusSettings(focus) : null);
+        var sw = focus.Stopwatch;
+        var swButtons = Ui.Row(6);
+        if (sw.State == "running") { swButtons.Children.Add(Ui.Pill("Pause", focus.StopwatchPause, accent: true)); swButtons.Children.Add(Ui.Pill("Lap", focus.StopwatchLap)); }
+        else swButtons.Children.Add(Ui.Pill(sw.State == "paused" ? "Resume" : "Start", focus.StopwatchStart, accent: true));
+        if (sw.State != "idle") swButtons.Children.Add(Ui.Pill("Reset", focus.StopwatchReset));
+        var laps = Ui.Column(1);
+        for (var i = sw.Laps.Count - 1; i >= Math.Max(0, sw.Laps.Count - 4); i--)
+            laps.Children.Add(Ui.Row(6, Ui.Text($"Lap {i + 1}", 11, color: C.Secondary).Grow(), Ui.Digits(FocusModel.Clock(sw.Laps[i], true), 11)));
+        var swBlock = Block(Ui.Semi("Stopwatch", 12), Ui.Digits(FocusModel.Clock(focus.StopwatchMs, true), 24, FontWeights.Light, Brushes.White), swButtons, laps);
+        return Ui.Column(10, pomoBlock, swBlock);
+    }
+
+    UIElement FocusSettings(FocusModel focus)
+    {
+        var e = focus.Editing;
+        UIElement Stepper(string label, int value, Action<int> set) => Ui.Row(4, Ui.Text(label, 11, color: C.Secondary).Grow(),
+            Ui.IconButton(Glyph.Remove, () => { set(value - 1); focus.ApplySettings(); }), Ui.Digits($"{value}", 12).Size(26), Ui.IconButton(Glyph.Add, () => { set(value + 1); focus.ApplySettings(); }));
+        return Ui.Column(4,
+            Stepper("Focus, minutes", e.Work, v => e.Work = v),
+            Stepper("Short break", e.Short, v => e.Short = v),
+            Stepper("Long break", e.Long, v => e.Long = v),
+            Stepper("Long break every", e.Every, v => e.Every = v));
+    }
+
+    void AddReminder()
+    {
+        var text = _reminderText.Text;
+        var time = _reminderTime.Text.Trim();
+        string? error;
+        if (time.Length == 0) { _app.Reminders.AddIn(text, 10); error = text.Trim().Length == 0 ? "A reminder needs a text" : null; }
+        else if (TimeSpan.TryParse(time, CultureInfo.InvariantCulture, out var at) && at.TotalHours < 24) error = _app.Reminders.Add(text, at.Hours, at.Minutes);
+        else error = "Write the time as 14:30";
+        if (error is null) { _reminderText.Text = ""; _reminderTime.Text = ""; Say("Saved: Muna tells you then"); }
+        else Say(error);
+    }
+
+    UIElement RemindersPage()
+    {
+        var list = Ui.Column(4);
+        foreach (var reminder in _app.Reminders.Reminders)
+        {
+            var r = reminder;
+            var at = DateTimeOffset.FromUnixTimeMilliseconds(reminder.At).LocalDateTime;
+            var when = at.Date == DateTime.Today ? at.ToString("t", CultureInfo.CurrentCulture) : $"Tomorrow {at.ToString("t", CultureInfo.CurrentCulture)}";
+            if (at.Date > DateTime.Today.AddDays(1)) when = at.ToString("g", CultureInfo.CurrentCulture);
+            list.Children.Add(Ui.Row(8, Ui.Icon(Glyph.Bell, 11, C.Accent), Ui.Text(reminder.Text, 12).Grow(), Ui.Digits(when, 11, color: C.Secondary), Ui.IconButton(Glyph.Close, () => _app.Reminders.Remove(r))));
+        }
+        if (_app.Reminders.Reminders.Count == 0) list.Children.Add(Ui.Text("No reminders", 12, color: C.Secondary));
+        _reminderTime.Width = 70;
+        return Ui.Column(10, Block(list), Block(Ui.Detach(_reminderText), Ui.Row(8, Ui.Detach(_reminderTime), Ui.Text("empty: in 10 minutes", 11, color: C.Secondary).Grow(), Ui.Pill("Add", AddReminder, accent: true))));
+    }
+
+    UIElement DownloadsPage()
+    {
+        var downloads = _app.Downloads;
+        var rows = new List<UIElement?>();
+        foreach (var item in downloads.Active)
+            rows.Add(Ui.Row(8, Ui.Icon(Glyph.Download, 12, C.Accent), Ui.Text(System.IO.Path.GetFileNameWithoutExtension(item.Path), 12).Grow(), Ui.Digits(Ui.SizeText(item.Size), 11, color: C.Secondary)));
+        foreach (var item in downloads.Recent)
+        {
+            var path = item.Path;
+            var row = Ui.Row(8, Ui.FileIconView(path, 18), Ui.Text(System.IO.Path.GetFileName(path), 12).Grow(), Ui.Digits(Ui.SizeText(item.Size), 11, color: C.Secondary),
+                             Ui.IconButton(Glyph.Folder, () => DownloadsModel.Reveal(path), tip: "Show in Explorer"));
+            var box = Ui.Box(row, C.Clear, 8, 4, 3);
+            DragOut.Attach(box, () => new[] { path }, () => CapsuleViews.Launch(path));
+            rows.Add(box);
+        }
+        if (rows.Count == 0) rows.Add(Ui.Text("Nothing downloaded lately", 12, color: C.Secondary));
+        rows.Add(Ui.Pill("Open Downloads", DownloadsModel.OpenFolder));
+        return Block(rows.ToArray());
+    }
+
+    UIElement WindowsPage()
+    {
+        var windows = _app.Windows;
+        var grid = new UniformGrid { Columns = 4 };
+        foreach (var (id, label) in WindowsModel.Layouts)
+        {
+            var layout = id;
+            var tile = Ui.Box(Ui.Column(4, LayoutIcon(id), Ui.Text(label, 9, color: C.Secondary).Align(HorizontalAlignment.Center)), C.White(0.06), 10, 4, 8).Margin(2, 2, 2, 2);
+            ((Flex)tile.Child).Center = true;
+            grid.Children.Add(tile.OnClick(() => windows.Apply(layout), C.White(0.12)));
+        }
+        var title = windows.TargetTitle;
+        return Ui.Column(8, Block(Ui.Text(title.Length == 0 ? "Click a window, then open this panel" : $"For: {title}", 12, color: C.Secondary), grid),
+            windows.Message is { } message ? Ui.Text(message, 11, color: C.Warning) : null,
+            Ui.Row(6, Ui.Pill("Task view", () => { Native.TapKey(0x5B); }), Ui.Pill("New desktop", NewDesktop)));
+    }
+
+    static void NewDesktop()
+    {
+        // Win+Ctrl+D
+        Native.keybd_event(0x5B, 0, 0, UIntPtr.Zero);
+        Native.keybd_event(0x11, 0, 0, UIntPtr.Zero);
+        Native.keybd_event(0x44, 0, 0, UIntPtr.Zero);
+        Native.keybd_event(0x44, 0, 2, UIntPtr.Zero);
+        Native.keybd_event(0x11, 0, 2, UIntPtr.Zero);
+        Native.keybd_event(0x5B, 0, 2, UIntPtr.Zero);
+    }
+
+    /// <summary>A small screen with the part the window takes.</summary>
+    static UIElement LayoutIcon(string id)
+    {
+        const double w = 30, h = 20;
+        var (x, y, rw, rh) = id switch
+        {
+            "left" => (0.0, 0.0, 0.5, 1.0), "right" => (0.5, 0, 0.5, 1), "top" => (0, 0, 1, 0.5), "bottom" => (0, 0.5, 1, 0.5),
+            "tl" => (0, 0, 0.5, 0.5), "tr" => (0.5, 0, 0.5, 0.5), "bl" => (0, 0.5, 0.5, 0.5), "br" => (0.5, 0.5, 0.5, 0.5),
+            "third1" => (0, 0, 1 / 3.0, 1), "third2" => (1 / 3.0, 0, 1 / 3.0, 1), "third3" => (2 / 3.0, 0, 1 / 3.0, 1), "twothirds" => (0, 0, 2 / 3.0, 1),
+            "max" => (0, 0, 1, 1), "center" => (0.2, 0.2, 0.6, 0.6), "next" => (0.55, 0.15, 0.4, 0.7), _ => (0.3, 0.8, 0.4, 0.2),
+        };
+        var canvas = new Canvas { Width = w, Height = h, HorizontalAlignment = HorizontalAlignment.Center };
+        canvas.Children.Add(new Rectangle { Width = w, Height = h, RadiusX = 3, RadiusY = 3, Stroke = C.White(0.35), StrokeThickness = 1 });
+        var part = new Rectangle { Width = Math.Max(2, w * rw - 4), Height = Math.Max(2, h * rh - 4), RadiusX = 1.5, RadiusY = 1.5, Fill = C.Accent };
+        Canvas.SetLeft(part, w * x + 2);
+        Canvas.SetTop(part, h * y + 2);
+        canvas.Children.Add(part);
+        return canvas;
+    }
+
+    UIElement AgentsPage()
+    {
+        var agents = _app.Agents;
+        var rows = new List<UIElement?>();
+        if (agents.ClaudePath is null) rows.Add(Ui.Text("Claude Code is not installed (the claude command was not found).", 12, color: C.Secondary, wrap: true));
+        else if (agents.Tasks.Count == 0) rows.Add(Ui.Text("No tasks yet. Start one: Claude Code works in a folder and asks before it changes anything.", 12, color: C.Secondary, wrap: true));
+        foreach (var task in agents.Tasks.Take(5))
+        {
+            var (glyph, tint) = AgentsModel.StatusGlyph(task);
+            var t = task;
+            rows.Add(Ui.Row(8, Ui.Icon(glyph, 12, tint), Ui.Column(1, Ui.Semi(task.Project, 12), Ui.Text(AgentsModel.StatusText(task), 11, color: C.Secondary)).Grow())
+                .OnClick(() => { agents.SelectedId = t.Id; HidePanel(); _app.ShowAgents(); }));
+        }
+        rows.Add(Ui.Pill(agents.Tasks.Count == 0 ? "New task…" : "Open the agents window", () =>
+        {
+            if (agents.Tasks.Count == 0) agents.Creating = true;
+            HidePanel();
+            _app.ShowAgents();
+        }, accent: true));
+        var column = Ui.Column(10, Block(rows.ToArray()));
+        var recent = agents.Sessions.Where(s => s.Working).Take(4).Concat(agents.Sessions.Where(s => !s.Working).Take(2)).ToList();
+        if (recent.Count > 0)
+        {
+            var list = new List<UIElement?> { Ui.Text("IN TERMINALS", 10, FontWeights.Black, C.Caption) };
+            foreach (var session in recent)
+                list.Add(Ui.Row(8, new Ellipse { Width = 7, Height = 7, Fill = session.Working ? C.Ok : C.White(0.25) },
+                    Ui.Column(1, Ui.Semi($"{session.Project} · {session.Agent}", 12),
+                              Ui.Text(session.Working ? "Working now" : $"Last active {session.Modified.ToLocalTime().ToString("t", CultureInfo.CurrentCulture)}", 11, color: C.Secondary)).Grow()));
+            column.Children.Add(Block(list.ToArray()));
+        }
+        if (agents.FiveHour is not null || agents.SevenDay is not null)
+            column.Children.Add(Block(
+                agents.FiveHour is { } five ? Meter("5 hours", five.Percent / 100, $"{(int)five.Percent}% · {AgentsModel.ResetText(five.ResetsAt)}") : null,
+                agents.SevenDay is { } week ? Meter("Week", week.Percent / 100, $"{(int)week.Percent}% · {AgentsModel.ResetText(week.ResetsAt)}") : null));
+        return column;
+    }
+
+    UIElement ToolsPage()
+    {
+        var grid = new UniformGrid { Columns = 3 };
+        void Tile(string glyph, string label, Action action)
+        {
+            var tile = Ui.Box(Ui.Column(6, Ui.Icon(glyph, 18), Ui.Text(label, 11, color: C.Secondary).Align(HorizontalAlignment.Center)), C.White(0.06), 12, 6, 12).Margin(3, 3, 3, 3);
+            ((Flex)tile.Child).Center = true;
+            grid.Children.Add(tile.OnClick(action, C.White(0.12)));
+        }
+        Tile(Glyph.Moon, "Dark mode", () => Say(QuickTools.ToggleDarkMode() ? "Dark mode on" : "Light mode on"));
+        Tile(Glyph.Screenshot, "Screenshot", () => { HidePanel(); QuickTools.Screenshot(); });
+        Tile(Glyph.Eyedropper, "Colour", () => { HidePanel(); ColorPicker.Pick(hex => _app.Capsules.Tell("Colour copied", hex, Glyph.Eyedropper, true)); });
+        Tile(Glyph.Delete, "Empty bin", () => Say(QuickTools.EmptyRecycleBin() ? "The recycle bin is empty" : "The recycle bin was empty"));
+        Tile(Glyph.Monitor, "Screen off", () => { HidePanel(); QuickTools.ScreenOff(); });
+        Tile(Glyph.Lock, "Lock", () => { HidePanel(); Native.LockWorkStation(); });
+        Tile(Glyph.Note, "Scratchpad", () => { HidePanel(); _app.ShowScratchpad(); });
+        Tile(Glyph.Broom, "Cleaning", () => { HidePanel(); CleaningMode.Start(); });
+        Tile(Glyph.Search, "Command Bar", () => { HidePanel(); _app.Capsules.OpenCommand(); });
+        return grid;
+    }
+}
+
+/// <summary>Small system actions of the tools page and the radial menu.</summary>
+public static class QuickTools
+{
+    const string Personalize = @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize";
+
+    /// <summary>Switches apps and Windows between light and dark; true when now dark.</summary>
+    public static bool ToggleDarkMode()
+    {
+        using var key = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(Personalize);
+        var dark = (key.GetValue("AppsUseLightTheme") as int? ?? 1) == 1;
+        key.SetValue("AppsUseLightTheme", dark ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+        key.SetValue("SystemUsesLightTheme", dark ? 0 : 1, Microsoft.Win32.RegistryValueKind.DWord);
+        // tell the open windows (the taskbar and Explorer follow at once)
+        Native.SendMessage(new IntPtr(0xffff), 0x001A, IntPtr.Zero, System.Runtime.InteropServices.Marshal.StringToHGlobalUni("ImmersiveColorSet"));
+        return dark;
+    }
+
+    public static void Screenshot() => CapsuleViews.Launch("ms-screenclip:");
+
+    public static bool EmptyRecycleBin() => Native.SHEmptyRecycleBin(IntPtr.Zero, null, 0x7) == 0;
+
+    public static void ScreenOff()
+    {
+        // after the click is over, or the mouse wakes it at once
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        timer.Tick += (_, _) => { timer.Stop(); Native.ScreenOff(); };
+        timer.Start();
+    }
+}

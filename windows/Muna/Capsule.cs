@@ -1,0 +1,602 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using Muna.Core;
+using Forms = System.Windows.Forms;
+
+namespace Muna;
+
+/// <summary>The sections of the open capsule, as on Linux.</summary>
+public enum PanelTab { Muna, Tray, LocalSend, Clipboard, Alerts, Command, Agent, Mirror }
+
+public static class Tabs
+{
+    /// <summary>The tabs on top (the Command Bar has none: the capsule becomes its field).</summary>
+    public static readonly PanelTab[] Visible = { PanelTab.Muna, PanelTab.Tray, PanelTab.LocalSend, PanelTab.Clipboard, PanelTab.Alerts };
+
+    public static string Title(this PanelTab tab) => tab switch
+    {
+        PanelTab.Muna => "Muna", PanelTab.Tray => "Tray", PanelTab.LocalSend => "LocalSend", PanelTab.Clipboard => "Clipboard",
+        PanelTab.Alerts => "Alerts", PanelTab.Command => "Command Bar", PanelTab.Agent => "Agent", _ => "Mirror",
+    };
+
+    public static string Glyph(this PanelTab tab) => tab switch
+    {
+        PanelTab.Tray => Muna.Glyph.Tray, PanelTab.LocalSend => Muna.Glyph.Wifi, PanelTab.Clipboard => Muna.Glyph.Clipboard,
+        PanelTab.Alerts => Muna.Glyph.Bell, PanelTab.Command => Muna.Glyph.Search, PanelTab.Mirror => Muna.Glyph.Camera, _ => Muna.Glyph.Sparkle,
+    };
+
+    /// <summary>The height of the section under the tabs.</summary>
+    public static double BodyHeight(this PanelTab tab) => tab switch
+    {
+        PanelTab.Muna or PanelTab.Tray => PanelLayout.RowHeight,
+        PanelTab.LocalSend => 138,
+        PanelTab.Clipboard or PanelTab.Alerts => 236,
+        PanelTab.Command => 250,
+        PanelTab.Agent => 120,
+        _ => 300,
+    };
+
+    public static bool HasHeader(this PanelTab tab) => tab is not (PanelTab.Command or PanelTab.Agent or PanelTab.Mirror);
+}
+
+/// <summary>A short message the closed capsule shows for a few seconds.</summary>
+public sealed record CapsuleCard(string Title, string Details, string Glyph, bool Ok);
+
+/// <summary>What the pages remember while the panel is open: the text fields (kept, so typing is
+/// never lost when a page is drawn again), the calendar's day, the group being named …</summary>
+public sealed class PanelState
+{
+    public readonly Field NoteField = new("Write a note, Enter saves it");
+    public readonly Field TodoField = new("Add a to-do");
+    public readonly Field ClipboardSearch = new("Search the clipboard");
+    public readonly Field GroupName = new("Name of the group");
+    public readonly Field ClipNote = new("A note for this item");
+    public readonly Field CommandField = new("Search apps, calculate, convert, ;snippets …", 40, 16);
+    public readonly Field AgentReply = new("Answer or ask more");
+    public DateTime CalendarDay = DateTime.Today;
+    public bool NamingGroup;
+    public string GroupNameError = "";
+    public string? ConfirmDeleteGroup;
+    public string? NoteForClip;
+    public string? CopiedClip;
+}
+
+/// <summary>The capsule's outline, as on Linux: it hangs from the top edge, meets it with two concave
+/// "ears" (fillets) and has round corners below.</summary>
+public sealed class CapsuleShape : FrameworkElement
+{
+    public static readonly DependencyProperty RadiusProperty = DependencyProperty.Register(nameof(Radius), typeof(double), typeof(CapsuleShape),
+        new FrameworkPropertyMetadata(12.0, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty EarProperty = DependencyProperty.Register(nameof(Ear), typeof(double), typeof(CapsuleShape),
+        new FrameworkPropertyMetadata(7.0, FrameworkPropertyMetadataOptions.AffectsRender));
+    public double Radius { get => (double)GetValue(RadiusProperty); set => SetValue(RadiusProperty, value); }
+    public double Ear { get => (double)GetValue(EarProperty); set => SetValue(EarProperty, value); }
+    public Brush Fill { get; set; } = Brushes.Black;
+    public Pen? Stroke { get; set; }
+
+    public static Geometry Outline(double width, double height, double radius, double ear)
+    {
+        var e = Math.Min(ear, Math.Min(width / 4, height / 2));
+        double left = e, right = width - e;
+        var r = Math.Max(0, Math.Min(radius, Math.Min(height / 2, (right - left) / 2)));
+        var g = new StreamGeometry();
+        using (var c = g.Open())
+        {
+            c.BeginFigure(new Point(0, 0), true, true);
+            c.LineTo(new Point(width, 0), false, false);
+            c.QuadraticBezierTo(new Point(right, 0), new Point(right, e), false, true);
+            c.LineTo(new Point(right, height - r), false, false);
+            c.QuadraticBezierTo(new Point(right, height), new Point(right - r, height), false, true);
+            c.LineTo(new Point(left + r, height), false, false);
+            c.QuadraticBezierTo(new Point(left, height), new Point(left, height - r), false, true);
+            c.LineTo(new Point(left, e), false, false);
+            c.QuadraticBezierTo(new Point(left, 0), new Point(0, 0), false, true);
+        }
+        g.Freeze();
+        return g;
+    }
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        if (ActualWidth < 1 || ActualHeight < 1) return;
+        dc.DrawGeometry(Fill, Stroke, Outline(ActualWidth, ActualHeight, Radius, Ear));
+    }
+}
+
+/// <summary>A piece that draws itself again on a clock while it is shown (the time, the bars,
+/// a song's progress), so the page around it is not drawn again.</summary>
+public sealed class Live : Border
+{
+    readonly DispatcherTimer _timer;
+
+    public Live(Func<UIElement> build, TimeSpan every)
+    {
+        Child = build();
+        _timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = every };
+        _timer.Tick += (_, _) => Child = build();
+        Loaded += (_, _) => _timer.Start();
+        Unloaded += (_, _) => _timer.Stop();
+    }
+}
+
+/// <summary>The capsule of one monitor: a transparent, topmost window across the top of the screen
+/// (its empty parts let clicks through), with the capsule drawn in it. Opens under the pointer,
+/// closes when it leaves; the same rules as the Mac and Linux capsules.</summary>
+public sealed class CapsuleWindow : Window
+{
+    public const double BarHeight = 30, PillWidth = 200, HoverGrow = 14, HeaderHeight = 36, BottomPadding = 12, CardHeight = 34;
+    const double WindowHeight = 520;
+
+    public AppState App { get; }
+    public PanelState State { get; } = new();
+    public Forms.Screen Screen { get; private set; }
+    public string ScreenId { get; }
+
+    public bool IsOpen { get; private set; }
+    public bool IsHovering { get; private set; }
+    public PanelTab Tab { get; private set; } = PanelTab.Muna;
+    public int PageIndex { get; set; }
+    public PanelLayout Layout { get; private set; } = PanelLayout.Make(1920, new[] { "media" }, _ => 4);
+    public bool IsEditing { get; private set; }
+    public bool IsDropTarget { get; private set; }
+    public CapsuleCard? Card { get; private set; }
+    public bool HasActivity { get; private set; }
+
+    readonly Grid _capsule = new() { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top };
+    readonly CapsuleShape _shape = new();
+    readonly Border _content = new() { ClipToBounds = true };
+    readonly CapsuleShape _dropRing = new() { Fill = Brushes.Transparent, Stroke = new Pen(C.Accent, 2), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+    IntPtr _hwnd, _previousForeground;
+    double _scale = 1;
+    bool _pinned, _renderQueued;
+    DispatcherTimer? _pending, _pinTimer, _cardTimer, _closeLater;
+    double _windowWidth = 800;
+
+    public CapsuleWindow(AppState app, Forms.Screen screen)
+    {
+        App = app;
+        Screen = screen;
+        ScreenId = screen.DeviceName;
+        WindowStyle = WindowStyle.None;
+        AllowsTransparency = true;
+        Background = Brushes.Transparent;
+        ResizeMode = ResizeMode.NoResize;
+        ShowInTaskbar = false;
+        ShowActivated = false;
+        Topmost = true;
+        Title = "Muna";
+        FontFamily = Ui.Font;
+        UseLayoutRounding = true;
+        _capsule.Children.Add(_shape);
+        _capsule.Children.Add(_content);
+        _capsule.Children.Add(_dropRing);
+        _capsule.AllowDrop = true;
+        _capsule.DragEnter += OnDragEnter;
+        _capsule.DragOver += (_, e) => { e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; };
+        _capsule.DragLeave += OnDragLeave;
+        _capsule.Drop += OnDrop;
+        _capsule.MouseWheel += OnWheel;
+        var root = new Grid();
+        root.Children.Add(_capsule);
+        Content = root;
+        SourceInitialized += (_, _) =>
+        {
+            _hwnd = new WindowInteropHelper(this).Handle;
+            Native.AddExStyle(_hwnd, Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE);
+            Place();
+        };
+        DpiChanged += (_, _) => Dispatcher.BeginInvoke(Place);
+        Loaded += (_, _) => Place();
+        Deactivated += (_, _) =>
+        {
+            Native.AddExStyle(_hwnd, Native.WS_EX_NOACTIVATE);
+            if (IsEditing) { IsEditing = false; ScheduleUpdate(); }
+        };
+        foreach (var field in new[] { State.NoteField, State.TodoField, State.ClipboardSearch, State.GroupName, State.ClipNote, State.CommandField, State.AgentReply })
+            field.FocusChanged += focused => { IsEditing = focused; ScheduleUpdate(); };
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape && IsOpen) { e.Handled = true; _pinned = false; Close_(); }
+        };
+        CapsuleViews.Wire(this);
+        RefreshLayout();
+        SetSize(ClosedSize(), false);
+        Render();
+    }
+
+    // --- geometry ----------------------------------------------------------------------------
+
+    System.Drawing.Rectangle Area => Screen.Bounds;
+
+    /// <summary>Puts the window across the top middle of its monitor (in pixels; its size in the
+    /// monitor's scale).</summary>
+    public void Place()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+        var bounds = Screen.Bounds;
+        var monitor = Native.MonitorAt(bounds.Left + bounds.Width / 2, bounds.Top + 1);
+        _scale = Native.Scale(monitor);
+        var screenWidth = bounds.Width / _scale;
+        _windowWidth = Math.Min(screenWidth, Math.Max(620, screenWidth * PanelLayout.MaxShare + 60));
+        // a taskbar on top: hang below it
+        var top = Screen.WorkingArea.Top > bounds.Top ? Screen.WorkingArea.Top : bounds.Top;
+        var widthPx = (int)Math.Round(_windowWidth * _scale);
+        Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, bounds.Left + (bounds.Width - widthPx) / 2, top,
+                            widthPx, (int)Math.Round(WindowHeight * _scale), Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
+        RefreshLayout();
+    }
+
+    public void Update(Forms.Screen screen)
+    {
+        Screen = screen;
+        Place();
+        SetSize(IsOpen ? OpenSize() : ClosedSize(), false);
+        Invalidate();
+    }
+
+    public void RefreshLayout()
+    {
+        var preferences = Preferences.Shared;
+        var screenWidth = Area.Width / Math.Max(_scale, 0.5);
+        Layout = PanelLayout.Make(Math.Min(screenWidth, _windowWidth / PanelLayout.MaxShare), preferences.EnabledWidgets, preferences.Cells);
+        if (PageIndex >= Layout.Pages.Count) PageIndex = 0;
+    }
+
+    public double HeaderHeightNow => Tab.HasHeader() ? HeaderHeight : 8;
+
+    Size ClosedSize()
+    {
+        var width = PillWidth + (IsHovering && !IsOpen ? HoverGrow : 0);
+        var height = BarHeight;
+        if (Card is not null)
+        {
+            width = Math.Max(width, 380);
+            height += CardHeight;
+        }
+        return new Size(width, height);
+    }
+
+    Size OpenSize() => new(Math.Min(Layout.Width, _windowWidth), HeaderHeightNow + Tab.BodyHeight() + BottomPadding);
+
+    /// <summary>The capsule's rectangle on the screen, in pixels.</summary>
+    public Rect ScreenRect
+    {
+        get
+        {
+            try
+            {
+                if (PresentationSource.FromVisual(_capsule) is null) return Rect.Empty;
+                var a = _capsule.PointToScreen(new Point(0, 0));
+                var b = _capsule.PointToScreen(new Point(_capsule.ActualWidth, _capsule.ActualHeight));
+                return new Rect(a, b);
+            }
+            catch { return Rect.Empty; }
+        }
+    }
+
+    public bool Contains(Point screenPixel) =>
+        screenPixel.X >= Area.Left && screenPixel.X < Area.Right && screenPixel.Y >= Area.Top && screenPixel.Y < Area.Bottom;
+
+    TimeSpan AnimationTime => TimeSpan.FromSeconds(0.38 / Preferences.Shared.AnimationSpeed);
+
+    void SetSize(Size size, bool animate = true)
+    {
+        var open = IsOpen;
+        var radius = open ? Preferences.Shared.CornerRadius : 12;
+        var ear = open ? 20 : 7;
+        _shape.Fill = C.Rgb(0, 0, 0, Preferences.Shared.BackgroundOpacity);
+        if (!animate || !IsLoaded)
+        {
+            _capsule.BeginAnimation(WidthProperty, null);
+            _capsule.BeginAnimation(HeightProperty, null);
+            _capsule.Width = size.Width;
+            _capsule.Height = size.Height;
+            _shape.Radius = radius;
+            _shape.Ear = ear;
+            _dropRing.Radius = radius;
+            _dropRing.Ear = ear;
+            return;
+        }
+        var ease = new BackEase { Amplitude = 0.18, EasingMode = EasingMode.EaseOut };
+        var duration = new Duration(AnimationTime);
+        _capsule.BeginAnimation(WidthProperty, new DoubleAnimation(size.Width, duration) { EasingFunction = ease });
+        _capsule.BeginAnimation(HeightProperty, new DoubleAnimation(size.Height, duration) { EasingFunction = ease });
+        _shape.BeginAnimation(CapsuleShape.RadiusProperty, new DoubleAnimation(radius, duration));
+        _shape.BeginAnimation(CapsuleShape.EarProperty, new DoubleAnimation(ear, duration));
+        _dropRing.Radius = radius;
+        _dropRing.Ear = ear;
+    }
+
+    // --- drawing ---------------------------------------------------------------------------
+
+    /// <summary>Draws the capsule again soon (many changes at once draw once).</summary>
+    public void Invalidate()
+    {
+        if (_renderQueued) return;
+        _renderQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            _renderQueued = false;
+            // never replace what is being clicked
+            if (IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed)
+            {
+                var later = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+                later.Tick += (_, _) => { later.Stop(); Invalidate(); };
+                later.Start();
+                return;
+            }
+            Render();
+        });
+    }
+
+    void Render()
+    {
+        _dropRing.Visibility = IsDropTarget ? Visibility.Visible : Visibility.Collapsed;
+        UIElement view;
+        try
+        {
+            view = IsOpen ? CapsuleViews.Open(this) : CapsuleViews.Closed(this);
+        }
+        catch (Exception e)
+        {
+            view = Ui.Text("Muna: " + e.Message, 11, color: C.Warning).Margin(16, 8, 16, 8);
+        }
+        // a text field keeps the keyboard when the page around it is drawn again
+        var focused = Keyboard.FocusedElement as TextBox;
+        var caret = focused?.CaretIndex ?? 0;
+        _content.Child = view;
+        if (focused is not null && IsActive)
+            Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+            {
+                if (!focused.IsVisible) return;
+                focused.Focus();
+                focused.CaretIndex = Math.Min(caret, focused.Text.Length);
+            });
+    }
+
+    // --- opening and closing ---------------------------------------------------------------------
+
+    bool KeepsOpen =>
+        (IsHovering && Preferences.Shared.AutoCollapse) || _pinned || IsEditing || IsDropTarget
+        || App.LocalSend.Incoming?.State == IncomingState.Asking || (!Preferences.Shared.AutoCollapse && IsOpen)
+        || (Tab == PanelTab.Agent && App.Agents.Waiting is not null);
+
+    /// <summary>The pointer came onto the capsule or left it (the manager watches the pointer).</summary>
+    public void Pointer(bool inside)
+    {
+        if (inside == IsHovering) return;
+        IsHovering = inside;
+        if (inside) _pinTimer?.Stop();
+        else if (_pinned) _pinned = false;
+        if (!IsOpen && Card is null)
+        {
+            SetSize(ClosedSize());
+        }
+        ScheduleUpdate();
+    }
+
+    /// <summary>Opens or closes after the chosen wait (a pointer passing by does nothing).</summary>
+    public void ScheduleUpdate()
+    {
+        _pending?.Stop();
+        var preferences = Preferences.Shared;
+        var wantsOpen = KeepsOpen || (IsHovering && preferences.OpenOnHover && !IsOpen);
+        var delay = Math.Max(0.05, wantsOpen ? preferences.OpenDelay : preferences.CloseDelay);
+        _pending = new DispatcherTimer { Interval = TimeSpan.FromSeconds(delay) };
+        _pending.Tick += (_, _) =>
+        {
+            _pending?.Stop();
+            var hoverOpens = IsHovering && preferences.OpenOnHover;
+            if (KeepsOpen || (hoverOpens && !IsOpen)) OpenNow();
+            else if (IsOpen && !(IsHovering && !preferences.AutoCollapse)) Close_();
+        };
+        _pending.Start();
+    }
+
+    /// <summary>Opens the panel on a section (a click, the menu, a key): it stays open until the
+    /// pointer has come and gone, or a while if it never comes.</summary>
+    public void Open(PanelTab tab)
+    {
+        SetTab(tab);
+        _pinned = true;
+        _pinTimer?.Stop();
+        _pinTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        _pinTimer.Tick += (_, _) =>
+        {
+            _pinTimer?.Stop();
+            if (IsHovering) return;
+            _pinned = false;
+            ScheduleUpdate();
+        };
+        _pinTimer.Start();
+        OpenNow();
+    }
+
+    public void SetTab(PanelTab tab)
+    {
+        if (Tab == tab) return;
+        Tab = tab;
+        if (IsOpen)
+        {
+            SetSize(OpenSize());
+            App.PanelOpened(tab);
+        }
+        Invalidate();
+    }
+
+    /// <summary>The Command Bar: the capsule becomes one big field with the keyboard in it.</summary>
+    public void OpenCommand()
+    {
+        if (IsOpen && Tab == PanelTab.Command)
+        {
+            _pinned = false;
+            Close_();
+            return;
+        }
+        App.Command.Reset();
+        State.CommandField.Text = "";
+        Open(PanelTab.Command);
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () => TakeKeyboard(State.CommandField));
+    }
+
+    /// <summary>A short message in the closed capsule (when it is open, the panel shows things itself).</summary>
+    public void ShowCard(CapsuleCard card)
+    {
+        if (IsOpen) return;
+        Card = card;
+        SetSize(ClosedSize());
+        Invalidate();
+        _cardTimer?.Stop();
+        _cardTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _cardTimer.Tick += (_, _) =>
+        {
+            _cardTimer?.Stop();
+            Card = null;
+            if (!IsOpen) SetSize(ClosedSize());
+            Invalidate();
+        };
+        _cardTimer.Start();
+    }
+
+    public void ActivityChanged()
+    {
+        var session = App.LocalSend.Session;
+        var active = Preferences.Shared.ActivitiesInCollapsed
+                     && (App.NowPlaying.Track is not null || App.Timer.Active || session.Phase == SessionPhase.Sending);
+        HasActivity = active;
+        if (!IsOpen) Invalidate();
+    }
+
+    public void OpenNow()
+    {
+        _closeLater?.Stop();
+        if (IsOpen) return;
+        if (Visibility != Visibility.Visible) Show();
+        _cardTimer?.Stop();
+        Card = null;
+        IsOpen = true;
+        SetSize(OpenSize());
+        Render();
+        App.PanelOpened(Tab);
+    }
+
+    public void Close_()
+    {
+        if (!IsOpen) return;
+        if (IsActive)
+        {
+            IsEditing = false;
+            Keyboard.ClearFocus();
+            Native.AddExStyle(_hwnd, Native.WS_EX_NOACTIVATE);
+            // the keyboard goes back to the app that had it
+            if (_previousForeground != IntPtr.Zero && Native.IsWindowVisible(_previousForeground)) Native.SetForegroundWindow(_previousForeground);
+            _previousForeground = IntPtr.Zero;
+        }
+        IsOpen = false;
+        SetSize(ClosedSize());
+        Render();
+        App.PanelClosed();
+        _closeLater = new DispatcherTimer { Interval = AnimationTime };
+        _closeLater.Tick += (_, _) =>
+        {
+            _closeLater?.Stop();
+            if (!IsOpen && !Tab.HasHeader()) { Tab = PanelTab.Muna; }
+        };
+        _closeLater.Start();
+    }
+
+    /// <summary>A click anywhere else (the manager sees it): a capsule open by itself closes.</summary>
+    public void ClickedOutside()
+    {
+        if (!IsOpen || IsHovering) return;
+        _pinned = false;
+        if (!Preferences.Shared.AutoCollapse || !KeepsOpen) Close_();
+    }
+
+    public void LayoutChanged()
+    {
+        RefreshLayout();
+        if (IsOpen) SetSize(OpenSize());
+        Invalidate();
+    }
+
+    /// <summary>A text field was clicked: the capsule takes the keyboard (it never does otherwise,
+    /// so the app in front keeps typing).</summary>
+    public static void TakeKeyboard(Field field)
+    {
+        if (GetWindow(field) is not Window window) return;
+        var hwnd = new WindowInteropHelper(window).Handle;
+        var front = Native.GetForegroundWindow();
+        if (window is CapsuleWindow capsule && front != hwnd)
+        {
+            Native.GetWindowThreadProcessId(front, out var process);
+            if (process != Environment.ProcessId) capsule._previousForeground = front;
+        }
+        Native.AddExStyle(hwnd, 0, Native.WS_EX_NOACTIVATE);
+        window.Activate();
+        Native.SetForegroundWindow(hwnd);
+        field.Box.Focus();
+        Keyboard.Focus(field.Box);
+    }
+
+    // --- files dropped, the wheel ------------------------------------------------------------------
+
+    void OnDragEnter(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Effects = DragDropEffects.Copy;
+        IsDropTarget = true;
+        _dropRing.Visibility = Visibility.Visible;
+        OpenNow();
+    }
+
+    void OnDragLeave(object sender, DragEventArgs e)
+    {
+        var p = e.GetPosition(_capsule);
+        if (p.X > 0 && p.Y > 0 && p.X < _capsule.ActualWidth && p.Y < _capsule.ActualHeight) return;
+        IsDropTarget = false;
+        _dropRing.Visibility = Visibility.Collapsed;
+        ScheduleUpdate();
+    }
+
+    /// <summary>Files dropped on the capsule: to LocalSend when that section is open, else to the Tray.</summary>
+    void OnDrop(object sender, DragEventArgs e)
+    {
+        IsDropTarget = false;
+        _dropRing.Visibility = Visibility.Collapsed;
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
+        if (IsOpen && Tab == PanelTab.LocalSend) App.LocalSend.Session.Offer(files);
+        else
+        {
+            App.Tray.Add(files);
+            SetTab(PanelTab.Tray);
+        }
+        _pinned = true;
+        ScheduleUpdate();
+    }
+
+    /// <summary>On the Muna page, the wheel (or a two-finger swipe sideways) changes the page.</summary>
+    void OnWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!IsOpen || Tab != PanelTab.Muna || Layout.Pages.Count < 2) return;
+        if (e.OriginalSource is DependencyObject d && FindScroller(d) is { } scroller && scroller.ScrollableHeight > 0) return;
+        PageIndex = Math.Clamp(PageIndex + (e.Delta < 0 ? 1 : -1), 0, Layout.Pages.Count - 1);
+        e.Handled = true;
+        Invalidate();
+    }
+
+    static ScrollViewer? FindScroller(DependencyObject d)
+    {
+        for (var node = d; node is not null; node = VisualTreeHelper.GetParent(node))
+            if (node is ScrollViewer s) return s;
+        return null;
+    }
+}

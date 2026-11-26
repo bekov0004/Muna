@@ -233,14 +233,19 @@ public sealed class CapsuleWindow : Window
         _scale = Native.Scale(monitor);
         var screenWidth = bounds.Width / _scale;
         _windowWidth = Math.Min(screenWidth, Math.Max(620, screenWidth * PanelLayout.MaxShare + 60));
-        // a taskbar on top: hang below it
-        var top = Screen.WorkingArea.Top > bounds.Top ? Screen.WorkingArea.Top : bounds.Top;
+        // a taskbar on top: hang below it (a Muna bar there: the capsule sits in it, as on Linux)
+        var top = Screen.WorkingArea.Top > bounds.Top && !MunaBars.Reserved.Contains(ScreenId) ? Screen.WorkingArea.Top : bounds.Top;
         // tall enough for a list pulled to 40% of the screen
         _windowHeight = Math.Max(520, bounds.Height / _scale * 0.4 + HeaderHeight + BottomPadding + 40);
         var widthPx = (int)Math.Round(_windowWidth * _scale);
         Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, bounds.Left + (bounds.Width - widthPx) / 2, top,
                             widthPx, (int)Math.Round(_windowHeight * _scale), Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
         RefreshLayout();
+    }
+
+    public void Raise()
+    {
+        if (_hwnd != IntPtr.Zero) Native.SetWindowPos(_hwnd, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
     }
 
     public void Update(Forms.Screen screen)

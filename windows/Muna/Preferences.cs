@@ -118,6 +118,24 @@ public sealed class Preferences
     public bool CommandHotKey { get => Get("command-hotkey", true); set => Set("command-hotkey", value); }
     /// <summary>The processor and the memory in the tooltip of Muna's tray icon.</summary>
     public bool MenuBarReadings { get => Get("menu-bar-readings", false); set => Set("menu-bar-readings", value); }
+    /// <summary>Linux's top-bar readings: each one chosen gets a small icon with its value in the
+    /// notification area (and a place in the Muna bar). Ids: cpu, cputemp, gpu, mem, battery, net, disk, diskio, power.</summary>
+    public List<string> BarMetrics
+    {
+        get => (_values["bar-metrics"] as JsonArray)?.Select(n => n?.GetValue<string>()).OfType<string>().ToList() ?? new();
+        set => Set("bar-metrics", new JsonArray(value.Select(v => (JsonNode?)v).ToArray()));
+    }
+    /// <summary>"C" or "F".</summary>
+    public string TemperatureUnit { get => Get("temp-unit", "C"); set => Set("temp-unit", value); }
+
+    /// <summary>The Muna bar: a bar of Muna's across the top of monitors ("off", "others": every monitor
+    /// but the main one, "all").</summary>
+    public string MunaBarScreens { get => Get("muna-bar-screens", "off"); set => Set("muna-bar-screens", value); }
+    /// <summary>How the Muna bar hides: "never" (windows stay below it), "intellihide" (when a window
+    /// touches it), "always" (until the pointer pushes against the top edge).</summary>
+    public string MunaBarHide { get => Get("muna-bar-hide", "intellihide"); set => Set("muna-bar-hide", value); }
+    public string PanelColorHex { get => Get("panel-color", "#000000"); set => Set("panel-color", value); }
+    public double PanelOpacity { get => Math.Clamp(Get("panel-opacity", 0.5), 0, 1); set => Set("panel-opacity", value); }
 
     /// <summary>Each monitor switches its own desktops (Muna hides and shows the windows of the others).</summary>
     public bool DesktopsPerMonitor { get => Get("desktops-per-monitor", false); set => Set("desktops-per-monitor", value); }

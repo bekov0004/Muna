@@ -40,7 +40,9 @@ public sealed class AppState
     public readonly WindowsModel Windows = new();
     public readonly DisplaysModel Displays = new();
     public readonly PhoneModel Phone = new();
+    public readonly MonitorDesktops Desktops = new();
     public CapsuleManager Capsules { get; }
+    public MunaBars Bars { get; }
 
     SettingsWindow? _settings;
     AgentsWindow? _agentsWindow;
@@ -51,6 +53,7 @@ public sealed class AppState
     {
         Command = new CommandModel(Clipboard, Snippets);
         Capsules = new CapsuleManager(this);
+        Bars = new MunaBars(this);
     }
 
     public void Start()
@@ -64,6 +67,8 @@ public sealed class AppState
         NowPlaying.PlayingChanged += playing => Companion.MusicPlaying = playing;
         Command.Scratchpad += ShowScratchpad;
         Capsules.Show();
+        Desktops.Start();
+        Bars.Rebuild();
     }
 
     /// <summary>The panel opened on a section: bring what it shows up to date.</summary>
@@ -103,6 +108,13 @@ public sealed class AppState
         _quick.Toggle();
     }
 
+    /// <summary>The quick panel on a page (a reading, the Muna bar); null: as it was.</summary>
+    public void ShowQuickPanel(string? page)
+    {
+        _quick ??= new QuickPanel(this);
+        _quick.ShowPage(page);
+    }
+
     public void Shutdown()
     {
         Camera.Stop();
@@ -110,6 +122,8 @@ public sealed class AppState
         Agents.StopAll();
         Scratchpad.Save();
         Displays.Restore();
+        Desktops.Stop();
+        Bars.CloseAll();
         CleaningMode.Stop();
         LocalSend.Shutdown();
         foreach (var window in new DarkWindow?[] { _settings, _agentsWindow, _scratchpadWindow })
@@ -251,6 +265,11 @@ public sealed class CapsuleManager
     }
 
     /// <summary>The capsule of the monitor with the pointer (else the first one).</summary>
+    /// <summary>Puts the capsules above other topmost windows of Muna's (the Muna bar).</summary>
+    public void Raise() => All(c => c.Raise());
+
+    public bool HasCapsule(string screenId) => _capsules.Any(c => c.ScreenId == screenId);
+
     public CapsuleWindow? Current
     {
         get
@@ -359,6 +378,7 @@ public sealed class App : Application
 
     public static AppState State { get; private set; } = null!;
     Forms.NotifyIcon? _icon;
+    ReadingIcons? _readings;
     HotKeys? _keys;
     int _commandKey, _radialKey;
     readonly List<int> _sectionKeys = new();
@@ -462,11 +482,15 @@ public sealed class App : Application
         {
             if (e.Button == Forms.MouseButtons.Left) State.ToggleQuickPanel();
         };
+        _readings = new ReadingIcons(State);
         var readings = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         readings.Tick += (_, _) =>
         {
-            if (!Preferences.Shared.MenuBarReadings) { if (_icon.Text != "Muna") _icon.Text = "Muna"; return; }
-            State.Monitor.Sample();
+            var p = Preferences.Shared;
+            var needed = p.MenuBarReadings || p.BarMetrics.Count > 0 || p.MunaBarScreens != "off";
+            if (needed && !State.Monitor.Watched) State.Monitor.Sample();
+            _readings.Update();
+            if (!p.MenuBarReadings) { if (_icon.Text != "Muna") _icon.Text = "Muna"; return; }
             var text = $"Muna · CPU {(int)(State.Monitor.Cpu * 100)}% · RAM {State.Monitor.MemoryPercent}%";
             _icon.Text = text.Length > 63 ? text[..63] : text;
         };
@@ -501,6 +525,7 @@ public sealed class App : Application
     {
         State.Shutdown();
         if (_icon is not null) { _icon.Visible = false; _icon.Dispose(); }
+        _readings?.Dispose();
         _keys?.Dispose();
         Shutdown();
     }

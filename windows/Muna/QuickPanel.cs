@@ -87,6 +87,20 @@ public sealed class QuickPanel : Window
         Activate();
     }
 
+    /// <summary>Opens on a page (or as it was); when open on that page already, it closes.</summary>
+    public void ShowPage(string? page)
+    {
+        if (page is not null && Pages.Any(p => p.Id == page))
+        {
+            if (IsVisible && _page == page) { HidePanel(); return; }
+            if (IsVisible) { SetPage(page); return; }
+            _page = page;
+        }
+        _hiddenAt = default;
+        if (IsVisible) { HidePanel(); return; }
+        Toggle();
+    }
+
     void HidePanel()
     {
         if (!IsVisible) return;

@@ -19,6 +19,7 @@ public sealed class SettingsWindow : DarkWindow
     {
         ("general", "General", Glyph.Settings, "How the capsule opens and closes, and what it shows when closed."),
         ("appearance", "Appearance", Glyph.Brightness, "The capsule's size, shape, colour and shadow."),
+        ("bars", "Readings and bars", Glyph.Cpu, "Readings of the computer where you see them, the Muna bar across the top of monitors, the taskbar, desktops."),
         ("widgets", "Muna page", Glyph.Apps, "The widgets of the Muna section: which, in what order, how wide."),
         ("calendar", "Calendar", Glyph.Calendar, "The calendar the Calendar widget shows."),
         ("localsend", "LocalSend", Glyph.Wifi, "Sending files to other computers and phones, and receiving them."),
@@ -74,6 +75,7 @@ public sealed class SettingsWindow : DarkWindow
         {
             "general" => General(),
             "appearance" => Appearance(),
+            "bars" => Bars(),
             "widgets" => Widgets(),
             "calendar" => Calendar(),
             "localsend" => LocalSendPage(),
@@ -120,7 +122,6 @@ public sealed class SettingsWindow : DarkWindow
             Switch("Radial menu: Ctrl+Alt+Space", null, _p.RadialHotKey, v => _p.RadialHotKey = v),
             Switch("Sections: Ctrl+Alt+1 to Ctrl+Alt+5", "Muna, Tray, LocalSend, Clipboard, Alerts.", _p.SectionHotKeys, v => _p.SectionHotKeys = v));
         yield return Card("System",
-            Switch("Readings on Muna's icon", "The processor and the memory in the tray icon's tooltip.", _p.MenuBarReadings, v => _p.MenuBarReadings = v),
             Switch("Open at login", "Muna starts when you sign in.", AutoStart.Enabled, v => { try { AutoStart.Enabled = v; } catch { } Render(); }));
     }
 
@@ -169,6 +170,54 @@ public sealed class SettingsWindow : DarkWindow
             Setting("Width", "Auto follows the widgets; fixed is a share of the screen.", Choice(new[] { "Auto", "Fixed" }, _p.WidthMode == "fixed" ? 1 : 0, i => _p.WidthMode = i == 1 ? "fixed" : "auto")),
             _p.WidthMode == "fixed" ? SliderRow("Fixed width", $"{(int)(_p.FixedWidth * 100)}% of the screen", 0.25, 0.9, _p.FixedWidth, v => _p.FixedWidth = Math.Round(v, 2), 0.05) : null);
         yield return Button("Reset the appearance", _p.ResetAppearance).Align(HorizontalAlignment.Left);
+    }
+
+    IEnumerable<UIElement> Bars()
+    {
+        var chosen = _p.BarMetrics;
+        var rows = new List<UIElement>();
+        foreach (var reading in Reading.All)
+        {
+            var id = reading.Id;
+            var value = reading.Long(_app.Monitor) ?? "Not available on this computer";
+            rows.Add(Switch($"{reading.Title} ({reading.Label})", value, chosen.Contains(id), on =>
+            {
+                var list = _p.BarMetrics;
+                list.Remove(id);
+                if (on) list.Add(id);
+                // in the order of the list above, as Linux shows them
+                _p.BarMetrics = Reading.All.Select(r => r.Id).Where(list.Contains).ToList();
+            }));
+        }
+        rows.Add(Setting("Temperature unit", null, Choice(new[] { "°C", "°F" }, _p.TemperatureUnit == "F" ? 1 : 0, i => _p.TemperatureUnit = i == 1 ? "F" : "C")));
+        rows.Add(Switch("CPU and memory in Muna's tooltip", "Point at Muna's icon in the notification area.", _p.MenuBarReadings, v => _p.MenuBarReadings = v));
+        yield return Card("Readings", rows.ToArray());
+        yield return Ui.Text("Each reading gets a small icon of its own in the notification area with its value (Windows has no top bar), and a place in the Muna bar. A click opens the quick panel on it. The temperature is the hottest of the computer's thermal zones.", 11, color: C.WinSecondary, wrap: true);
+
+        var swatches = Ui.Row(8);
+        foreach (var (name, hex) in Colors)
+        {
+            var h = hex;
+            var on = string.Equals(_p.PanelColorHex, hex, StringComparison.OrdinalIgnoreCase);
+            swatches.Children.Add(new Border
+            {
+                Width = 22, Height = 22, CornerRadius = new CornerRadius(11), Background = new SolidColorBrush(Preferences.ParseColor(hex, System.Windows.Media.Colors.Black)),
+                BorderBrush = on ? C.WinAccent : C.White(0.25), BorderThickness = new Thickness(on ? 3 : 1), ToolTip = name,
+            }.OnClick(() => _p.PanelColorHex = h));
+        }
+        yield return Card("Muna bar",
+            Setting("Show it on", "A bar across the top of the monitor: desktops on the left, the capsule in the middle, readings, network, sound, battery and Muna on the right.",
+                Choice(new[] { "No monitor", "Other monitors", "Every monitor" }, _p.MunaBarScreens switch { "others" => 1, "all" => 2, _ => 0 }, i => _p.MunaBarScreens = i switch { 1 => "others", 2 => "all", _ => "off" })),
+            Setting("Hide it", "Never: windows stay under it. When a window touches it. Always: until the pointer pushes against the top edge.",
+                Choice(new[] { "Never", "Intellihide", "Always" }, _p.MunaBarHide switch { "never" => 0, "always" => 2, _ => 1 }, i => _p.MunaBarHide = i switch { 0 => "never", 2 => "always", _ => "intellihide" })),
+            Setting("Colour", null, swatches),
+            SliderRow("Opacity", $"{_p.PanelOpacity:0.00} (0 is fully transparent, 1 is solid)", 0, 1, _p.PanelOpacity, v => _p.PanelOpacity = Math.Round(v, 2), 0.05));
+        bool autoHide;
+        try { autoHide = Taskbar.AutoHide; } catch { autoHide = false; }
+        yield return Card("Taskbar and desktops",
+            Switch("Hide the taskbar", "Windows' taskbar slides away and comes back when the pointer reaches it.", autoHide, v => { try { Taskbar.AutoHide = v; } catch { } Render(); }),
+            Switch("Separate desktops for every monitor", "Switching desktops on one monitor does not switch the others: Ctrl+Win+← and → switch the monitor under the pointer, with Shift the window in front goes along. Muna keeps these desktops itself (their windows are minimised).",
+                _p.DesktopsPerMonitor, v => _p.DesktopsPerMonitor = v));
     }
 
     IEnumerable<UIElement> Widgets()

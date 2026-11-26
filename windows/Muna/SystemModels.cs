@@ -28,6 +28,18 @@ public sealed class SystemMonitor : Model
     public double UpPerSecond { get; private set; }
     public List<double> DownHistory { get; } = new();
     public string NetworkName { get; private set; } = "";
+    /// <summary>The temperature of the hottest ACPI thermal zone in °C (Windows' performance counters,
+    /// no administrator rights), null when the computer reports none.</summary>
+    public double? Temperature { get; private set; }
+    /// <summary>The graphics card's 3D engines in use (0–1), null when unknown.</summary>
+    public double? Gpu { get; private set; }
+    /// <summary>Bytes read and written per second on all disks.</summary>
+    public double? DiskBytesPerSecond { get; private set; }
+    /// <summary>Watts the battery gives (discharging) or takes, null when unknown.</summary>
+    public double? PowerWatts { get; private set; }
+    public List<double> TemperatureHistory { get; } = new();
+    DateTime _extrasAt;
+    bool _extrasBusy;
     public string Address { get; private set; } = "";
     long _idle, _kernel, _user, _received, _sent;
     DateTime _netAt;
@@ -35,6 +47,8 @@ public sealed class SystemMonitor : Model
     readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
 
     public SystemMonitor() => _timer.Tick += (_, _) => { Sample(); Notify(); };
+
+    public bool Watched => _watchers > 0;
 
     public void Watch()
     {
@@ -63,7 +77,28 @@ public sealed class SystemMonitor : Model
         Push(CpuHistory, Cpu);
         Push(MemoryHistory, MemoryTotal > 0 ? (double)MemoryUsed / MemoryTotal : 0);
         SampleNetwork();
+        SampleExtras();
     }
+
+    /// <summary>Temperature, graphics, disk activity and power come from WMI, which takes a moment:
+    /// read in the background every 3 seconds.</summary>
+    void SampleExtras()
+    {
+        if (_extrasBusy || (DateTime.Now - _extrasAt).TotalSeconds < 3) return;
+        _extrasBusy = true;
+        _extrasAt = DateTime.Now;
+        Task.Run(() => (Wmi.Temperature(), Wmi.Gpu(), Wmi.DiskBytes(), Wmi.PowerWatts())).ContinueWith(t => Ui(() =>
+        {
+            _extrasBusy = false;
+            if (t.IsFaulted) return;
+            (Temperature, Gpu, DiskBytesPerSecond, PowerWatts) = t.Result;
+            if (Temperature is { } c) Push(TemperatureHistory, c);
+        }));
+    }
+
+    /// <summary>"42 °C" or "108 °F" (Settings → System: the unit, as Linux's temp-unit).</summary>
+    public static string TemperatureText(double celsius) =>
+        Preferences.Shared.TemperatureUnit == "F" ? $"{celsius * 9 / 5 + 32:0} °F" : $"{celsius:0} °C";
 
     void SampleNetwork()
     {
@@ -113,6 +148,77 @@ public sealed class SystemMonitor : Model
             return (drive.AvailableFreeSpace, drive.TotalSize);
         }
         catch { return (0, 0); }
+    }
+}
+
+/// <summary>WMI readings an ordinary user may make.</summary>
+static class Wmi
+{
+    static IEnumerable<System.Management.ManagementBaseObject> Query(string scope, string query)
+    {
+        using var searcher = new System.Management.ManagementObjectSearcher(scope, query);
+        foreach (var o in searcher.Get()) yield return o;
+    }
+
+    public static double? Temperature()
+    {
+        try
+        {
+            // tenths of kelvin in MSAcpi (admin only); kelvin in the performance counter (anyone)
+            double? best = null;
+            foreach (var o in Query(@"root\cimv2", "SELECT Temperature FROM Win32_PerfFormattedData_Counters_ThermalZoneInformation"))
+            {
+                var kelvin = Convert.ToDouble(o["Temperature"]);
+                if (kelvin < 200 || kelvin > 400) continue;
+                best = Math.Max(best ?? double.MinValue, kelvin - 273.15);
+            }
+            return best;
+        }
+        catch { return null; }
+    }
+
+    public static double? Gpu()
+    {
+        try
+        {
+            double sum = 0;
+            var any = false;
+            foreach (var o in Query(@"root\cimv2", "SELECT Name, UtilizationPercentage FROM Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine"))
+            {
+                if (o["Name"] is not string name || !name.Contains("engtype_3D", StringComparison.OrdinalIgnoreCase)) continue;
+                sum += Convert.ToDouble(o["UtilizationPercentage"]);
+                any = true;
+            }
+            return any ? Math.Clamp(sum / 100, 0, 1) : null;
+        }
+        catch { return null; }
+    }
+
+    public static double? DiskBytes()
+    {
+        try
+        {
+            foreach (var o in Query(@"root\cimv2", "SELECT DiskBytesPersec FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk WHERE Name='_Total'"))
+                return Convert.ToDouble(o["DiskBytesPersec"]);
+        }
+        catch { /* no counters */ }
+        return null;
+    }
+
+    public static double? PowerWatts()
+    {
+        try
+        {
+            foreach (var o in Query(@"root\WMI", "SELECT DischargeRate, ChargeRate FROM BatteryStatus"))
+            {
+                var discharge = Convert.ToDouble(o["DischargeRate"]);
+                var charge = Convert.ToDouble(o["ChargeRate"]);
+                var mw = discharge > 0 ? discharge : charge;
+                if (mw > 0) return mw / 1000;
+            }
+        }
+        catch { /* not allowed or no battery */ }
+        return null;
     }
 }
 

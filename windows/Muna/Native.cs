@@ -66,6 +66,9 @@ public static class Native
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? root, uint flags);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SHGetFileInfo(string path, uint attributes, ref SHFILEINFO info, uint size, uint flags);
     [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr icon);
+    [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd);
+    /// <summary>Marks the keys Muna presses itself (its own hooks let them through).</summary>
+    public static readonly IntPtr MunaKeyMark = new(0x4D554E41);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct MEMORYSTATUSEX

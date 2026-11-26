@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics   // CGRect's members (height, minX …) on macOS
+#endif
 
 /// How much the agents worked (linux/service/agents/module.js): the token counts and times of the
 /// messages in Claude Code's and Codex's logs, read as they grow (only the numbers, never the
@@ -94,11 +97,13 @@ public enum TileSlots {
     public static func slots(_ mode: String, _ n: Int) -> [CGRect] {
         var slots: [CGRect] = []
         func cells(_ area: CGRect, _ perRow: [Int]) {
-            let height = area.height / CGFloat(perRow.count)
+            let height: CGFloat = area.height / CGFloat(perRow.count)
             for (row, count) in perRow.enumerated() {
                 for i in 0..<count {
-                    slots.append(CGRect(x: area.minX + CGFloat(i) * area.width / CGFloat(count), y: area.minY + CGFloat(row) * height,
-                                        width: area.width / CGFloat(count), height: height))
+                    let width: CGFloat = area.width / CGFloat(count)
+                    let x: CGFloat = area.minX + CGFloat(i) * width
+                    let y: CGFloat = area.minY + CGFloat(row) * height
+                    slots.append(CGRect(x: x, y: y, width: width, height: height))
                 }
             }
         }

@@ -1,6 +1,9 @@
 import Foundation
 import XCTest
 @testable import MunaCore
+#if canImport(CoreGraphics)
+import CoreGraphics   // CGRect's members (height, minX …) on macOS
+#endif
 
 final class DataFilesTests: XCTestCase {
     var folder: URL!

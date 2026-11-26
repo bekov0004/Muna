@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics   // CGRect's members (height, minX …) on macOS
+#endif
 
 /// How wide the open capsule is and which widgets go on which page: the same rules as Muna on
 /// Linux (linux/src/ui/munaLayout.js). A widget is some cells wide (44 pt each); widgets that do

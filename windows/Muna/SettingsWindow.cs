@@ -587,11 +587,15 @@ public sealed class SettingsWindow : DarkWindow
         foreach (var (name, about, widgets) in presets)
         {
             var list = widgets;
-            grid.Children.Add(Ui.Box(Ui.Column(6, Ui.Semi(name, 13, C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true),
-                Button("Apply", () =>
-                {
-                    _p.SetWidgets(list);
-                })), C.White(0.05), 10, 10, 10).Margin(4, 4, 4, 4));
+            // the three Apply buttons on one line, at the bottom of their cards
+            var card = new DockPanel { LastChildFill = true };
+            var apply = Button("Apply", () => _p.SetWidgets(list));
+            apply.HorizontalAlignment = HorizontalAlignment.Left;
+            apply.Margin = new Thickness(0, 8, 0, 0);
+            DockPanel.SetDock(apply, Dock.Bottom);
+            card.Children.Add(apply);
+            card.Children.Add(Ui.Column(6, Ui.Semi(name, 13, C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true)));
+            grid.Children.Add(Ui.Box(card, C.White(0.05), 10, 10, 10).Margin(4, 4, 4, 4));
         }
         var on = _p.EnabledWidgets.Count + _p.MenuWidgets.Count;
         var total = WidgetCatalog.All.Length + QuickPanel.Ordered(new List<string>()).Count;

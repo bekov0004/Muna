@@ -169,11 +169,73 @@ public class DarkWindow : Window
         return Ui.Box(row, C.WinControl, 8, 2, 2);
     }
 
+    /// <summary>Linux's dropdown in the window's colours (light or dark): a rounded box with a chevron,
+    /// its list on a card; Windows' own is a white box in both.</summary>
+    static Style DropdownStyle()
+    {
+        string Hex(SolidColorBrush b) => b.Color.ToString();
+        var xaml = """
+            <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="ComboBox">
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ComboBox">
+                    <Grid>
+                      <ToggleButton Focusable="False" ClickMode="Press" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                        <ToggleButton.Template>
+                          <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="Box" Background="CONTROL" BorderBrush="BORDER" BorderThickness="1" CornerRadius="7">
+                              <Path HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,11,0" Data="M0,0 L4,4 L8,0" Stroke="SECONDARY" StrokeThickness="1.5"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="ACCENT"/></Trigger>
+                            </ControlTemplate.Triggers>
+                          </ControlTemplate>
+                        </ToggleButton.Template>
+                      </ToggleButton>
+                      <ContentPresenter IsHitTestVisible="False" Margin="10,6,30,6" VerticalAlignment="Center" HorizontalAlignment="Left"
+                                        Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"/>
+                      <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False" PopupAnimation="Fade">
+                        <Border Background="CARD" BorderBrush="BORDER" BorderThickness="1" CornerRadius="8" Padding="4" Margin="0,4,0,0"
+                                MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                          <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsPresenter/></ScrollViewer>
+                        </Border>
+                      </Popup>
+                    </Grid>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+              <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                  <Style TargetType="ComboBoxItem">
+                    <Setter Property="Foreground" Value="TEXT"/>
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="ComboBoxItem">
+                          <Border x:Name="Row" Background="Transparent" CornerRadius="5" Padding="8,5,8,5"><ContentPresenter/></Border>
+                          <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Row" Property="Background" Value="HOVER"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="ACCENT"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Foreground" Value="SECONDARY"/></Trigger>
+                          </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
+                  </Style>
+                </Setter.Value>
+              </Setter>
+            </Style>
+            """;
+        xaml = xaml.Replace("CONTROL", Hex(C.WinControl)).Replace("BORDER", Hex(C.WinBorder)).Replace("SECONDARY", Hex(C.WinSecondary))
+                   .Replace("ACCENT", Hex(C.WinAccent)).Replace("CARD", Hex(C.WinCard)).Replace("TEXT", Hex(C.WinText))
+                   .Replace("HOVER", C.Light ? "#14000000" : "#1FFFFFFF");
+        return (Style)System.Windows.Markup.XamlReader.Parse(xaml);
+    }
+
     /// <summary>A setting: its name and description on the left, the control on the right.</summary>
     /// <summary>A list to choose from (long lists, as the gestures' actions), with group headings.</summary>
     public static ComboBox Dropdown(IReadOnlyList<(string Label, string? Group)> items, int selected, Action<int> changed)
     {
-        var box = new ComboBox { MinWidth = 230, FontFamily = Ui.Font, FontSize = 12, MaxDropDownHeight = 420 };
+        var box = new ComboBox { MinWidth = 230, FontFamily = Ui.Font, FontSize = 12, MaxDropDownHeight = 420, Style = DropdownStyle(), Foreground = C.WinText };
         string? group = null;
         var indexes = new List<int>();
         for (var i = 0; i < items.Count; i++)

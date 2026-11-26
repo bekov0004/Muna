@@ -126,7 +126,8 @@ public sealed class CapsuleManager
     readonly List<CapsuleWindow> _capsules = new();
     readonly DispatcherTimer _pointer = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(50) };
     readonly DispatcherTimer _fullScreen = new() { Interval = TimeSpan.FromSeconds(1) };
-    bool _mouseWasDown;
+    bool _mouseWasDown, _agentWaiting;
+    IncomingState? _incomingState;
 
     public CapsuleManager(AppState app)
     {
@@ -140,7 +141,14 @@ public sealed class CapsuleManager
             capsule.SetTab(PanelTab.LocalSend);
             capsule.OpenNow();
         };
-        app.LocalSend.Changed += () => All(c => { c.ActivityChanged(); if (c.IsOpen) c.Invalidate(); c.ScheduleUpdate(); });
+        app.LocalSend.Changed += () =>
+        {
+            // what keeps a capsule open changed only when a sending is asked or answered (not at every byte)
+            var state = app.LocalSend.Incoming?.State;
+            var asked = state != _incomingState;
+            _incomingState = state;
+            All(c => { c.ActivityChanged(); if (c.IsOpen) c.Invalidate(); if (asked) c.ScheduleUpdate(); });
+        };
         app.Timer.Finished += () => Tell("Time is up", "The timer ended", Glyph.Clock, true);
         app.Focus.PhaseEnded += (title, details) => Tell(title, details, Glyph.Flag, true);
         app.Reminders.Due += text => { System.Media.SystemSounds.Exclamation.Play(); Tell("Reminder", text, Glyph.Bell, true); };
@@ -152,10 +160,16 @@ public sealed class CapsuleManager
             capsule.OpenNow();
         };
         app.Agents.TaskFinished += (task, ok) => Tell(ok ? $"{task.Project} is done" : $"{task.Project} stopped", ok ? task.Current : task.Error, ok ? Glyph.Sparkle : Glyph.Warning, ok);
-        app.Agents.Changed += () => All(c =>
+        app.Agents.Changed += () =>
         {
-            if (c.IsOpen && c.Tab == PanelTab.Agent) { c.Invalidate(); if (app.Agents.Waiting is null) c.ScheduleUpdate(); }
-        });
+            var waiting = app.Agents.Waiting is not null;
+            var answered = _agentWaiting && !waiting;
+            _agentWaiting = waiting;
+            All(c =>
+            {
+                if (c.IsOpen && c.Tab == PanelTab.Agent) { c.Invalidate(); if (answered) c.ScheduleUpdate(); }
+            });
+        };
         app.Command.Done += () => All(c => { if (c.IsOpen && c.Tab == PanelTab.Command) c.Close_(); });
         // what the open pages show
         void Redraw() => All(c => c.Invalidate());

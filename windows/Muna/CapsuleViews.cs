@@ -103,10 +103,10 @@ public static class CapsuleViews
         };
         var holder = new Border { Child = body, Height = w.Tab.BodyHeight(), ClipToBounds = w.Tab != PanelTab.Command };
         var column = Ui.Column(0, w.Tab.HasHeader() ? Header(w) : new Border { Height = 8 }, holder);
-        column.Margin = new Thickness(PanelLayout.Padding + 4, 0, PanelLayout.Padding + 4, CapsuleWindow.BottomPadding);
         column.VerticalAlignment = VerticalAlignment.Top;
         TextElement.SetForeground(column, C.Text);
-        return column;
+        // the panel's padding (16, as munaLayout.js counts it: the widgets fill the rest exactly)
+        return new Border { Child = column, Padding = new Thickness(PanelLayout.Padding, 0, PanelLayout.Padding, CapsuleWindow.BottomPadding) };
     }
 
     static UIElement Header(CapsuleWindow w)

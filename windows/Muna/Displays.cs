@@ -21,7 +21,18 @@ public sealed class DisplaysModel : Model
     readonly Dictionary<string, Window> _dimmers = new();
     readonly Dictionary<string, double> _dimmed = new();
 
+    /// <summary>Reads the monitors again (in the background: DDC/CI and WMI take a moment).</summary>
     public void Refresh()
+    {
+        var dimmed = new Dictionary<string, double>(_dimmed);
+        Task.Run(() => Read(dimmed)).ContinueWith(t =>
+        {
+            if (t.IsFaulted) return;
+            Ui(() => { Displays = t.Result; Notify(); });
+        });
+    }
+
+    static List<Display> Read(Dictionary<string, double> dimmedValues)
     {
         var builtin = BuiltinBrightness();
         var list = new List<Display>();
@@ -33,12 +44,11 @@ public sealed class DisplaysModel : Model
             double value;
             if (first && builtin is { } b && ddc is null) { how = Kind.Builtin; value = b; }
             else if (ddc is { } d) { how = Kind.Ddc; value = d; }
-            else { how = Kind.Dimmed; value = _dimmed.GetValueOrDefault(screen.DeviceName, 1); }
+            else { how = Kind.Dimmed; value = dimmedValues.GetValueOrDefault(screen.DeviceName, 1); }
             if (how == Kind.Builtin) first = false;
             list.Add(new Display(screen.DeviceName, Name(screen, list.Count), screen.Bounds, screen.Primary, how, value));
         }
-        Displays = list;
-        Notify();
+        return list;
     }
 
     static string Name(Forms.Screen screen, int index) =>

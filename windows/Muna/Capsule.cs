@@ -347,7 +347,17 @@ public sealed class CapsuleWindow : Window
         }
         catch (Exception e)
         {
+            Muna.App.Log(e);
             view = Ui.Text("Muna: " + e.Message, 11, color: C.Warning).Margin(16, 8, 16, 8);
+        }
+        // the page has its final size at once and is uncovered as the capsule grows (no reflow while it moves)
+        if (view is FrameworkElement page)
+        {
+            var size = IsOpen ? OpenSize() : ClosedSize();
+            page.Width = size.Width;
+            page.Height = size.Height;
+            page.HorizontalAlignment = HorizontalAlignment.Center;
+            page.VerticalAlignment = VerticalAlignment.Top;
         }
         // a text field keeps the keyboard when the page around it is drawn again
         var focused = Keyboard.FocusedElement as TextBox;

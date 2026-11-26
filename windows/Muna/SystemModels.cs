@@ -28,6 +28,8 @@ public sealed class SystemMonitor : Model
     public double UpPerSecond { get; private set; }
     public List<double> DownHistory { get; } = new();
     public string NetworkName { get; private set; } = "";
+    public long ReceivedSinceStart { get; private set; }
+    public long SentSinceStart { get; private set; }
     /// <summary>The temperature of the hottest ACPI thermal zone in °C (Windows' performance counters,
     /// no administrator rights), null when the computer reports none.</summary>
     public double? Temperature { get; private set; }
@@ -133,6 +135,9 @@ public sealed class SystemMonitor : Model
                 var seconds = Math.Max(0.1, (now - _netAt).TotalSeconds);
                 DownPerSecond = Math.Max(0, (stats.BytesReceived - _received) / seconds);
                 UpPerSecond = Math.Max(0, (stats.BytesSent - _sent) / seconds);
+                // this session's traffic (Linux's network tab)
+                ReceivedSinceStart += Math.Max(0, stats.BytesReceived - _received);
+                SentSinceStart += Math.Max(0, stats.BytesSent - _sent);
             }
             (_received, _sent, _netAt) = (stats.BytesReceived, stats.BytesSent, now);
             Push(DownHistory, DownPerSecond);

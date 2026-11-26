@@ -617,6 +617,10 @@ struct NetworkPage: View {
             Text("This session: \(sizeText(Int64(monitor.received))) down · \(sizeText(Int64(monitor.sent))) up")
                 .font(.system(size: 11))
                 .foregroundColor(MunaColor.secondary)
+            HStack {
+                Pill(label: "Speed test") { NSWorkspace.shared.open(URL(string: "https://fast.com")!) }
+                Pill(label: "Network settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Network-Settings.extension")!) }
+            }
         }
     }
 }

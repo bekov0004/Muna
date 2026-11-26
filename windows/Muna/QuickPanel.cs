@@ -303,7 +303,8 @@ public sealed class QuickPanel : Window
             Ui.Row(6, Ui.Semi(m.NetworkName, 12).Grow(), Ui.Digits(m.Address, 12, color: C.Secondary)),
             Ui.Row(6, Ui.Icon(Glyph.Down, 11, C.Accent), Ui.Digits(Speed(m.DownPerSecond), 12), Ui.Spacer(), Ui.Icon(Glyph.Up, 11, C.Muna), Ui.Digits(Speed(m.UpPerSecond), 12)),
             Graph(m.DownHistory),
-            Ui.Pill("Network settings", () => CapsuleViews.Launch("ms-settings:network")));
+            Ui.Text($"This session: {Ui.SizeText(m.ReceivedSinceStart)} down · {Ui.SizeText(m.SentSinceStart)} up", 11, color: C.Secondary),
+            Ui.Row(6, Ui.Pill("Speed test", () => CapsuleViews.Launch("https://fast.com")), Ui.Pill("Network settings", () => CapsuleViews.Launch("ms-settings:network"))));
     }
 
     UIElement SoundPage()

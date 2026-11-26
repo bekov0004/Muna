@@ -490,6 +490,12 @@ public static class CapsuleViews
         catch { /* gone */ }
     }
 
+    public static void Launch(string path, string arguments)
+    {
+        try { Process.Start(new ProcessStartInfo(path, arguments) { UseShellExecute = true }); }
+        catch { /* gone */ }
+    }
+
     // --- tray, alerts ------------------------------------------------------------------------------------
 
     /// <summary>The Tray: files dropped on the capsule wait here, to be dragged out, opened, or sent.</summary>

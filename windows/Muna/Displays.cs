@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Management;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Interop;
@@ -179,4 +180,88 @@ public sealed class DisplaysModel : Model
         }
         catch { }
     }
+}
+
+/// Linux's arrangement of the monitors (displays tab): which one is the main one, on which side of it
+/// each other one stands, and joined, mirrored or only one (Windows' own display settings).
+public static class DisplayArrangement
+{
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct DEVMODE
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+        public short SpecVersion, DriverVersion, Size, DriverExtra;
+        public int Fields;
+        public int PositionX, PositionY, DisplayOrientation, DisplayFixedOutput;
+        public short Color, Duplex, YResolution, TTOption, Collate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FormName;
+        public short LogPixels;
+        public int BitsPerPel, PelsWidth, PelsHeight, DisplayFlags, DisplayFrequency, ICMMethod, ICMIntent, MediaType, DitherType, Reserved1, Reserved2, PanningWidth, PanningHeight;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern bool EnumDisplaySettings(string device, int mode, ref DEVMODE devMode);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int ChangeDisplaySettingsEx(string? device, ref DEVMODE mode, IntPtr hwnd, uint flags, IntPtr param);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int ChangeDisplaySettingsEx(string? device, IntPtr mode, IntPtr hwnd, uint flags, IntPtr param);
+    const int CurrentSettings = -1, DmPosition = 0x20;
+    const uint UpdateRegistry = 0x1, NoReset = 0x10000000, SetPrimary = 0x10;
+
+    static bool Place(string device, int x, int y, bool primary)
+    {
+        var mode = new DEVMODE { Size = (short)Marshal.SizeOf<DEVMODE>() };
+        if (!EnumDisplaySettings(device, CurrentSettings, ref mode)) return false;
+        mode.PositionX = x;
+        mode.PositionY = y;
+        mode.Fields = DmPosition;
+        return ChangeDisplaySettingsEx(device, ref mode, IntPtr.Zero, UpdateRegistry | NoReset | (primary ? SetPrimary : 0), IntPtr.Zero) == 0;
+    }
+
+    static void Apply() => ChangeDisplaySettingsEx(null, IntPtr.Zero, IntPtr.Zero, 0, IntPtr.Zero);
+
+    /// Makes a monitor the main one (it moves to 0,0; the others keep their places around it).
+    public static void MakeMain(string device)
+    {
+        var screens = Forms.Screen.AllScreens;
+        var chosen = screens.FirstOrDefault(s => s.DeviceName == device);
+        if (chosen is null || chosen.Primary) return;
+        var (dx, dy) = (chosen.Bounds.Left, chosen.Bounds.Top);
+        foreach (var screen in screens.OrderBy(s => s.DeviceName == device ? 0 : 1))
+            Place(screen.DeviceName, screen.Bounds.Left - dx, screen.Bounds.Top - dy, screen.DeviceName == device);
+        Apply();
+    }
+
+    /// Puts a monitor on a side of the main one: "left", "right", "above", "below".
+    public static void PutBeside(string device, string side)
+    {
+        var screens = Forms.Screen.AllScreens;
+        var main = screens.FirstOrDefault(s => s.Primary);
+        var screen = screens.FirstOrDefault(s => s.DeviceName == device);
+        if (main is null || screen is null || screen.Primary) return;
+        var m = main.Bounds;
+        var (w, h) = (screen.Bounds.Width, screen.Bounds.Height);
+        var (x, y) = side switch
+        {
+            "left" => (m.Left - w, m.Top),
+            "above" => (m.Left, m.Top - h),
+            "below" => (m.Left, m.Bottom),
+            _ => (m.Right, m.Top),
+        };
+        if (Place(device, x, y, false)) Apply();
+    }
+
+    /// The side a monitor stands on, as seen from the main one.
+    public static string SideOf(System.Drawing.Rectangle bounds, System.Drawing.Rectangle main)
+    {
+        var dx = bounds.Left + bounds.Width / 2 - (main.Left + main.Width / 2);
+        var dy = bounds.Top + bounds.Height / 2 - (main.Top + main.Height / 2);
+        return Math.Abs(dx) * main.Height >= Math.Abs(dy) * main.Width ? (dx < 0 ? "left" : "right") : (dy < 0 ? "above" : "below");
+    }
+
+    /// Joined (one desktop over all), mirrored, or only one screen: Windows' own projection switch.
+    public static void Project(string how) => CapsuleViews.Launch(System.IO.Path.Combine(Environment.SystemDirectory, "DisplaySwitch.exe"), how switch
+    {
+        "mirror" => "/clone",
+        "internal" => "/internal",
+        "external" => "/external",
+        _ => "/extend",
+    });
 }

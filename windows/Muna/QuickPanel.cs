@@ -354,6 +354,24 @@ public sealed class QuickPanel : Window
             }
             column.Children.Add(Block(canvas));
         }
+        // the arrangement (Linux's: the main one, a side for each, joined / mirrored / only one)
+        if (displays.Count > 1)
+        {
+            var main = displays.FirstOrDefault(x => x.Primary) ?? displays[0];
+            var rows = new List<UIElement?>();
+            foreach (var display in displays.Where(x => !x.Primary))
+            {
+                var id = display.Id;
+                var sides = new[] { "left", "right", "above", "below" };
+                var side = DisplayArrangement.SideOf(display.Bounds, main.Bounds);
+                rows.Add(Ui.Column(4, Ui.Semi(display.Name, 12),
+                    Ui.Row(6, DarkWindow.Choice(new[] { "Left", "Right", "Above", "Below" }, Array.IndexOf(sides, side), i => { DisplayArrangement.PutBeside(id, sides[i]); _app.Displays.Refresh(); }),
+                              Ui.Spacer(), Ui.Pill("Make main", () => { DisplayArrangement.MakeMain(id); _app.Displays.Refresh(); }))));
+            }
+            rows.Add(Ui.Row(6, Ui.Pill("Join", () => DisplayArrangement.Project("extend")), Ui.Pill("Mirror", () => DisplayArrangement.Project("mirror")),
+                                Ui.Pill("Only this one", () => DisplayArrangement.Project("internal")), Ui.Pill("Only the other", () => DisplayArrangement.Project("external"))));
+            column.Children.Add(Block(rows.ToArray()));
+        }
         foreach (var display in displays)
         {
             var d = display;

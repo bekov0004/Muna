@@ -250,3 +250,58 @@ enum Keyboard {
         return named[name.lowercased()].map { UInt16($0) }
     }
 }
+
+/// Linux's shortcuts that you choose (Settings → General → Shortcuts), kept with Linux's key names
+/// and spelling ("<Control><Alt>t"); "<Super>" is ⌘ on the Mac.
+enum Shortcuts {
+    static let all: [(key: String, title: String, action: String)] = [
+        ("shortcut-muna", "Open Muna", "capsule:muna"), ("shortcut-tray", "File shelf", "capsule:tray"), ("shortcut-clipboard", "Clipboard history", "capsule:clipboard"),
+        ("shortcut-command", "Command Bar", "command"), ("shortcut-alerts", "Alerts", "capsule:alerts"), ("shortcut-screenshot", "Screenshot", "screenshot"),
+        ("shortcut-recording", "Record the screen", "recording"), ("shortcut-color", "Colour picker", "color"), ("shortcut-mic", "Mute microphone", "mic"),
+        ("shortcut-cleaning", "Cleaning mode", "cleaning"), ("shortcut-awake", "Keep awake", "awake"), ("shortcut-radial", "Radial menu", "radial"),
+        ("shortcut-output", "Next sound output", "output"), ("shortcut-quickpanel", "Quick panel", "quickpanel"),
+    ]
+
+    /// Carbon's key code and modifiers of "<Control><Alt>t".
+    static func carbon(_ accel: String) -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard let parsed = GestureCatalog.parseKeys(accel), let code = Keyboard.code(parsed.key) else { return nil }
+        var modifiers: UInt32 = 0
+        for m in parsed.modifiers {
+            switch m {
+            case "shift": modifiers |= UInt32(shiftKey)
+            case "alt": modifiers |= UInt32(optionKey)
+            case "super": modifiers |= UInt32(cmdKey)
+            default: modifiers |= UInt32(controlKey)
+            }
+        }
+        return modifiers == 0 ? nil : (UInt32(code), modifiers)
+    }
+
+    /// "⌃⌥T" for the settings.
+    static func pretty(_ accel: String) -> String {
+        guard let parsed = GestureCatalog.parseKeys(accel) else { return accel }
+        let symbols = parsed.modifiers.map { ["shift": "⇧", "alt": "⌥", "super": "⌘"][$0] ?? "⌃" }.joined()
+        return symbols + (parsed.key.count == 1 ? parsed.key.uppercased() : parsed.key)
+    }
+
+    /// The keys of a key press as Linux writes them (nil: not a key a shortcut can have).
+    static func accel(from event: NSEvent) -> String? {
+        let names: [Int: String] = [kVK_Space: "space", kVK_LeftArrow: "Left", kVK_RightArrow: "Right", kVK_UpArrow: "Up", kVK_DownArrow: "Down",
+                                    kVK_Tab: "Tab", kVK_Return: "Return", kVK_Home: "Home", kVK_End: "End", kVK_PageUp: "Page_Up", kVK_PageDown: "Page_Down",
+                                    kVK_ANSI_Equal: "equal", kVK_ANSI_Minus: "minus", kVK_F1: "F1", kVK_F2: "F2", kVK_F3: "F3", kVK_F4: "F4", kVK_F5: "F5",
+                                    kVK_F6: "F6", kVK_F7: "F7", kVK_F8: "F8", kVK_F9: "F9", kVK_F10: "F10", kVK_F11: "F11", kVK_F12: "F12"]
+        var name = names[Int(event.keyCode)]
+        if name == nil, let character = event.charactersIgnoringModifiers?.lowercased().first, character.isLetter || character.isNumber, character.isASCII {
+            name = String(character)
+        }
+        guard let name else { return nil }
+        let flags = event.modifierFlags
+        var accel = ""
+        if flags.contains(.control) { accel += "<Control>" }
+        if flags.contains(.option) { accel += "<Alt>" }
+        if flags.contains(.shift) { accel += "<Shift>" }
+        if flags.contains(.command) { accel += "<Super>" }
+        accel += name
+        return carbon(accel) == nil ? nil : accel
+    }
+}

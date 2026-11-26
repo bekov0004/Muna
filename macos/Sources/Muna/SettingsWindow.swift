@@ -89,6 +89,22 @@ final class SettingsState: ObservableObject {
     @Published var reminderText = ""
     @Published var reminderTime = Date().addingTimeInterval(3600)
     @Published var reminderRepeat = "once"
+    /// The shortcut being set (its key), while the next key press is awaited.
+    @Published var recording: String?
+    private var keyMonitor: Any?
+
+    func record(_ key: String) {
+        recording = key
+        if keyMonitor == nil {
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self, let target = self.recording else { return event }
+                self.recording = nil
+                if event.keyCode == 53 { return nil }       // Escape: no change
+                if let accel = Shortcuts.accel(from: event) { Preferences.shared.set(target, [accel]) }
+                return nil
+            }
+        }
+    }
     @Published var note: String?
     private var back: [String] = []
     private var forward: [String] = []
@@ -542,6 +558,17 @@ struct GeneralSettings: View {
             SettingsToggle(title: "Radial menu: ⌃⌥Space", detail: "A wheel of your favourite actions around the pointer.", isOn: $preferences.radialHotKey)
             SettingsToggle(title: "Muna, Tray, LocalSend, Clipboard, Alerts: ⌃⌥1 … ⌃⌥5", detail: "Each opens the capsule on its own tab, from anywhere.", isOn: $preferences.sectionHotKeys)
             SettingsNote("Works in any app, no extra permissions.")
+        }
+        SettingsCard("Your shortcuts") {
+            ForEach(Shortcuts.all, id: \.key) { shortcut in
+                let current = preferences.strings(shortcut.key).first
+                SettingsRow(shortcut.title, state.recording == shortcut.key ? "Press the keys… (Escape: none)" : current.map(Shortcuts.pretty) ?? "Not set") {
+                    HStack {
+                        Button(state.recording == shortcut.key ? "Waiting…" : "Press keys…") { state.record(shortcut.key) }
+                        if current != nil { Button { preferences.set(shortcut.key, nil) } label: { Image(systemName: "xmark") }.buttonStyle(.borderless) }
+                    }
+                }
+            }
         }
         SettingsCard("LocalSend") {
             SettingsToggle(title: "Receive files", detail: localSend.receiveProblem ?? "Other computers and phones on this network can send you files; you accept every sending.",

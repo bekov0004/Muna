@@ -82,6 +82,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private var keyboardCards: KeyboardCards?
     private var appNotifications: AppNotifications?
     private var readingsTimer: Timer?
+    private var customKeys: [HotKey] = []
+
+    /// Settings → General → Shortcuts: each chosen key does its action.
+    private func setCustomKeys() {
+        customKeys = []
+        for (index, shortcut) in Shortcuts.all.enumerated() {
+            guard let accel = Preferences.shared.strings(shortcut.key).first, let hot = Shortcuts.carbon(accel) else { continue }
+            let action = shortcut.action
+            customKeys.append(HotKey(keyCode: hot.keyCode, modifiers: hot.modifiers, id: UInt32(40 + index)) { [weak self] in self?.perform(action) })
+        }
+    }
     private lazy var windowMap = WindowMapModel(windows: app.windows)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -122,6 +133,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
 
         // what the settings window's buttons, the trackpad and the radial menu do
         settings.state.run = { [weak self] id in self?.perform(id) }
+        setCustomKeys()
+        Preferences.shared.changed.sink { [weak self] key in
+            if key.hasPrefix("shortcut-") || key == "*" { DispatchQueue.main.async { self?.setCustomKeys() } }
+        }.store(in: &readingsObservers)
         quickState.onMic = { [weak self] in self?.app.sound.toggleMicrophone() }
         quickState.onRun = { [weak self] id in
             if !id.hasPrefix("quickpanel") { self?.popover.performClose(nil) }

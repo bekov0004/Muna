@@ -818,22 +818,51 @@ public sealed class QuickPanel : Window
     // --- the other tabs of Linux's top-bar window -------------------------------------------------------
 
     /// Linux's Utilities: every tool in one list, each a click away.
+    bool _customizing;
+
+    /// Linux's Utilities: every tool in one list, each a click away; Customize reorders and hides them.
     UIElement UtilitiesPage()
     {
-        var rows = new List<UIElement?>();
-        void Row(string glyph, string title, string about, Action action) =>
-            rows.Add(Ui.Box(Ui.Row(10, Ui.Icon(glyph, 14, C.Accent).Size(22), Ui.Column(1, Ui.Semi(title, 12), Ui.Text(about, 10, color: C.Secondary)).Grow(), Ui.Icon(Glyph.Right, 9, C.Secondary)),
-                            C.Clear, 8, 6, 5).OnClick(action, C.White(0.08)));
-        Row(Glyph.Screenshot, "Screenshot", "A part of the screen or a window, copied", () => { HidePanel(); QuickTools.Screenshot(); });
-        Row(Glyph.Video, "Screen recording", "The Snipping Tool, recording", () => { HidePanel(); _app.Perform("recording"); });
-        Row(Glyph.Eyedropper, "Colour picker", "Copies the colour as a hex code", () => { HidePanel(); _app.Perform("color"); });
-        Row(Glyph.Clipboard, "Clipboard", "What you copied", () => { HidePanel(); _app.Capsules.Open(PanelTab.Clipboard); });
-        Row(Glyph.Window, "Window layout", "The window map, columns, rows, a grid", () => SetPage("windows"));
-        Row(Glyph.Broom, "Cleaning mode", "Keyboard and pointer locked while you clean", () => { HidePanel(); CleaningMode.Start(); });
-        Row(Glyph.Camera, "Camera preview", "See yourself before a call", () => { HidePanel(); _app.Capsules.Open(PanelTab.Mirror); });
-        Row(Glyph.Search, "Command Bar", "Apps, calculator, units, snippets", () => { HidePanel(); _app.Capsules.OpenCommand(); });
-        Row(Glyph.Note, "Scratchpad", "One long note in its own window", () => { HidePanel(); _app.ShowScratchpad(); });
-        Row(Glyph.Apps, "Radial menu", "Your actions around the pointer", () => { HidePanel(); _app.ToggleRadial(); });
+        var tools = new (string Id, string Glyph, string Title, string About, Action Run)[]
+        {
+            ("screenshot", Glyph.Screenshot, "Screenshot", "A part of the screen or a window, copied", () => { HidePanel(); QuickTools.Screenshot(); }),
+            ("recording", Glyph.Video, "Screen recording", "The Snipping Tool, recording", () => { HidePanel(); _app.Perform("recording"); }),
+            ("color", Glyph.Eyedropper, "Colour picker", "Copies the colour as a hex code", () => { HidePanel(); _app.Perform("color"); }),
+            ("clipboard", Glyph.Clipboard, "Clipboard", "What you copied", () => { HidePanel(); _app.Capsules.Open(PanelTab.Clipboard); }),
+            ("layout", Glyph.Window, "Window layout", "The window map, columns, rows, a grid", () => SetPage("windows")),
+            ("cleaning", Glyph.Broom, "Cleaning mode", "Keyboard and pointer locked while you clean", () => { HidePanel(); CleaningMode.Start(); }),
+            ("camera", Glyph.Camera, "Camera preview", "See yourself before a call", () => { HidePanel(); _app.Capsules.Open(PanelTab.Mirror); }),
+            ("command", Glyph.Search, "Command Bar", "Apps, calculator, units, snippets", () => { HidePanel(); _app.Capsules.OpenCommand(); }),
+            ("scratchpad", Glyph.Note, "Scratchpad", "One long note in its own window", () => { HidePanel(); _app.ShowScratchpad(); }),
+            ("radial", Glyph.Apps, "Radial menu", "Your actions around the pointer", () => { HidePanel(); _app.ToggleRadial(); }),
+        };
+        var p = Preferences.Shared;
+        var order = p.Strings("utilities-order");
+        var ordered = order.Select(id => tools.FirstOrDefault(t => t.Id == id)).Where(t => t.Id is not null).Concat(tools.Where(t => !order.Contains(t.Id))).ToList();
+        var rows = new List<UIElement?> { Ui.Row(6, Ui.Spacer(), Ui.Pill(_customizing ? "Done" : "Customize", () => { _customizing = !_customizing; Render(); }, active: _customizing)) };
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var tool = ordered[i];
+            var index = i;
+            if (_customizing)
+            {
+                void Move(int step)
+                {
+                    var ids = ordered.Select(t => t.Id).ToList();
+                    if (index + step < 0 || index + step >= ids.Count) return;
+                    (ids[index], ids[index + step]) = (ids[index + step], ids[index]);
+                    p.SetStrings("utilities-order", ids);
+                }
+                rows.Add(Ui.Row(8, Ui.Icon(tool.Glyph, 14, C.Accent).Size(22), Ui.Semi(tool.Title, 12).Grow(),
+                    Ui.IconButton(Glyph.Up, () => Move(-1)), Ui.IconButton(Glyph.Down, () => Move(1)),
+                    DarkWindow.Toggle(!p.Has("utilities-hidden", tool.Id), on => p.Toggle("utilities-hidden", tool.Id, !on))));
+            }
+            else if (!p.Has("utilities-hidden", tool.Id))
+            {
+                rows.Add(Ui.Box(Ui.Row(10, Ui.Icon(tool.Glyph, 14, C.Accent).Size(22), Ui.Column(1, Ui.Semi(tool.Title, 12), Ui.Text(tool.About, 10, color: C.Secondary)).Grow(), Ui.Icon(Glyph.Right, 9, C.Secondary)),
+                                C.Clear, 8, 6, 5).OnClick(tool.Run, C.White(0.08)));
+            }
+        }
         return Block(rows.ToArray());
     }
 

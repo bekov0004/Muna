@@ -36,7 +36,7 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Network (`network`) | speeds and graph, this session's traffic, address, speed test | ✅ | ✅ | |
 | Disks (`disks`) | each disk: fullness, live read/write, since start, temperature, eject, open | 🟡 | 🟡 | no disk temperature |
 | Power (`power`) | charge and history, busy programs, heat, power draw, adapter, health, devices' batteries | ✅ | 🟡 | Windows: no batteries of Bluetooth devices yet |
-| Sound (`sound`) | output volume, system sounds, microphone, every app's volume | 🟡 | ✅ | macOS has no per-app volume without an audio driver ➖ |
+| Sound (`sound`) | output volume, system sounds, microphone, every app's volume | 🟡 | ✅ | Mac: system sounds ✅; macOS has no per-app volume without an audio driver ➖ |
 | Downloads (`downloads`) | files arriving with progress | ✅ | ✅ | |
 | Input (`input`) | mouse and keyboard switches | ✅ | ✅ | Mac: some take effect at the next login (macOS) |
 | Windows (`windows`) | a picture of each screen with its windows: drag, zones, columns, rows, grid, main + side | ✅ | ✅ | Mac: pictures need Screen Recording |
@@ -44,9 +44,9 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Reminders (`reminders`) | the butterfly's reminders: once, every day, weekdays | ✅ | ✅ | |
 | AI Agents (`agents`) | working now, tokens 5 h and week, cards, Codex | ✅ | ✅ | |
 | Phone (`phone`) | live screen, control, QR pairing, Muna Phone link, dark screen | ✅ | ✅ | |
-| Keep awake (`awake`) | for a while or until off, lid closed, icon and colour | 🟡 | 🟡 | lid closed needs administrator rights ➖; the icon in the menu bar / tray not yet |
+| Keep awake (`awake`) | for a while or until off, lid closed, icon and colour | 🟡 | 🟡 | the icon and colour in the menu bar / tray ✅; lid closed needs administrator rights ➖ |
 | Displays (`displays`) | brightness of every monitor and keyboard light, night light, arrangement (drag, main, mirror, only one) | 🟡 | 🟡 | arranging by dragging, main, mirror not yet; Windows has no keyboard light API ➖ |
-| Utilities (`utilities`) | every tool in one list, reordered and hidden | 🟡 | 🟡 | the list; reordering and hiding not yet |
+| Utilities (`utilities`) | every tool in one list, reordered and hidden | ✅ | ✅ | |
 | Controls (`controls`) | switches for windows, mouse, keyboard, files, with counters | ✅ | ✅ | |
 | Quick toggles (`toggles`) | dark mode, keyboard light, microphone, trash, disks, hidden files, lock, screen | ✅ | ✅ | also Wi-Fi, Bluetooth, night light, airplane on Windows |
 

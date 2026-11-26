@@ -309,6 +309,18 @@ public sealed class SettingsWindow : DarkWindow
             });
         }
         yield return Card("Tabs of the window", rows.ToArray());
+        var colors = new[] { "#ff9500", "#ff3b30", "#34c759", "#0a84ff", "#bf5af2", "#ffffff" };
+        var swatches = Ui.Row(8);
+        foreach (var hex in colors)
+        {
+            var h = hex;
+            swatches.Children.Add(new Border
+            {
+                Width = 20, Height = 20, CornerRadius = new CornerRadius(10), Background = new SolidColorBrush(Preferences.ParseColor(hex, System.Windows.Media.Colors.Orange)),
+                BorderBrush = _p.Text("awake-color") == hex ? C.WinAccent : C.White(0.2), BorderThickness = new Thickness(_p.Text("awake-color") == hex ? 3 : 1),
+            }.OnClick(() => _p.SetValue("awake-color", h)));
+        }
+        yield return Card("Keep awake", Setting("Its colour", "While the computer is kept awake, Muna's icon in the notification area is a cup in this colour.", swatches));
         yield return Ui.Text("Switch off anything you do not need; the arrows change the order.", 11, color: C.WinSecondary, wrap: true);
     }
 

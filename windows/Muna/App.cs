@@ -615,6 +615,28 @@ public sealed class App : Application
         catch { icon = SystemIcons.Application; }
         _icon = new Forms.NotifyIcon { Icon = icon, Text = "Muna", Visible = true, ContextMenuStrip = new Forms.ContextMenuStrip() };
         _icon.ContextMenuStrip.Opening += (_, _) => BuildMenu(_icon.ContextMenuStrip);
+        // keep awake on: a cup in its colour instead of the butterfly (Linux's awake-icon and awake-color)
+        var normal = icon;
+        IntPtr cupHandle = IntPtr.Zero;
+        void ShowAwake()
+        {
+            if (!State.Awake.IsOn) { _icon.Icon = normal; return; }
+            var size = Forms.SystemInformation.SmallIconSize.Width;
+            using var bitmap = new Bitmap(size, size);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                var color = ColorTranslator.FromHtml(Preferences.Shared.Text("awake-color") is { Length: 7 } hex ? hex : "#ff9500");
+                using var font = new Font("Segoe Fluent Icons", size * 0.75f, GraphicsUnit.Pixel);
+                using var brush = new SolidBrush(color);
+                g.DrawString(Glyph.Coffee, font, brush, new RectangleF(-2, 0, size + 4, size), new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
+            }
+            if (cupHandle != IntPtr.Zero) Native.DestroyIcon(cupHandle);
+            cupHandle = bitmap.GetHicon();
+            _icon.Icon = Icon.FromHandle(cupHandle);
+        }
+        State.Awake.Changed += () => Dispatcher.BeginInvoke(ShowAwake);
+        Preferences.Shared.Changed += key => { if (key == "awake-color") Dispatcher.BeginInvoke(ShowAwake); };
         _icon.MouseUp += (_, e) =>
         {
             if (e.Button == Forms.MouseButtons.Left) State.ToggleQuickPanel();

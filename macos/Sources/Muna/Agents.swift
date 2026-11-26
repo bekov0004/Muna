@@ -30,7 +30,17 @@ final class AgentsModel: ObservableObject {
     var onFinished: (ClaudeTask, Bool) -> Void = { _, _ in }
 
     let claudePath = ClaudeTask.findClaude()
+    let codexPath = ClaudeTask.findCodex()
     private var counter = 0
+    /// The new task's agent ("claude", "codex"), where it runs ("background", "terminal") and model.
+    @Published var newAgent = "claude"
+    @Published var newWhere = "background"
+    @Published var newModel = ""
+    @Published var message: String?
+    static let models: [(String, String)] = [("", "Default model"), ("opus", "Opus"), ("sonnet", "Sonnet"), ("haiku", "Haiku (fast, light)")]
+    /// The token counts of the last five hours and week (from the agents' own logs).
+    @Published private(set) var usage: [TokenUsage.Summary] = []
+    private let tokens = TokenUsage()
 
     /// Claude Code and Codex sessions running in a terminal (from their logs), looked at while shown.
     @Published private(set) var sessions: [AgentSession] = []
@@ -51,7 +61,11 @@ final class AgentsModel: ObservableObject {
         let ours = Set(tasks.map(\.sessionId).filter { !$0.isEmpty })
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let found = AgentSessions.scan(except: ours)
-            DispatchQueue.main.async { self?.sessions = found }
+            let counted = self?.tokens.update() ?? []
+            DispatchQueue.main.async {
+                self?.sessions = found
+                self?.usage = counted
+            }
         }
     }
 
@@ -70,9 +84,25 @@ final class AgentsModel: ObservableObject {
     /// Starts a new task in a folder.
     func start(prompt: String, folder: String) {
         let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        message = nil
+        // Codex, and Claude Code when asked, run in a terminal window; Muna follows them in their logs
+        if newAgent == "codex" || newWhere == "terminal" {
+            guard let binary = newAgent == "codex" ? codexPath : claudePath else {
+                message = newAgent == "codex" ? "Codex is not installed" : "Claude Code is not installed"
+                return
+            }
+            var arguments: [String] = []
+            if newAgent != "codex" && !newModel.isEmpty { arguments += ["--model", newModel] }
+            if !prompt.isEmpty { arguments.append(prompt) }
+            message = Terminal.open(binary, in: folder, arguments) ?? "Started in Terminal: \(newAgent == "codex" ? "Codex" : "Claude Code") in \(URL(fileURLWithPath: folder).lastPathComponent)"
+            creating = false
+            newPrompt = ""
+            scanSessions()
+            return
+        }
         guard !prompt.isEmpty, let claudePath else { return }
         counter += 1
-        let task = ClaudeTask(id: "\(Int(Date().timeIntervalSince1970))-\(counter)", cwd: folder, prompt: prompt, binary: claudePath)
+        let task = ClaudeTask(id: "\(Int(Date().timeIntervalSince1970))-\(counter)", cwd: folder, prompt: prompt, model: newModel, binary: claudePath)
         task.onChange = { [weak self] _ in self?.revision += 1 }
         task.onPermission = { [weak self] task, permission in self?.onPermission(task, permission) }
         task.onFinished = { [weak self] task, ok in self?.onFinished(task, ok) }
@@ -251,6 +281,18 @@ struct AgentsPage: View {
                     }
                 }
             }
+            if !agents.usage.isEmpty {
+                QuickBlock {
+                    Text("TOKENS").font(.system(size: 10, weight: .heavy)).foregroundColor(MunaColor.caption)
+                    ForEach(agents.usage, id: \.agent) { usage in
+                        HStack {
+                            Text(usage.agent).font(.system(size: 12, weight: .semibold))
+                            Spacer()
+                            Text("\(TokenUsage.short(usage.tokens5h)) in 5 h · \(TokenUsage.short(usage.tokens7d)) week").font(.system(size: 11)).foregroundColor(MunaColor.secondary)
+                        }
+                    }
+                }
+            }
             LimitsBlock()
         }
         .onAppear { agents.watchSessions() }
@@ -423,7 +465,43 @@ struct NewTaskView: View {
                 Spacer()
                 Button("Choose…") { chooseFolder() }
             }
-            Text("What should Claude do?").font(.system(size: 12, weight: .semibold))
+            HStack {
+                Text("Agent").font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Picker("", selection: $agents.newAgent) {
+                    Text("Claude Code").tag("claude")
+                    Text("Codex").tag("codex")
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+            }
+            if agents.newAgent == "codex" {
+                if agents.codexPath == nil {
+                    Text("Codex is not installed (npm install -g @openai/codex).").font(.system(size: 12)).foregroundColor(MunaColor.warning)
+                }
+                Text("Codex opens in Terminal with the task as its first message; Muna follows it in its logs (working now, tokens).")
+                    .font(.system(size: 11)).foregroundColor(MunaColor.secondary)
+            } else {
+                HStack {
+                    Text("Where").font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Picker("", selection: $agents.newWhere) {
+                        Text("In the background").tag("background")
+                        Text("In a terminal").tag("terminal")
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                }
+                HStack {
+                    Text("Model").font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Picker("", selection: $agents.newModel) {
+                        ForEach(AgentsModel.models, id: \.0) { model in Text(model.1).tag(model.0) }
+                    }
+                    .fixedSize()
+                }
+            }
+            Text(agents.newAgent == "codex" ? "What should Codex do?" : "What should Claude do?").font(.system(size: 12, weight: .semibold))
             TextEditor(text: $agents.newPrompt)
                 .font(.system(size: 13))
                 .frame(minHeight: 120)
@@ -433,8 +511,9 @@ struct NewTaskView: View {
                 Spacer()
                 Button("Start") { agents.start(prompt: agents.newPrompt, folder: agents.newFolder) }
                     .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(agents.claudePath == nil || agents.newPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(agents.newAgent == "codex" ? agents.codexPath == nil : agents.claudePath == nil)
             }
+            if let message = agents.message { Text(message).font(.system(size: 12)).foregroundColor(MunaColor.ok) }
             Text("Claude Code works in the folder and asks before it changes anything: the question comes to the capsule and here.")
                 .font(.system(size: 11))
                 .foregroundColor(MunaColor.secondary)
@@ -568,5 +647,18 @@ struct EntryView: View {
         case .error:
             Text(entry.text).font(.system(size: 12)).foregroundColor(MunaColor.warning)
         }
+    }
+}
+
+/// Opens a program in a Terminal window, in a folder (as Linux's openInTerminal).
+enum Terminal {
+    /// nil when it opened, else what went wrong.
+    static func open(_ binary: String, in folder: String, _ arguments: [String]) -> String? {
+        func quote(_ text: String) -> String { "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'" }
+        let line = "cd \(quote(folder)) && \(([binary] + arguments).map(quote).joined(separator: " "))"
+        let escaped = line.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        var error: NSDictionary?
+        _ = NSAppleScript(source: "tell application \"Terminal\"\nactivate\ndo script \"\(escaped)\"\nend tell")?.executeAndReturnError(&error)
+        return error.map { "Could not open Terminal: \($0[NSAppleScript.errorMessage] ?? "")" }
     }
 }

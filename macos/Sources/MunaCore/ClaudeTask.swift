@@ -100,6 +100,17 @@ public final class ClaudeTask {
                 "/usr/local/bin", "/usr/bin", "/bin"]
     }
 
+    /// Codex (npm installs it on the PATH), or nil.
+    public static func findCodex() -> String? {
+        if let fromEnv = ProcessInfo.processInfo.environment["MUNA_CODEX_BIN"], !fromEnv.isEmpty { return fromEnv }
+        let path = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init)
+        for folder in path + searchPath {
+            let candidate = "\(folder)/codex"
+            if FileManager.default.isExecutableFile(atPath: candidate) { return candidate }
+        }
+        return nil
+    }
+
     public static func findClaude() -> String? {
         if let fromEnv = ProcessInfo.processInfo.environment["MUNA_CLAUDE_BIN"], !fromEnv.isEmpty { return fromEnv }
         let path = (ProcessInfo.processInfo.environment["PATH"] ?? "").split(separator: ":").map(String.init)

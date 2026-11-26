@@ -353,10 +353,9 @@ enum QuickPage: String, CaseIterable, Identifiable {
         return chosen + allCases.filter { !chosen.contains($0) }
     }
 
-    /// The tabs shown: in their order, without the ones switched off.
+    /// The tabs shown: the enabled ones in their order (Linux: enabled-widgets).
     static var visible: [QuickPage] {
-        let hidden = Preferences.shared.strings("menu-hidden")
-        let pages = ordered(Preferences.shared.strings("menu-order")).filter { !hidden.contains($0.rawValue) }
+        let pages = Preferences.shared.menuWidgets.compactMap(QuickPage.init(rawValue:))
         return pages.isEmpty ? [.system] : pages
     }
 

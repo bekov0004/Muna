@@ -28,7 +28,15 @@ enum WidgetCatalog {
     static func info(_ id: String) -> WidgetInfo? { all.first { $0.id == id } }
 
     /// Linux's default Muna page, without the widgets of the top-bar window.
-    static let defaultEnabled = ["media", "calendar", "mirror", "timer"]
+    static let defaultEnabled = ["media", "calendar", "mirror"]
+
+    /// The tabs of the menu-bar item's window (Linux: the top-bar button's window), in Linux's order.
+    static let menuIds = ["awake", "reminders", "phone", "displays", "sound", "system", "network", "disks", "power",
+                          "utilities", "controls", "toggles", "windows", "workspaces", "focus", "input", "downloads", "agents"]
+
+    /// Linux's enabled-widgets default: the capsule's widgets and the window's tabs in one list.
+    static let linuxDefault = ["media", "calendar", "mirror", "awake", "phone", "displays", "sound", "system", "network",
+                               "disks", "power", "utilities", "controls", "toggles", "windows", "workspaces"]
 }
 
 /// Muna's settings, with the names and defaults of Muna on Linux (its GSettings schema), kept in
@@ -68,7 +76,24 @@ final class Preferences: ObservableObject {
     @Published var menuBarReadings: Bool { didSet { defaults.set(menuBarReadings, forKey: "menu-bar-readings") } }
 
     // the Muna page
-    @Published var enabledWidgets: [String] { didSet { defaults.set(enabledWidgets, forKey: "enabled-widgets") } }
+    /// enabled-widgets is one list for both, as on Linux: the capsule's widgets (here) and the tabs of
+    /// the menu-bar item's window (`menuWidgets`), each part in its own order.
+    @Published var enabledWidgets: [String] { didSet { saveWidgets() } }
+    @Published var menuWidgets: [String] { didSet { saveWidgets() } }
+
+    private func saveWidgets() { defaults.set(enabledWidgets + menuWidgets, forKey: "enabled-widgets") }
+
+    /// Switches one tab of the menu-bar window on (at the end) or off.
+    func setMenuWidget(_ id: String, _ on: Bool) {
+        menuWidgets = menuWidgets.filter { $0 != id } + (on ? [id] : [])
+    }
+
+    /// The whole enabled-widgets list at once (Linux's bundles).
+    func setWidgets(_ ids: [String]) {
+        let known = Set(WidgetCatalog.all.map(\.id))
+        enabledWidgets = ids.filter { known.contains($0) }
+        menuWidgets = ids.filter { WidgetCatalog.menuIds.contains($0) }
+    }
     @Published var widgetCells: [String: Int] { didSet { defaults.set(widgetCells, forKey: "widget-cells") } }
     @Published var shortcutApps: [String] { didSet { defaults.set(shortcutApps, forKey: "shortcut-apps") } }
 
@@ -104,7 +129,10 @@ final class Preferences: ObservableObject {
         capsuleScreens = defaults.string(forKey: "capsule-screens") ?? "all"
         menuBarReadings = bool("menu-bar-readings", false)
         let known = Set(WidgetCatalog.all.map(\.id))
-        enabledWidgets = (defaults.stringArray(forKey: "enabled-widgets") ?? WidgetCatalog.defaultEnabled).filter { known.contains($0) }
+        var seen = Set<String>()
+        let widgets = (defaults.stringArray(forKey: "enabled-widgets") ?? WidgetCatalog.linuxDefault).filter { seen.insert($0).inserted }
+        enabledWidgets = widgets.filter { known.contains($0) }
+        menuWidgets = widgets.filter { WidgetCatalog.menuIds.contains($0) }
         widgetCells = (defaults.dictionary(forKey: "widget-cells") as? [String: Int]) ?? [:]
         shortcutApps = defaults.stringArray(forKey: "shortcut-apps") ?? []
         localSendReceive = bool("localsend-receive", false)

@@ -448,7 +448,7 @@ extension Preferences {
     func doubleBinding(_ key: String) -> Binding<Double> { Binding(get: { self.double(key) }, set: { self.set(key, $0) }) }
     func stringBinding(_ key: String) -> Binding<String> { Binding(get: { self.string(key) }, set: { self.set(key, $0) }) }
 
-    /// A switch on one item of a list setting (menu-hidden, bar-metrics …).
+    /// A switch on one item of a list setting (bar-metrics …).
     func listBinding(_ key: String, _ item: String, onMeansIn: Bool = true) -> Binding<Bool> {
         Binding(get: { self.strings(key).contains(item) == onMeansIn }, set: { on in
             var list = self.strings(key).filter { $0 != item }
@@ -661,18 +661,23 @@ struct MenuBarSettings: View {
 
     var body: some View {
         SettingsCard("Tabs of the window") {
-            let pages = QuickPage.ordered(preferences.strings("menu-order"))
+            // the shown tabs in their order (enabled-widgets, as on Linux), then the others
+            let shown = preferences.menuWidgets
+            let pages = QuickPage.ordered(shown)
             ForEach(Array(pages.enumerated()), id: \.element.id) { index, page in
+                let on = shown.contains(page.rawValue)
                 HStack(spacing: 12) {
-                    Image(systemName: page.symbol).frame(width: 22).foregroundColor(.accentColor)
+                    Image(systemName: page.symbol).frame(width: 22).foregroundColor(on ? .accentColor : .secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(page.title).font(.system(size: 13))
                         Text(page.about).font(.system(size: 11)).foregroundColor(.secondary)
                     }
                     Spacer()
-                    Button { move(pages, index, -1) } label: { Image(systemName: "chevron.up") }.buttonStyle(.borderless).disabled(index == 0)
-                    Button { move(pages, index, 1) } label: { Image(systemName: "chevron.down") }.buttonStyle(.borderless).disabled(index == pages.count - 1)
-                    Toggle("", isOn: preferences.listBinding("menu-hidden", page.rawValue, onMeansIn: false)).labelsHidden().toggleStyle(.switch)
+                    if on {
+                        Button { move(index, -1) } label: { Image(systemName: "chevron.up") }.buttonStyle(.borderless).disabled(index == 0)
+                        Button { move(index, 1) } label: { Image(systemName: "chevron.down") }.buttonStyle(.borderless).disabled(index == shown.count - 1)
+                    }
+                    Toggle("", isOn: Binding(get: { on }, set: { preferences.setMenuWidget(page.rawValue, $0) })).labelsHidden().toggleStyle(.switch)
                 }
             }
             SettingsNote("Switch off anything you do not need; the arrows change the order.")
@@ -707,12 +712,12 @@ struct MenuBarSettings: View {
         }
     }
 
-    private func move(_ pages: [QuickPage], _ index: Int, _ step: Int) {
-        var list = pages.map(\.rawValue)
+    private func move(_ index: Int, _ step: Int) {
+        var list = preferences.menuWidgets
         let target = index + step
-        guard list.indices.contains(target) else { return }
+        guard list.indices.contains(target), list.indices.contains(index) else { return }
         list.swapAt(index, target)
-        preferences.set("menu-order", list)
+        preferences.menuWidgets = list
     }
 }
 
@@ -897,7 +902,7 @@ struct Feature: Identifiable {
     let title: String
     let subtitle: String
     let symbol: String
-    /// A capsule widget (enabled-widgets), a menu-bar page (menu-hidden), or a setting.
+    /// A capsule widget or a menu-bar page (both in enabled-widgets, as on Linux), or a setting.
     enum Kind { case widget(String), page(String), key(String) }
     let kind: Kind
     var id: String { "\(topic)-\(title)" }
@@ -960,7 +965,7 @@ enum Features {
         let p = Preferences.shared
         switch feature.kind {
         case .widget(let id): return p.enabledWidgets.contains(id)
-        case .page(let id): return !p.strings("menu-hidden").contains(id)
+        case .page(let id): return p.menuWidgets.contains(id)
         case .key(let key): return typed[key]?.get() ?? p.bool(key)
         }
     }
@@ -972,7 +977,7 @@ enum Features {
             p.enabledWidgets.removeAll { $0 == id }
             if on { p.enabledWidgets.append(id) }
         case .page(let id):
-            p.set("menu-hidden", p.strings("menu-hidden").filter { $0 != id } + (on ? [] : [id]))
+            p.setMenuWidget(id, on)
         case .key(let key):
             if let typed = typed[key] { typed.set(on) } else { p.set(key, on) }
         }
@@ -1057,15 +1062,16 @@ struct FeaturesOverview: View {
     @EnvironmentObject var state: SettingsState
 
     static let presets: [(String, String, [String])] = [
-        ("Everything", "Every tool and widget.", WidgetCatalog.all.map(\.id)),
-        ("Essentials", "Music, calendar and mirror in the capsule, with every tool in the menu-bar window.", ["media", "calendar", "mirror", "timer"]),
-        ("Light island", "Only music and calendar.", ["media", "calendar"]),
+        ("Everything", "Every tool and widget.", WidgetCatalog.all.map(\.id) + WidgetCatalog.menuIds),
+        ("Essentials", "Windows, quick toggles, focus, system and sound, with music, calendar and mirror.",
+         ["media", "calendar", "mirror", "awake", "sound", "system", "utilities", "toggles", "windows"]),
+        ("Light island", "Only music and calendar; the tools window is empty.", ["media", "calendar"]),
     ]
 
     var body: some View {
         let features = Features.all
         let widgets = WidgetCatalog.all.count + QuickPage.allCases.count
-        let on = preferences.enabledWidgets.count + QuickPage.allCases.filter { !preferences.strings("menu-hidden").contains($0.rawValue) }.count
+        let on = preferences.enabledWidgets.count + preferences.menuWidgets.count
         SettingsCard("Start with a bundle") {
             Text("\(on) of \(widgets) tools and widgets are on").font(.system(size: 13, weight: .semibold))
             HStack(alignment: .top, spacing: 10) {
@@ -1075,8 +1081,7 @@ struct FeaturesOverview: View {
                         Text(preset.1).font(.system(size: 11)).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 4)
                         Button("Apply") {
-                            preferences.enabledWidgets = preset.2
-                            preferences.set("menu-hidden", preset.0 == "Light island" ? QuickPage.allCases.map(\.rawValue) : [String]())
+                            preferences.setWidgets(preset.2)
                         }
                     }
                     .padding(10)

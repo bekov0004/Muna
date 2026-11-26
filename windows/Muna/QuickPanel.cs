@@ -388,6 +388,9 @@ public sealed class QuickPanel : Window
                 if (!SystemSwitches.SetNightLight(on)) { Say("Turn night light on once in Windows' settings, then Muna can switch it"); CapsuleViews.Launch("ms-settings:nightlight"); }
                 else Render();
             }))));
+        if (AutoBrightness.IsOn is { } auto)
+            column.Children.Add(Block(Ui.Row(8, Ui.Icon(Glyph.Brightness, 13, C.Secondary), Ui.Column(1, Ui.Semi("Automatic brightness", 12), Ui.Text("The light sensor sets the screen's brightness", 10, color: C.Secondary)).Grow(),
+                DarkWindow.Toggle(auto, on => { AutoBrightness.Set(on); Render(); }))));
         column.Children.Add(Ui.Row(6, Ui.Pill("Night light settings", () => CapsuleViews.Launch("ms-settings:nightlight")), Ui.Pill("Display settings", () => CapsuleViews.Launch("ms-settings:display"))));
         return column;
     }

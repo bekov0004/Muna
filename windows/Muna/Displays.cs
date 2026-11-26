@@ -182,6 +182,55 @@ public sealed class DisplaysModel : Model
     }
 }
 
+/// Windows' adaptive brightness (the light sensor), through powercfg on the current power plan.
+public static class AutoBrightness
+{
+    static string Run(params string[] arguments)
+    {
+        try
+        {
+            var info = new System.Diagnostics.ProcessStartInfo("powercfg") { RedirectStandardOutput = true, UseShellExecute = false, CreateNoWindow = true };
+            foreach (var a in arguments) info.ArgumentList.Add(a);
+            using var process = System.Diagnostics.Process.Start(info)!;
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(4000);
+            return output;
+        }
+        catch { return ""; }
+    }
+
+    static (DateTime At, bool? Value) _cache;
+
+    /// On when plugged in (null: the computer has no light sensor setting); read at most every 10 seconds.
+    public static bool? IsOn
+    {
+        get
+        {
+            if ((DateTime.Now - _cache.At).TotalSeconds < 10) return _cache.Value;
+            _cache = (DateTime.Now, Read());
+            return _cache.Value;
+        }
+    }
+
+    static bool? Read()
+    {
+        {
+            var text = Run("/QUERY", "SCHEME_CURRENT", "SUB_VIDEO", "ADAPTBRIGHT");
+            var match = System.Text.RegularExpressions.Regex.Match(text, @"0x0000000([01])\s*$", System.Text.RegularExpressions.RegexOptions.Multiline);
+            return match.Success ? match.Groups[1].Value == "1" : null;
+        }
+    }
+
+    public static void Set(bool on)
+    {
+        var value = on ? "1" : "0";
+        Run("/SETACVALUEINDEX", "SCHEME_CURRENT", "SUB_VIDEO", "ADAPTBRIGHT", value);
+        Run("/SETDCVALUEINDEX", "SCHEME_CURRENT", "SUB_VIDEO", "ADAPTBRIGHT", value);
+        Run("/SETACTIVE", "SCHEME_CURRENT");
+        _cache = (DateTime.Now, on);
+    }
+}
+
 /// Linux's arrangement of the monitors (displays tab): which one is the main one, on which side of it
 /// each other one stands, and joined, mirrored or only one (Windows' own display settings).
 public static class DisplayArrangement

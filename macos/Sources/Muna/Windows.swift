@@ -148,7 +148,7 @@ final class WindowsModel: ObservableObject {
     }
 
     /// The window's frame in Cocoa coordinates.
-    private func frame(of window: AXUIElement) -> CGRect? {
+    func frame(of window: AXUIElement) -> CGRect? {
         var posValue: CFTypeRef?
         var sizeValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &posValue) == .success,
@@ -163,7 +163,7 @@ final class WindowsModel: ObservableObject {
     }
 
     /// Sets a Cocoa-coordinate frame. Size, position, size again: some apps clamp to the old screen.
-    private func setFrame(_ rect: CGRect, of window: AXUIElement) {
+    func setFrame(_ rect: CGRect, of window: AXUIElement) {
         var point = CGPoint(x: rect.minX, y: primaryHeight() - rect.maxY)
         var size = CGSize(width: rect.width, height: rect.height)
         guard let position = AXValueCreate(.cgPoint, &point), let dimensions = AXValueCreate(.cgSize, &size) else { return }
@@ -188,11 +188,42 @@ final class WindowsModel: ObservableObject {
 /// The Windows page of the quick panel: a grid of layout tiles.
 struct WindowsPage: View {
     @EnvironmentObject var windows: WindowsModel
+    @EnvironmentObject var map: WindowMapModel
+    @EnvironmentObject var state: QuickPanelState
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if NSScreen.screens.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(Array(NSScreen.screens.enumerated()), id: \.offset) { index, screen in
+                        Pill(label: index == 0 ? "Main screen" : "Screen \(index + 1)", active: index == map.screenIndex) { map.screenIndex = index; map.refresh() }
+                    }
+                }
+            }
+            if windows.trusted {
+                QuickBlock {
+                    WindowMapView()
+                    Text("Drag a window (an edge: half or a quarter, the top: all of it), click it to bring it forward, ✕ closes it.")
+                        .font(.system(size: 10)).foregroundColor(MunaColor.secondary).fixedSize(horizontal: false, vertical: true)
+                    if !CGPreflightScreenCaptureAccess() {
+                        Pill(label: "Show the windows' pictures (Screen Recording)") { map.askForPictures() }
+                    }
+                }
+                QuickBlock {
+                    Text("ALL WINDOWS OF THIS SCREEN").font(.system(size: 10, weight: .heavy)).foregroundColor(MunaColor.caption)
+                    HStack(spacing: 6) {
+                        ForEach([("columns", "Columns"), ("rows", "Rows"), ("grid", "Grid"), ("main", "Main + side")], id: \.0) { mode in
+                            Pill(label: mode.1) {
+                                let n = map.tile(mode.0)
+                                state.message = n == 0 ? "No windows on this screen" : "\(n) windows arranged"
+                            }
+                        }
+                        Pill(label: "Undo") { state.message = map.undo() ? "The windows are back" : "Nothing to undo" }
+                    }
+                }
+            }
             QuickBlock {
                 HStack {
                     Text("Windows")
@@ -221,6 +252,7 @@ struct WindowsPage: View {
                 }
             }
         }
-        .onAppear { windows.refreshTrust() }
+        .onAppear { windows.refreshTrust(); map.watch() }
+        .onDisappear { map.unwatch() }
     }
 }

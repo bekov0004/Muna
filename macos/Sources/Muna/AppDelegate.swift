@@ -80,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private var systemAlerts: SystemAlerts?
     private var keyboardCards: KeyboardCards?
     private var readingsTimer: Timer?
+    private lazy var windowMap = WindowMapModel(windows: app.windows)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         app.start()
@@ -274,6 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         .environmentObject(quickState)
         .environmentObject(Preferences.shared)
         .environmentObject(DisksModel.shared)
+        .environmentObject(windowMap)
         .environmentObject(PowerModel.shared)
         .environmentObject(app.monitor)
         .environmentObject(app.awake)

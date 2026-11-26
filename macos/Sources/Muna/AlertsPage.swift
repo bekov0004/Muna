@@ -19,7 +19,7 @@ struct AlertsPage: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
+                EdgeScrollView {
                     VStack(spacing: 4) {
                         ForEach(alerts.alerts) { alert in
                             HStack(spacing: 10) {

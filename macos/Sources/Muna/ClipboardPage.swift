@@ -29,7 +29,7 @@ struct ClipboardPage: View {
                     .foregroundColor(MunaColor.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
+                EdgeScrollView {
                     LazyVStack(spacing: 4) {
                         ForEach(shown) { item in
                             ClipRow(item: item, copied: ui.copiedClip == item.id) {

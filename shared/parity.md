@@ -59,7 +59,7 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Appearance (size, height, padding, spacing, dividers, width, radius, transparency, shadow, butterfly flapping) | ✅ | ✅ | |
 | Cards: keyboard layout, Caps Lock, system alerts with thresholds, agents | ✅ | ✅ | |
 | Alerts: other apps' notifications | ✅ | ✅ | Mac: Full Disk Access |
-| Two-finger pull makes lists taller | ➖ | ✅ | Mac: the lists are tall and scroll |
+| Two-finger pull makes lists taller | ✅ | ✅ | past the top of Clipboard or Alerts the section grows to 40% of the screen, past the end it goes back |
 | Touchpad gestures everywhere (3/4 fingers, pinches, holds, edges) | ✅ | ✅ | the system's own 3/4-finger gestures must be turned off |
 | Muna bar, hiding the top bar, desktops per monitor | ✅ | ✅ | Mac: macOS's own menu bar on every screen; hiding it; "Displays have separate Spaces" |
 

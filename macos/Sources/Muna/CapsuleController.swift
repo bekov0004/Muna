@@ -169,6 +169,11 @@ final class CapsuleModel: ObservableObject {
     @Published var geometry: CapsuleGeometry
     @Published var tab = PanelTab.muna
     @Published var pageIndex = 0
+    /// How much taller than normal the list section is now (pulled with two fingers, as on Linux).
+    @Published var extra: CGFloat = 0
+    /// Where the list of Clipboard or Alerts is scrolled to (set by EdgeScrollView).
+    var listAtTop = true
+    var listAtBottom = true
     @Published private(set) var layout: PanelLayout
     /// A text field has the keyboard: the capsule stays open.
     @Published var isEditing = false
@@ -226,7 +231,7 @@ final class CapsuleModel: ObservableObject {
 
     var openSize: CGSize {
         CGSize(width: layout.width,
-               height: geometry.topInset + headerHeight + tab.bodyHeight + Self.bottomPadding)
+               height: geometry.topInset + headerHeight + tab.bodyHeight + (tab == .clipboard || tab == .alerts ? extra : 0) + Self.bottomPadding)
     }
 
     var size: CGSize { isOpen ? openSize : closedSize }
@@ -307,6 +312,7 @@ final class CapsuleController {
             if targeted { self?.openNow() } else { self?.scheduleUpdate() }
         }.store(in: &observers)
         model.$tab.dropFirst().removeDuplicates().sink { [weak self] _ in
+            self?.model.extra = 0
             DispatchQueue.main.async { self?.resizeOpen() }
         }.store(in: &observers)
         model.$card.dropFirst().sink { [weak self] _ in
@@ -489,6 +495,23 @@ final class CapsuleController {
         }
         // with natural scrolling the content follows the fingers: fingers down is a positive delta
         var fingersDown = event.isDirectionInvertedFromDevice ? dy > 0 : dy < 0
+        // Linux's two-finger pull: past the top of Clipboard or Alerts the section grows (to 40% of the
+        // screen), past the end it goes back; otherwise the list scrolls
+        if model.isOpen && (model.tab == .clipboard || model.tab == .alerts) {
+            let towardTop = event.isDirectionInvertedFromDevice ? dy > 0 : dy < 0
+            let cap = max(0, model.geometry.screenFrame.height * 0.4 - model.tab.bodyHeight)
+            if towardTop && model.listAtTop && model.extra < cap {
+                swipeSum += abs(dy)
+                if swipeSum >= 30 { swipeDone = true; withAnimation(CapsuleMetrics.animation) { model.extra = cap }; resizeOpen() }
+                return true
+            }
+            if !towardTop && model.extra > 0 && model.listAtBottom {
+                swipeSum += abs(dy)
+                if swipeSum >= 30 { swipeDone = true; withAnimation(CapsuleMetrics.animation) { model.extra = 0 }; resizeOpen() }
+                return true
+            }
+            return false
+        }
         if p.bool("gestures-invert") { fingersDown.toggle() }
         if !model.isOpen && fingersDown && p.bool("gestures-swipe-open") {
             swipeSum += abs(dy)
@@ -582,6 +605,7 @@ final class CapsuleController {
     }
 
     func close() {
+        model.extra = 0
         guard model.isOpen else { return }
         if panel.isKeyWindow {
             // give the keyboard back to the app in front: out and in again, without becoming key

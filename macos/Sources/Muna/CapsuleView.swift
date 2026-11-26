@@ -635,3 +635,32 @@ struct FileIcon: View {
 func sizeText(_ bytes: Int64) -> String {
     ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
 }
+
+/// A vertical list that tells the capsule whether it is scrolled to its top or its end (for the
+/// two-finger pull of Clipboard and Alerts).
+struct EdgeScrollView<Content: View>: View {
+    @EnvironmentObject var model: CapsuleModel
+    let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) { self.content = content }
+
+    var body: some View {
+        GeometryReader { outer in
+            ScrollView(.vertical, showsIndicators: false) {
+                content().background(GeometryReader { inner in
+                    Color.clear.preference(key: ListFrameKey.self, value: inner.frame(in: .named("muna-list")))
+                })
+            }
+            .coordinateSpace(name: "muna-list")
+            .onPreferenceChange(ListFrameKey.self) { frame in
+                model.listAtTop = frame.minY >= -2
+                model.listAtBottom = frame.maxY <= outer.size.height + 2
+            }
+        }
+    }
+}
+
+struct ListFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) { value = nextValue() }
+}

@@ -168,6 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         case "lock": Keyboard.press("<Super><Control>q")
         case "downloads": NSWorkspace.shared.open(FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0])
         case "clipboard": capsules?.open(on: .clipboard)
+        case _ where id.hasPrefix("reminder:"): capsules?.tell("Reminder", String(id.dropFirst(9)), symbol: "bell.badge.fill", ok: true, seconds: 8)
         case "muna": capsules?.open(on: .muna)
         case "tray": capsules?.open(on: .tray)
         case "notifications": capsules?.open(on: .alerts)

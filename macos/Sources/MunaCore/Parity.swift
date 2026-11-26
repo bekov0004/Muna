@@ -291,3 +291,117 @@ public enum SHA256Small {
         return hash(key.map { $0 ^ 0x5c } + inner)
     }
 }
+
+/// The butterfly's reminders (linux/src/utils/reminders.js), kept as JSON in the "reminders" setting.
+public enum ButterflyReminders {
+    public struct Reminder: Equatable, Identifiable {
+        public var id: String
+        public var time: String
+        public var text: String
+        public var repeatMode: String
+        public var enabled: Bool
+        public var date: String?
+        public var lastFired: String?
+        public var snoozeUntil: Double = 0
+        public init(id: String, time: String, text: String, repeatMode: String, enabled: Bool, date: String? = nil, lastFired: String? = nil) {
+            self.id = id; self.time = time; self.text = text; self.repeatMode = repeatMode; self.enabled = enabled; self.date = date; self.lastFired = lastFired
+        }
+    }
+
+    public static let repeats = ["once", "daily", "weekdays"]
+    private static let late: TimeInterval = 3 * 3600
+
+    private static var calendar: Calendar { Calendar.current }
+
+    public static func dayOf(_ date: Date) -> String {
+        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year!, c.month!, c.day!)
+    }
+
+    public static func parseTime(_ text: String?) -> String? {
+        guard let text, let regex = try? NSRegularExpression(pattern: "^\\s*(\\d{1,2})[:.\\s]?(\\d{2})\\s*$"),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let a = Range(match.range(at: 1), in: text), let b = Range(match.range(at: 2), in: text),
+              let h = Int(text[a]), let m = Int(text[b]), h < 24, m < 60 else { return nil }
+        return String(format: "%02d:%02d", h, m)
+    }
+
+    public static func parseList(_ json: String) -> [Reminder] {
+        guard let data = (json.isEmpty ? "[]" : json).data(using: .utf8), let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
+        return list.compactMap { o in
+            guard let time = parseTime(o["time"] as? String), let text = o["text"] as? String else { return nil }
+            var r = Reminder(id: o["id"] as? String ?? UUID().uuidString, time: time, text: text,
+                             repeatMode: repeats.contains(o["repeat"] as? String ?? "") ? o["repeat"] as! String : "once",
+                             enabled: o["enabled"] as? Bool ?? true, date: o["date"] as? String, lastFired: o["lastFired"] as? String)
+            r.snoozeUntil = (o["snoozeUntil"] as? NSNumber)?.doubleValue ?? 0
+            return r
+        }
+    }
+
+    public static func toJSON(_ list: [Reminder]) -> String {
+        let objects: [[String: Any]] = list.map { r in
+            var o: [String: Any] = ["id": r.id, "time": r.time, "text": r.text, "repeat": r.repeatMode, "enabled": r.enabled]
+            if let date = r.date { o["date"] = date }
+            if let last = r.lastFired { o["lastFired"] = last }
+            if r.snoozeUntil > 0 { o["snoozeUntil"] = r.snoozeUntil }
+            return o
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: objects) else { return "[]" }
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    private static func at(_ day: String, _ time: String) -> Date {
+        let d = day.split(separator: "-").compactMap { Int($0) }, t = time.split(separator: ":").compactMap { Int($0) }
+        return calendar.date(from: DateComponents(year: d[0], month: d[1], day: d[2], hour: t[0], minute: t[1])) ?? Date.distantFuture
+    }
+
+    public static func new(time: String, text: String, repeatMode: String, now: Date) throws -> Reminder {
+        guard let t = parseTime(time) else { throw NSError(domain: "Muna", code: 1, userInfo: [NSLocalizedDescriptionKey: "Write the time as 18:30"]) }
+        var r = Reminder(id: String(Int(now.timeIntervalSince1970 * 1000), radix: 36), time: t, text: text.trimmingCharacters(in: .whitespaces),
+                         repeatMode: repeats.contains(repeatMode) ? repeatMode : "once", enabled: true)
+        if r.repeatMode == "once" {
+            let today = dayOf(now)
+            r.date = at(today, t) > now ? today : dayOf(now.addingTimeInterval(86400))
+        }
+        return r
+    }
+
+    public static func nextRing(_ r: Reminder, now: Date) -> Date? {
+        guard r.enabled else { return nil }
+        if r.snoozeUntil > 0 { return Date(timeIntervalSince1970: r.snoozeUntil / 1000) }
+        if r.repeatMode == "once" { return r.date.map { at($0, r.time) } }
+        for i in 0..<8 {
+            guard let day = calendar.date(byAdding: .day, value: i, to: calendar.startOfDay(for: now)) else { continue }
+            let weekday = calendar.component(.weekday, from: day)
+            if r.repeatMode == "weekdays" && (weekday == 1 || weekday == 7) { continue }
+            let key = dayOf(day)
+            let when = at(key, r.time)
+            if r.lastFired == key { continue }
+            if i == 0 && now.timeIntervalSince(when) > late { continue }
+            return when
+        }
+        return nil
+    }
+
+    public static func isDue(_ r: Reminder, now: Date) -> Bool {
+        guard let when = nextRing(r, now: now) else { return false }
+        return when <= now && now.timeIntervalSince(when) <= late + 60
+    }
+
+    public static func rang(_ r: Reminder, now: Date) -> Reminder {
+        var next = r
+        next.snoozeUntil = 0
+        if r.repeatMode == "once" { next.enabled = false } else { next.lastFired = dayOf(now) }
+        return next
+    }
+
+    public static func whenText(_ r: Reminder, now: Date) -> String {
+        switch r.repeatMode {
+        case "daily": return "Every day"
+        case "weekdays": return "Weekdays"
+        default:
+            guard let date = r.date else { return "" }
+            return date == dayOf(now) ? "Today" : date == dayOf(now.addingTimeInterval(86400)) ? "Tomorrow" : date
+        }
+    }
+}

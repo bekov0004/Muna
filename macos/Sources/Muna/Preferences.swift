@@ -140,7 +140,7 @@ final class Preferences: ObservableObject {
         "bar-metrics": [String](), "system-blocks": ["temps", "cpu", "gpu", "memory", "uptime"],
         "bar-icon": "butterfly", "menu-hidden": [String](), "menu-order": [String](),
         "radial-actions": ["play-pause", "next", "screenshot", "downloads", "color", "prev"],
-        "output-skipped": [String](), "eject-excluded": [String](), "cleaning-visible": false,
+        "output-skipped": [String](), "eject-excluded": [String](), "cleaning-visible": false, "reminders": "[]",
         "clipboard-click-pastes": false, "phone-dark-screen": true,
         "desktops-per-monitor": false,
     ]

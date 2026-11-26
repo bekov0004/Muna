@@ -364,3 +364,25 @@ final class MdnsTests: XCTestCase {
         XCTAssertEqual(found[1].address, "192.168.1.20:41877")
     }
 }
+
+final class ButterflyReminderTests: XCTestCase {
+    func testAsLinux() throws {
+        // the same answers as linux/src/utils/reminders.js (run with node)
+        let now = Calendar.current.date(from: DateComponents(year: 2026, month: 11, day: 27, hour: 15))!
+        func r(_ time: String, _ mode: String, date: String? = nil, last: String? = nil) -> ButterflyReminders.Reminder {
+            ButterflyReminders.Reminder(id: "x", time: time, text: "t", repeatMode: mode, enabled: true, date: date, lastFired: last)
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        let cases = [r("09:00", "daily"), r("16:30", "daily"), r("09:00", "weekdays"), r("16:30", "weekdays", last: "2026-11-27"), r("14:00", "once", date: "2026-11-27")]
+        let answer = cases.map { "\(ButterflyReminders.nextRing($0, now: now).map(formatter.string) ?? "null")|\(ButterflyReminders.isDue($0, now: now))" }.joined(separator: ";")
+        XCTAssertEqual(answer, "2026-11-28 09:00|false;2026-11-27 16:30|false;2026-11-30 09:00|false;2026-11-30 16:30|false;2026-11-27 14:00|true")
+        XCTAssertEqual(ButterflyReminders.parseTime("9.05"), "09:05")
+        XCTAssertNil(ButterflyReminders.parseTime("24:00"))
+        XCTAssertEqual(ButterflyReminders.parseTime("7 45"), "07:45")
+        XCTAssertEqual(try ButterflyReminders.new(time: "14:00", text: "x", repeatMode: "once", now: now).date, "2026-11-28")
+        XCTAssertEqual(try ButterflyReminders.new(time: "18:00", text: "x", repeatMode: "once", now: now).date, "2026-11-27")
+        XCTAssertFalse(ButterflyReminders.rang(cases[4], now: now).enabled)
+        XCTAssertEqual(ButterflyReminders.parseList(ButterflyReminders.toJSON(cases)).count, 5)
+    }
+}

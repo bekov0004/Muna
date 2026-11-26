@@ -10,6 +10,7 @@ import SwiftUI
 /// opens for it is the one of the screen with the pointer.
 final class CapsuleManager {
     private var meetingTimer: Timer?
+    private var butterflyTimer: Timer?
     private var toldMeetings: Set<String> = []
     private let app: AppState
     private let preferences = Preferences.shared
@@ -60,6 +61,20 @@ final class CapsuleManager {
             guard Preferences.shared.bool("activity-files") else { return }
             self?.tell(count == 1 ? "Added a file" : "Added \(count) files", "To the Tray", symbol: "tray.and.arrow.down.fill", ok: true,
                        seconds: Preferences.shared.double("peek-files-seconds"))
+        }
+        // the butterfly's reminders of Settings → Appearance (once, every day, weekdays)
+        butterflyTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
+            let p = Preferences.shared
+            var list = ButterflyReminders.parseList(p.string("reminders"))
+            let now = Date()
+            var changed = false
+            for index in list.indices where ButterflyReminders.isDue(list[index], now: now) {
+                if p.bool("reminder-sound") { NSSound(named: "Glass")?.play() }
+                self?.tell("Reminder", list[index].text, symbol: "bell.badge.fill", ok: true, seconds: 8)
+                list[index] = ButterflyReminders.rang(list[index], now: now)
+                changed = true
+            }
+            if changed { p.set("reminders", ButterflyReminders.toJSON(list)) }
         }
         meetingTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             guard let self, Preferences.shared.bool("activity-calendar") else { return }

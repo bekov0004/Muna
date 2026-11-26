@@ -88,6 +88,7 @@ final class SettingsState: ObservableObject {
     @Published var loginError: String?
     @Published var reminderText = ""
     @Published var reminderTime = Date().addingTimeInterval(3600)
+    @Published var reminderRepeat = "once"
     @Published var note: String?
     private var back: [String] = []
     private var forward: [String] = []
@@ -1403,25 +1404,51 @@ struct AppearanceSettings: View {
         SettingsCard("Reminders") {
             SettingsToggle(title: "A sound with a reminder", detail: "At the time you choose the butterfly flies out of the capsule, grows and shows your text. Also in the menu-bar window (Reminders).",
                            isOn: preferences.boolBinding("reminder-sound"))
+            // the butterfly's reminders (Linux's "reminders" setting): once, every day or on weekdays
+            let list = ButterflyReminders.parseList(preferences.string("reminders"))
             HStack {
                 TextField("What should the butterfly tell you?", text: $state.reminderText).textFieldStyle(.roundedBorder)
-                DatePicker("", selection: $state.reminderTime, displayedComponents: [.date, .hourAndMinute]).labelsHidden().fixedSize()
-                Button("Add") {
-                    let text = state.reminderText.trimmingCharacters(in: .whitespaces)
-                    guard !text.isEmpty else { return }
-                    reminders.add(text: text, time: state.reminderTime)
-                    state.reminderText = ""
+                DatePicker("", selection: $state.reminderTime, displayedComponents: [.hourAndMinute]).labelsHidden().fixedSize()
+                Picker("", selection: $state.reminderRepeat) {
+                    Text("Once").tag("once")
+                    Text("Every day").tag("daily")
+                    Text("Weekdays").tag("weekdays")
                 }
+                .labelsHidden()
+                .fixedSize()
+                Button("Add") {
+                    let time = state.reminderTime.formatted(.dateTime.hour(.twoDigits(amPM: .omitted)).minute(.twoDigits))
+                    let text = state.reminderText.trimmingCharacters(in: .whitespaces)
+                    if let reminder = try? ButterflyReminders.new(time: time, text: text.isEmpty ? "Hello! I am your Muna butterfly." : text,
+                                                                   repeatMode: state.reminderRepeat, now: Date()) {
+                        preferences.set("reminders", ButterflyReminders.toJSON(list + [reminder]))
+                        state.reminderText = ""
+                    }
+                }
+                Button("Show it now") { state.run("reminder:" + (state.reminderText.isEmpty ? "Hello! I am your Muna butterfly." : state.reminderText)) }
             }
-            if reminders.reminders.filter({ !$0.done }).isEmpty { SettingsNote("No reminders yet.") }
-            ForEach(reminders.reminders.filter { !$0.done }) { reminder in
+            if list.isEmpty { SettingsNote("No reminders yet.") }
+            ForEach(list) { reminder in
                 HStack {
-                    Image(systemName: "bell").foregroundColor(.accentColor)
+                    Image(systemName: "bell").foregroundColor(reminder.enabled ? .accentColor : .secondary)
+                    Text(reminder.time).font(.system(size: 13).monospacedDigit())
                     Text(reminder.text).font(.system(size: 13))
                     Spacer()
-                    Text(Date(timeIntervalSince1970: TimeInterval(reminder.at) / 1000).formatted(date: .abbreviated, time: .shortened))
-                        .font(.system(size: 11)).foregroundColor(.secondary)
-                    Button("Remove") { reminders.remove(id: reminder.id) }
+                    Text(ButterflyReminders.whenText(reminder, now: Date())).font(.system(size: 11)).foregroundColor(.secondary)
+                    Toggle("", isOn: Binding(get: { reminder.enabled }, set: { on in
+                        let updated = list.map { r -> ButterflyReminders.Reminder in
+                            guard r.id == reminder.id else { return r }
+                            if on, r.repeatMode == "once", var fresh = try? ButterflyReminders.new(time: r.time, text: r.text, repeatMode: "once", now: Date()) {
+                                fresh.id = r.id
+                                return fresh
+                            }
+                            var copy = r
+                            copy.enabled = on
+                            return copy
+                        }
+                        preferences.set("reminders", ButterflyReminders.toJSON(updated))
+                    })).labelsHidden().toggleStyle(.switch)
+                    Button("Remove") { preferences.set("reminders", ButterflyReminders.toJSON(list.filter { $0.id != reminder.id })) }
                 }
             }
         }

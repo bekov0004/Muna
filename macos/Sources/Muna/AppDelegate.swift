@@ -120,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         capsules.onAgents = { [weak self] in self?.agentsWindow?.show() }
         self.capsules = capsules
         capsules.show()
+        let byHand = !launchedAtLogin && ProcessInfo.processInfo.environment["MUNA_NO_WINDOW"] == nil
         setUpStatusItem()
         setCommandKey(Preferences.shared.commandHotKey)
         keyObserver = Preferences.shared.$commandHotKey.dropFirst().removeDuplicates().sink { [weak self] on in
@@ -162,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
             guard key == "app-notifications" || key == "*" else { return }
             DispatchQueue.main.async { if Preferences.shared.bool("app-notifications") { self?.appNotifications?.start() } else { self?.appNotifications?.stop() } }
         }.store(in: &readingsObservers)
+        if byHand { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.settings?.show() } }
     }
 
     /// One action by its name (Linux's names: the "Try it" buttons, the radial menu, the gestures' "muna:…").
@@ -251,9 +253,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     }
 
     /// Muna was started again (Finder, Launchpad, Spotlight) while it runs: open the panel.
+    /// Muna was opened again (Launchpad, Finder, Spotlight, the Dock) while it runs: its window opens,
+    /// as the app icon on Linux opens the settings.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        capsules?.open(on: .muna)
+        settings?.show()
         return false
+    }
+
+    /// Started at login (not by hand): the window stays closed. (Read while launching: the open event is gone later.)
+    private var launchedAtLogin = false
+
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        if let event = NSAppleEventManager.shared().currentAppleEvent, event.eventID == AEEventID(kAEOpenApplication) {
+            launchedAtLogin = event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue == OSType(keyAELaunchedAsLogInItem)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

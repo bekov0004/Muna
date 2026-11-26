@@ -522,6 +522,8 @@ public sealed class App : Application
         State.Start();
         SetUpTrayIcon();
         SetUpKeys();
+        // started by hand (not at sign-in): the window opens too
+        if (!e.Args.Contains("--autostart")) Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () => State.ShowSettings());
         Preferences.Shared.Changed += key =>
         {
             if (key is "command-hotkey" or "radial-hotkey" or "section-hotkeys" or "*" || key.StartsWith("shortcut-")) Dispatcher.BeginInvoke(SetUpKeys);
@@ -529,7 +531,8 @@ public sealed class App : Application
         var signal = new EventWaitHandle(false, EventResetMode.AutoReset, OpenSignal);
         new Thread(() =>
         {
-            while (signal.WaitOne()) Dispatcher.BeginInvoke(() => State.Capsules.Open(PanelTab.Muna));
+            // Muna started again (the Start menu, a shortcut): its window opens, as the app icon on Linux opens the settings
+            while (signal.WaitOne()) Dispatcher.BeginInvoke(() => State.ShowSettings());
         }) { IsBackground = true }.Start();
         AutoStart.Refresh();
     }
@@ -738,7 +741,7 @@ public static class AutoStart
         set
         {
             using var key = Registry.CurrentUser.CreateSubKey(Key);
-            if (value) key.SetValue("Muna", $"\"{Environment.ProcessPath}\"");
+            if (value) key.SetValue("Muna", $"\"{Environment.ProcessPath}\" --autostart");
             else key.DeleteValue("Muna", false);
         }
     }

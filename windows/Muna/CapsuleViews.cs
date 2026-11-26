@@ -203,7 +203,7 @@ public static class CapsuleViews
         var side = Ui.Column(4,
             Ui.ControlButton(Glyph.Back, () => phone.Key(PhoneAdb.Back), 11, 24, 24),
             Ui.ControlButton(Glyph.Circle, () => phone.Key(PhoneAdb.Home), 11, 24, 24),
-            Ui.ControlButton(Glyph.Expand, () => w.App.ShowQuickPanel("phone"), 11, 24, 24));
+            Ui.ControlButton(Glyph.Expand, () => w.App.ShowPhoneWindow(), 11, 24, 24));
         return Ui.Row(6, screen.Grow(), side).Align(v: VerticalAlignment.Center);
     }
 

@@ -114,6 +114,16 @@ public sealed class AppState
         _agentsWindow.ShowFront();
     }
 
+    PhoneWindow? _phoneWindow;
+
+    /// The phone card taken out into a window, as tall as the phone.
+    public void ShowPhoneWindow()
+    {
+        if (_phoneWindow is { IsLoaded: true }) { _phoneWindow.Activate(); return; }
+        _phoneWindow = new PhoneWindow(Phone);
+        _phoneWindow.Show();
+    }
+
     public void ShowScratchpad()
     {
         _scratchpadWindow ??= new ScratchpadWindow(Scratchpad);

@@ -431,6 +431,7 @@ public sealed class QuickPanel : Window
             head.Children.Add(Ui.Text("Muna Phone", 10, FontWeights.Bold, C.Ok));
         }
         head.Children.Add(Ui.IconButton(Glyph.Wifi, phone.StartPairing, tip: "Pair another phone over Wi-Fi"));
+        head.Children.Add(Ui.IconButton(Glyph.Expand, () => { HidePanel(); _app.ShowPhoneWindow(); }, tip: "Take the phone out into a window"));
         keys.HorizontalAlignment = HorizontalAlignment.Center;
         return Block(head, phone.Screen is null ? Ui.Text("Getting the screen…", 11, color: C.Secondary) : picture, keys,
                      phone.LiveError.Length > 0 && phone.Live ? Ui.Text(phone.LiveError, 10, color: C.Warning, wrap: true) : null, Ui.Detach(_phoneText));

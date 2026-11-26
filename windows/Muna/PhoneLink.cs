@@ -170,3 +170,56 @@ public sealed class PhoneLinkSession : IDisposable
         Close(false);
     }
 }
+
+/// Linux's phone card taken out into a window: the phone's screen as tall as the phone, live, with
+/// taps, swipes, Back, Home, Apps and typing; it stays above the other windows.
+public sealed class PhoneWindow : System.Windows.Window
+{
+    readonly PhoneModel _phone;
+    readonly System.Windows.Controls.Image _picture = new() { Stretch = System.Windows.Media.Stretch.Uniform, Cursor = System.Windows.Input.Cursors.Hand };
+    readonly Field _text = new("Type on the phone, Enter sends");
+
+    public PhoneWindow(PhoneModel phone)
+    {
+        _phone = phone;
+        Title = "Phone";
+        Width = 380;
+        Height = 820;
+        Topmost = true;
+        Background = C.Black;
+        FontFamily = Ui.Font;
+        System.Windows.Point? start = null;
+        var at = DateTime.Now;
+        _picture.MouseLeftButtonDown += (_, e) => { start = e.GetPosition(_picture); at = DateTime.Now; _picture.CaptureMouse(); };
+        _picture.MouseLeftButtonUp += (_, e) =>
+        {
+            _picture.ReleaseMouseCapture();
+            if (start is not { } s) return;
+            start = null;
+            var end = e.GetPosition(_picture);
+            var size = new System.Windows.Size(_picture.ActualWidth, _picture.ActualHeight);
+            if ((end - s).Length < 6) phone.Tap(s, size); else phone.Swipe(s, end, size, (DateTime.Now - at).TotalSeconds);
+        };
+        _text.Box.TextChanged += (_, _) => phone.Draft = _text.Text;
+        _text.Submitted += () => { phone.SendText(); _text.Text = ""; };
+        var keys = Ui.Row(6, Ui.Pill("Back", () => phone.Key(PhoneAdb.Back)), Ui.Pill("Home", () => phone.Key(PhoneAdb.Home)),
+                          Ui.Pill("Apps", () => phone.Key(PhoneAdb.Recents)), Ui.Pill("Wake", () => phone.Key(PhoneAdb.Wake)));
+        keys.HorizontalAlignment = System.Windows.HorizontalAlignment.Center;
+        var grid = new System.Windows.Controls.Grid { Margin = new System.Windows.Thickness(10) };
+        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition());
+        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = System.Windows.GridLength.Auto });
+        grid.RowDefinitions.Add(new System.Windows.Controls.RowDefinition { Height = System.Windows.GridLength.Auto });
+        grid.Children.Add(_picture);
+        keys.Margin = new System.Windows.Thickness(0, 8, 0, 6);
+        System.Windows.Controls.Grid.SetRow(keys, 1);
+        grid.Children.Add(keys);
+        var field = Ui.Detach(_text);
+        System.Windows.Controls.Grid.SetRow(field, 2);
+        grid.Children.Add(field);
+        Content = grid;
+        void Update() => Dispatcher.BeginInvoke(() => { if (_picture.Source != phone.Screen) _picture.Source = phone.Screen; });
+        phone.Changed += Update;
+        Loaded += (_, _) => { phone.Watch(); phone.StartLive(); Update(); };
+        Closed += (_, _) => { phone.Changed -= Update; phone.Unwatch(); };
+    }
+}

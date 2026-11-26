@@ -374,13 +374,21 @@ public sealed class TimerModel : Model
 /// <summary>The Alerts tab: what Muna told you lately (sendings, received files, the timer …).</summary>
 public sealed class AlertsModel : Model
 {
-    public sealed record Alert(Guid Id, string Title, string Details, string Glyph, bool Ok, DateTime At);
+    /// <summary>One alert: Muna's own (App null), or another app's notification (App, Aumid: its id, to open it).</summary>
+    public sealed record Alert(Guid Id, string Title, string Details, string Glyph, bool Ok, DateTime At, string? App = null, string? Aumid = null);
 
     public List<Alert> Alerts { get; } = new();
 
     public void Add(string title, string details, string glyph, bool ok)
     {
         Alerts.Insert(0, new Alert(Guid.NewGuid(), title, details, glyph, ok, DateTime.Now));
+        if (Alerts.Count > 50) Alerts.RemoveRange(50, Alerts.Count - 50);
+        Notify();
+    }
+
+    public void AddFromApp(string app, string aumid, string title, string body, DateTime at)
+    {
+        Alerts.Insert(0, new Alert(Guid.NewGuid(), title, body, Muna.Glyph.Bell, true, at, app, aumid));
         if (Alerts.Count > 50) Alerts.RemoveRange(50, Alerts.Count - 50);
         Notify();
     }

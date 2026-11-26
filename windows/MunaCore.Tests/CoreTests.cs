@@ -560,6 +560,19 @@ public class MoreFileTests
     }
 
     [Fact]
+    public void Toasts()
+    {
+        var xml = "<toast launch=\"x\"><visual><binding template=\"ToastGeneric\"><text>Anna</text><text>See you at 5?</text><text placement=\"attribution\">via Chat</text></binding></visual></toast>";
+        Assert.Equal(("Anna", "See you at 5?"), ToastPayload.Parse(xml));
+        Assert.Equal(("Done", ""), ToastPayload.Parse("<toast><visual><binding template=\"ToastText01\"><text id=\"1\">Done</text></binding></visual></toast>"));
+        Assert.Null(ToastPayload.Parse("<toast><visual><binding/></visual></toast>"));
+        Assert.Null(ToastPayload.Parse("not xml"));
+        Assert.Equal("Windows Store", ToastPayload.AppName("Microsoft.WindowsStore_8wekyb3d8bbwe!App"));
+        Assert.Equal("Chrome", ToastPayload.AppName("Chrome"));
+        Assert.Equal("Code", ToastPayload.AppName(@"C:\Users\me\AppData\Local\Programs\Microsoft VS Code\Code.exe"));
+    }
+
+    [Fact]
     public void TokenCounts()
     {
         using var t = new TempFolder();

@@ -545,3 +545,37 @@ public static class TileSlots
         return slots;
     }
 }
+
+/// <summary>A Windows toast as Windows keeps it in its notification list (the XML an app sent):
+/// the first text is the title, the others the body.</summary>
+public static class ToastPayload
+{
+    public static (string Title, string Body)? Parse(string xml)
+    {
+        try
+        {
+            var doc = System.Xml.Linq.XDocument.Parse(xml);
+            var binding = doc.Descendants("binding").FirstOrDefault();
+            var texts = (binding ?? doc.Root!).Descendants("text")
+                .Where(t => (string?)t.Attribute("placement") != "attribution")
+                .Select(t => t.Value.Trim()).Where(t => t.Length > 0).ToList();
+            if (texts.Count == 0) return null;
+            return (texts[0], string.Join(" · ", texts.Skip(1)));
+        }
+        catch { return null; }
+    }
+
+    /// <summary>A readable name from an app id when Windows gives none: "Microsoft.WindowsStore_8wekyb3d8bbwe!App"
+    /// → "Windows Store", "Chrome" → "Chrome", "C:\…\Code.exe" → "Code".</summary>
+    public static string AppName(string aumid)
+    {
+        var name = aumid;
+        if (name.Contains('!')) name = name[..name.IndexOf('!')];
+        if (name.Contains('_')) name = name[..name.IndexOf('_')];
+        name = name.Replace('/', '\\');
+        if (name.Contains('\\')) name = System.IO.Path.GetFileNameWithoutExtension(name[(name.LastIndexOf('\\') + 1)..]);
+        if (name.Contains('.')) name = name[(name.LastIndexOf('.') + 1)..];
+        name = Regex.Replace(name, "(?<=[a-z])(?=[A-Z])", " ");
+        return name.Length == 0 ? aumid : name;
+    }
+}

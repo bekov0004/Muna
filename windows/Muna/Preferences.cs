@@ -140,6 +140,11 @@ public sealed class Preferences
     /// <summary>Each monitor switches its own desktops (Muna hides and shows the windows of the others).</summary>
     public bool DesktopsPerMonitor { get => Get("desktops-per-monitor", false); set => Set("desktops-per-monitor", value); }
 
+    /// <summary>Other apps' notifications in the Alerts section (read from Windows' notification list).</summary>
+    public bool AppNotifications { get => Get("app-notifications", true); set => Set("app-notifications", value); }
+    /// <summary>Cards for a busy processor, heat, a full disk or memory and a low battery (Linux's system-alerts).</summary>
+    public bool SystemAlerts { get => Get("system-alerts", true); set => Set("system-alerts", value); }
+
     // the Muna page
     public List<string> EnabledWidgets
     {

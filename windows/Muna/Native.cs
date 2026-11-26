@@ -65,6 +65,9 @@ public static class Native
     [DllImport("dwmapi.dll")] public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern int SHEmptyRecycleBin(IntPtr hwnd, string? root, uint flags);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SHGetFileInfo(string path, uint attributes, ref SHFILEINFO info, uint size, uint flags);
+    [DllImport("shell32.dll", EntryPoint = "SHGetFileInfoW")] static extern IntPtr SHGetFileInfoPidl(IntPtr pidl, uint attributes, ref SHFILEINFO info, uint size, uint flags);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)] static extern int SHParseDisplayName(string name, IntPtr bindContext, out IntPtr pidl, uint attributes, out uint result);
+    [DllImport("ole32.dll")] static extern void CoTaskMemFree(IntPtr memory);
     [DllImport("user32.dll")] public static extern bool DestroyIcon(IntPtr icon);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd);
     /// <summary>Marks the keys Muna presses itself (its own hooks let them through).</summary>
@@ -163,6 +166,26 @@ public static class Native
             return source;
         }
         finally { DestroyIcon(info.hIcon); }
+    }
+
+    /// <summary>The icon of a shell item that is no file ("shell:AppsFolder\\app id").</summary>
+    public static ImageSource? ShellItemIcon(string name)
+    {
+        if (SHParseDisplayName(name, IntPtr.Zero, out var pidl, 0, out _) != 0 || pidl == IntPtr.Zero) return null;
+        try
+        {
+            var info = new SHFILEINFO();
+            // SHGFI_PIDL | SHGFI_ICON | SHGFI_SMALLICON
+            if (SHGetFileInfoPidl(pidl, 0, ref info, (uint)Marshal.SizeOf(info), 0x8 | 0x100 | 0x1) == IntPtr.Zero || info.hIcon == IntPtr.Zero) return null;
+            try
+            {
+                var source = Imaging.CreateBitmapSourceFromHIcon(info.hIcon, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+                source.Freeze();
+                return source;
+            }
+            finally { DestroyIcon(info.hIcon); }
+        }
+        finally { CoTaskMemFree(pidl); }
     }
 
     public static string WindowTitle(IntPtr hwnd)

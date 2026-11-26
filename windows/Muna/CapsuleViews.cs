@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -498,6 +499,18 @@ public static class CapsuleViews
         return grid;
     }
 
+    static readonly Dictionary<string, ImageSource?> AppIcons = new();
+
+    /// <summary>The icon of an app from its id (the Start menu's, through the shell).</summary>
+    static ImageSource? AppIcon(string aumid)
+    {
+        if (AppIcons.TryGetValue(aumid, out var known)) return known;
+        ImageSource? icon;
+        try { icon = Native.ShellItemIcon($"shell:AppsFolder\\{aumid}"); } catch { icon = null; }
+        AppIcons[aumid] = icon;
+        return icon;
+    }
+
     static UIElement AlertsPage(CapsuleWindow w)
     {
         var alerts = w.App.Alerts;
@@ -508,11 +521,18 @@ public static class CapsuleViews
         var list = Ui.Column(4);
         foreach (var alert in alerts.Alerts)
         {
-            var text = Ui.Column(1, Ui.Semi(alert.Title, 12), Ui.Text(alert.Details, 11, color: C.Secondary));
-            var row = Ui.Row(10, Ui.Icon(alert.Glyph, 13, alert.Ok ? C.Ok : C.Warning).Size(22), text.Grow(),
+            var text = Ui.Column(1, Ui.Semi(alert.Title, 12), Ui.Text(alert.Details, 11, color: C.Secondary, lines: 2));
+            if (alert.App is { } app) text.Children.Insert(0, Ui.Text(app.ToUpperInvariant(), 9, FontWeights.Bold, C.Caption));
+            UIElement icon = alert.Aumid is { } id && AppIcon(id) is { } image
+                ? new Image { Source = image, Width = 20, Height = 20 }
+                : Ui.Icon(alert.Glyph, 13, alert.App is not null ? C.Accent : alert.Ok ? C.Ok : C.Warning).Size(22);
+            var row = Ui.Row(10, icon, text.Grow(),
                              Ui.Digits(alert.At.ToString("t", CultureInfo.CurrentCulture), 10, color: C.Secondary),
                              Ui.IconButton(Glyph.Close, () => alerts.Remove(alert)));
-            list.Children.Add(Ui.Box(row, C.Tile, 12, 10, 7));
+            var box = Ui.Box(row, C.Tile, 12, 10, 7);
+            // an app's notification: a click opens the app, as on Linux
+            if (alert.Aumid is { } aumid) box.OnClick(() => { SystemNotifications.OpenApp(aumid); alerts.Remove(alert); }, C.TileHover);
+            list.Children.Add(box);
         }
         return Ui.Column(8, caption, Ui.Scroll(list).Grow());
     }

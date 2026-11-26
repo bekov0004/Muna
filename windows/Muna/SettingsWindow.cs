@@ -117,6 +117,10 @@ public sealed class SettingsWindow : DarkWindow
             Setting("Screens", "Which monitors have a capsule.", Choice(new[] { "Every screen", "The main screen" }, _p.CapsuleScreens == "main" ? 1 : 0, i => _p.CapsuleScreens = i == 1 ? "main" : "all")));
         yield return Card("Media",
             Switch("Show the lyrics", "The words of the song from lrclib.net (artist, title, album and length are sent there).", _p.ShowLyrics, v => _p.ShowLyrics = v));
+        yield return Card("Alerts",
+            Switch("Other apps' notifications", _app.Notifications.Problem ?? "What apps tell you shows in the Alerts section too; a click opens the app. Muna reads Windows' notification list on this computer, nothing is sent anywhere.", _p.AppNotifications, v => _p.AppNotifications = v),
+            Switch("System alerts", "Cards for a busy processor, heat, a full disk or memory and a low battery.", _p.SystemAlerts, v => _p.SystemAlerts = v),
+            Setting("Do not disturb", "Windows' own setting: which apps may show notifications.", Button("Open", () => CapsuleViews.Launch("ms-settings:notifications"))));
         yield return Card("Keys",
             Switch("Command Bar: Alt+Space", null, _p.CommandHotKey, v => _p.CommandHotKey = v),
             Switch("Radial menu: Ctrl+Alt+Space", null, _p.RadialHotKey, v => _p.RadialHotKey = v),

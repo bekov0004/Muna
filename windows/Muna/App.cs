@@ -41,6 +41,8 @@ public sealed class AppState
     public readonly DisplaysModel Displays = new();
     public readonly PhoneModel Phone = new();
     public readonly MonitorDesktops Desktops = new();
+    public readonly SystemNotifications Notifications = new();
+    public SystemAlerts SystemAlerts { get; }
     public CapsuleManager Capsules { get; }
     public MunaBars Bars { get; }
 
@@ -54,6 +56,12 @@ public sealed class AppState
         Command = new CommandModel(Clipboard, Snippets);
         Capsules = new CapsuleManager(this);
         Bars = new MunaBars(this);
+        SystemAlerts = new SystemAlerts(this);
+        Notifications.Arrived += toast => Alerts.AddFromApp(toast.App, toast.Aumid, toast.Title, toast.Body, toast.At);
+        Preferences.Shared.Changed += key =>
+        {
+            if (key == "app-notifications") Application.Current.Dispatcher.BeginInvoke(() => { if (Preferences.Shared.AppNotifications) Notifications.Start(); else Notifications.Stop(); });
+        };
     }
 
     public void Start()
@@ -69,6 +77,8 @@ public sealed class AppState
         Capsules.Show();
         Desktops.Start();
         Bars.Rebuild();
+        SystemAlerts.Start();
+        if (Preferences.Shared.AppNotifications) Notifications.Start();
     }
 
     /// <summary>The panel opened on a section: bring what it shows up to date.</summary>

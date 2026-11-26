@@ -77,6 +77,7 @@ struct DisplaysPage: View {
 
     var body: some View {
         VStack(spacing: 10) {
+            ArrangementBlock()
             QuickBlock {
                 ForEach(displays.displays) { display in
                     VStack(alignment: .leading, spacing: 4) {
@@ -125,6 +126,96 @@ struct Arrangement: View {
                         .overlay(Text(display.name).font(.system(size: 9)).lineLimit(1).padding(2))
                         .frame(width: display.frame.width * scale, height: display.frame.height * scale)
                         .offset(x: x, y: y)
+                }
+            }
+        }
+    }
+}
+
+/// Linux's arrangement of the monitors: the main one, the side each other one stands on, joined or
+/// mirrored (Core Graphics' display configuration; "only one screen" is not something macOS lets
+/// an app do: mirroring is the nearest).
+enum DisplayArrangement {
+    private static var main: CGDirectDisplayID { CGMainDisplayID() }
+
+    private static func configure(_ change: (CGDisplayConfigRef) -> Void) {
+        var config: CGDisplayConfigRef?
+        guard CGBeginDisplayConfiguration(&config) == .success, let config else { return }
+        change(config)
+        CGCompleteDisplayConfiguration(config, .permanently)
+    }
+
+    /// The main one moves to 0,0 (it gets the menu bar and the Dock); the others keep their places around it.
+    static func makeMain(_ id: CGDirectDisplayID) {
+        let origin = CGDisplayBounds(id).origin
+        configure { config in
+            for display in NSScreen.screens.compactMap(Self.id) {
+                let bounds = CGDisplayBounds(display)
+                CGConfigureDisplayOrigin(config, display, Int32(bounds.minX - origin.x), Int32(bounds.minY - origin.y))
+            }
+        }
+    }
+
+    /// "left", "right", "above", "below" of the main one.
+    static func putBeside(_ id: CGDirectDisplayID, _ side: String) {
+        let m = CGDisplayBounds(main), b = CGDisplayBounds(id)
+        let origin: CGPoint
+        switch side {
+        case "left": origin = CGPoint(x: m.minX - b.width, y: m.minY)
+        case "above": origin = CGPoint(x: m.minX, y: m.minY - b.height)
+        case "below": origin = CGPoint(x: m.minX, y: m.maxY)
+        default: origin = CGPoint(x: m.maxX, y: m.minY)
+        }
+        configure { CGConfigureDisplayOrigin($0, id, Int32(origin.x), Int32(origin.y)) }
+    }
+
+    static func sideOf(_ id: CGDirectDisplayID) -> String {
+        let m = CGDisplayBounds(main), b = CGDisplayBounds(id)
+        let dx = b.midX - m.midX, dy = b.midY - m.midY
+        return abs(dx) * m.height >= abs(dy) * m.width ? (dx < 0 ? "left" : "right") : (dy < 0 ? "above" : "below")
+    }
+
+    static func mirror(_ on: Bool) {
+        configure { config in
+            for display in NSScreen.screens.compactMap(Self.id) where display != main {
+                CGConfigureDisplayMirrorOfDisplay(config, display, on ? main : kCGNullDirectDisplay)
+            }
+        }
+    }
+
+    static func id(_ screen: NSScreen) -> CGDirectDisplayID? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber).map { CGDirectDisplayID($0.uint32Value) }
+    }
+}
+
+struct ArrangementBlock: View {
+    @EnvironmentObject var displays: DisplaysModel
+
+    var body: some View {
+        if displays.displays.count > 1 {
+            QuickBlock {
+                Text("WHERE THE SCREENS STAND").font(.system(size: 10, weight: .heavy)).foregroundColor(MunaColor.caption)
+                ForEach(displays.displays.filter { $0.id != CGMainDisplayID() }) { display in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(display.name).font(.system(size: 12, weight: .semibold))
+                        HStack {
+                            Picker("", selection: Binding(get: { DisplayArrangement.sideOf(display.id) }, set: { DisplayArrangement.putBeside(display.id, $0); displays.refresh() })) {
+                                Text("Left").tag("left")
+                                Text("Right").tag("right")
+                                Text("Above").tag("above")
+                                Text("Below").tag("below")
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            Pill(label: "Make main") { DisplayArrangement.makeMain(display.id); displays.refresh() }
+                        }
+                    }
+                }
+                HStack {
+                    Pill(label: "Join") { DisplayArrangement.mirror(false) }
+                    Pill(label: "Mirror") { DisplayArrangement.mirror(true) }
+                    Spacer()
+                    Pill(label: "Display settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Displays-Settings.extension")!) }
                 }
             }
         }

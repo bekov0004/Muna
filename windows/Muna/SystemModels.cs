@@ -730,14 +730,31 @@ public sealed class PhoneModel : Model
 
     public PhoneDevice? Current => Devices.FirstOrDefault(d => d.Serial == Serial && d.Ready) ?? Devices.FirstOrDefault(d => d.Ready);
 
+    readonly DispatcherTimer _letGo = new() { Interval = TimeSpan.FromSeconds(1.5) };
+
     public void Watch()
     {
-        if (_watchers++ == 0) { Tick(); _timer.Start(); }
+        _letGo.Stop();
+        if (_watchers++ == 0 && !_timer.IsEnabled) { Tick(); _timer.Start(); }
     }
 
+    /// <summary>Nobody shows the phone: after a moment (a page drawn again shows it again at once) the picture stops.</summary>
     public void Unwatch()
     {
-        if (--_watchers <= 0) { _watchers = 0; _timer.Stop(); StopLive(); }
+        if (--_watchers > 0) return;
+        _watchers = 0;
+        _letGo.Stop();
+        _letGo.Tick -= LetGo;
+        _letGo.Tick += LetGo;
+        _letGo.Start();
+    }
+
+    void LetGo(object? sender, EventArgs e)
+    {
+        _letGo.Stop();
+        if (_watchers > 0) return;
+        _timer.Stop();
+        StopLive();
     }
 
     // --- the live picture: the phone's screenrecord (H.264) through adb, decoded by Windows ---------

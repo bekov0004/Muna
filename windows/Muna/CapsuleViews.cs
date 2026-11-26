@@ -168,8 +168,44 @@ public static class CapsuleViews
         "notes" => Notes(w),
         "shortcuts" => Shortcuts(w),
         "companion" => CompanionView.Build(w.App.Companion),
+        "phonecard" => PhoneCard(w),
         _ => new Border(),
     };
+
+    /// <summary>Linux's phone card: the phone's screen in the capsule (live while it shows), taps go to
+    /// the phone; the arrow opens it big in the quick panel.</summary>
+    static UIElement PhoneCard(CapsuleWindow w)
+    {
+        var phone = w.App.Phone;
+        if (phone.Adb is null)
+            return Empty(Glyph.Phone, "Phone", "Install Android's platform-tools (adb)", Ui.Pill("How", () => Launch("https://developer.android.com/tools/releases/platform-tools")));
+        if (phone.Current is null)
+            return Empty(Glyph.Phone, "Phone", "Connect it with USB, or", Ui.Pill("Pair over Wi-Fi", () => { w.App.ShowQuickPanel("phone"); phone.StartPairing(); }, accent: true));
+        var image = new Image { Source = phone.Screen, Stretch = Stretch.Uniform, Cursor = Cursors.Hand };
+        void Changed() => image.Dispatcher.BeginInvoke(() => { if (image.Source != phone.Screen) image.Source = phone.Screen; });
+        image.Loaded += (_, _) => { phone.Changed += Changed; phone.Watch(); phone.StartLive(); };
+        image.Unloaded += (_, _) => { phone.Changed -= Changed; phone.Unwatch(); };
+        Point? start = null;
+        var at = DateTime.Now;
+        image.MouseLeftButtonDown += (_, e) => { start = e.GetPosition(image); at = DateTime.Now; image.CaptureMouse(); e.Handled = true; };
+        image.MouseLeftButtonUp += (_, e) =>
+        {
+            image.ReleaseMouseCapture();
+            if (start is not { } s) return;
+            start = null;
+            e.Handled = true;
+            var end = e.GetPosition(image);
+            var size = new Size(image.ActualWidth, image.ActualHeight);
+            if ((end - s).Length < 6) phone.Tap(s, size); else phone.Swipe(s, end, size, (DateTime.Now - at).TotalSeconds);
+        };
+        var screen = Ui.Box(image, C.White(0.05), 8).Size(height: w.Layout.RowHeight - 4);
+        screen.ClipToBounds = true;
+        var side = Ui.Column(4,
+            Ui.ControlButton(Glyph.Back, () => phone.Key(PhoneAdb.Back), 11, 24, 24),
+            Ui.ControlButton(Glyph.Circle, () => phone.Key(PhoneAdb.Home), 11, 24, 24),
+            Ui.ControlButton(Glyph.Expand, () => w.App.ShowQuickPanel("phone"), 11, 24, 24));
+        return Ui.Row(6, screen.Grow(), side).Align(v: VerticalAlignment.Center);
+    }
 
     static UIElement Empty(string glyph, string title, string? subtitle = null, UIElement? action = null)
     {

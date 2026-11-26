@@ -21,6 +21,7 @@ public static class WidgetCatalog
         new("todo", "To-do", "A simple local task list", Muna.Glyph.Checklist, 4, 3),
         new("notes", "Notes", "Quick notes you can copy later", Muna.Glyph.Note, 4, 3),
         new("shortcuts", "Shortcuts", "Launch your favourite apps", Muna.Glyph.Apps, 4, 2),
+        new("phonecard", "Phone", "Your Android phone in the capsule: its screen, with control; a QR code connects it", Muna.Glyph.Phone, 3, 2),
         new("companion", "Companion", "A small friend: its eyes follow the pointer, it sways to the music, falls asleep", Muna.Glyph.Emoji, 2, 2),
     };
 

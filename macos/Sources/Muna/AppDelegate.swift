@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     private lazy var windowMap = WindowMapModel(windows: app.windows)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        AppPresence.shared.start()
         app.start()
         let settings = SettingsWindowController(app: app)
         self.settings = settings
@@ -481,4 +482,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
     @objc private func showAbout() {
         settings?.show(page: "about")
     }
+
+    // the app menu (AppPresence)
+    @objc func openSettingsFromMenu() { settings?.show() }
+    @objc func openAboutFromMenu() { settings?.show(page: "about") }
 }

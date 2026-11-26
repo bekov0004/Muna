@@ -16,7 +16,7 @@ Neither port has been run on its system yet: ✅ means built (Windows) or writte
 
 | Widget (Linux id) | What it has on Linux | macOS | Windows | Note |
 |---|---|---|---|---|
-| Media Player (`media`) | any player, cover, seek, lyrics, spectrum or waves in the album's colour, sideways swipe skips | 🟡 | ✅ | macOS gives "now playing" of other players to Apple's apps only: Music and Spotify ➖ |
+| Media Player (`media`) | any player, cover, seek, lyrics, spectrum or waves in the album's colour, sideways swipe skips | ✅ | ✅ | Mac: every player through macOS's "now playing", read by /usr/bin/perl with Muna's library (macOS keeps it for Apple's programs since 15.4); if Apple closes that too, Music and Spotify through Apple Events |
 | Calendar (`calendar`) | days around today, events, next meeting card | ✅ | ✅ | Windows: Outlook and .ics links |
 | Mirror (`mirror`) | camera preview, the enlarged card | ✅ | ✅ | |
 | Phone (`phonecard`) | the phone's screen in the capsule, as tall as the phone, QR to connect, out into a window | ✅ | ✅ | the tall picture is the window it is taken out into |

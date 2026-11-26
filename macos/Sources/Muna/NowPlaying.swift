@@ -12,22 +12,25 @@ struct Track: Equatable {
     var player: MusicPlayer
 }
 
-/// The players Muna can see and steer. macOS gives apps no common "now playing" any more
-/// (MediaRemote is closed to other apps since macOS 15.4), so Muna asks the players themselves
-/// through Apple Events; macOS asks the user once per player.
+/// The players Muna can see and steer. Every player, browsers too, through macOS's "now playing"
+/// (`SystemNowPlaying`); when that is not there, Music and Spotify through Apple Events (macOS asks
+/// the user once per player).
 enum MusicPlayer: String, CaseIterable {
     case spotify = "Spotify"
     case music = "Music"
+    /// Whatever macOS says plays now (any app).
+    case system = "System"
 
     var bundleIdentifier: String {
         switch self {
         case .spotify: return "com.spotify.client"
         case .music: return "com.apple.Music"
+        case .system: return ""
         }
     }
 
     var isRunning: Bool {
-        !NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).isEmpty
+        self != .system && !NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).isEmpty
     }
 
     /// One line per field: state, title, artist, album, artwork URL, position (s), duration (s).
@@ -48,6 +51,8 @@ enum MusicPlayer: String, CaseIterable {
                 return (player state as string) & linefeed & (name of t) & linefeed & (artist of t) & linefeed & (album of t) & linefeed & "" & linefeed & (player position as string) & linefeed & (duration of t as string)
             end tell
             """
+        case .system:
+            return ""
         }
     }
 
@@ -84,8 +89,34 @@ final class NowPlaying: ObservableObject {
         timer = nil
     }
 
-    /// Asks the players now (the panel just opened, a button was pressed).
+    private var asking = false
+
+    /// Asks the players now (the panel just opened, a button was pressed): macOS's "now playing"
+    /// first (every player), else Music and Spotify themselves.
     func refresh() {
+        guard SystemNowPlaying.isAvailable else { askPlayers(); return }
+        guard !asking else { return }
+        asking = true
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let now = SystemNowPlaying.read()
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.asking = false
+                guard let now else { self.askPlayers(); return }
+                let track = Track(title: now.title, artist: now.artist, album: now.album, artworkURL: now.artwork,
+                                  duration: now.duration, player: .system)
+                if track != self.track {
+                    self.track = track
+                    self.lookUpLyrics()
+                }
+                self.isPlaying = now.playing
+                self.position = now.elapsed
+                self.positionTime = Date()
+            }
+        }
+    }
+
+    private func askPlayers() {
         // A playing player wins over a paused one; Spotify first when both play.
         var best: (track: Track, playing: Bool, position: Double)?
         for player in MusicPlayer.allCases where player.isRunning {
@@ -137,7 +168,8 @@ final class NowPlaying: ObservableObject {
     /// Jumps to a moment of the track (seconds).
     func seek(to seconds: Double) {
         guard let player = track?.player else { return }
-        _ = run(player.command("set player position to \(Int(seconds.rounded()))"))
+        if player == .system { SystemNowPlaying.send("seek \(seconds)") }
+        else { _ = run(player.command("set player position to \(Int(seconds.rounded()))")) }
         position = seconds
         positionTime = Date()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.refresh() }
@@ -149,7 +181,11 @@ final class NowPlaying: ObservableObject {
 
     private func send(_ verb: String) {
         guard let player = track?.player else { return }
-        _ = run(player.command(verb))
+        if player == .system {
+            SystemNowPlaying.send(["playpause": "playpause", "next track": "next", "previous track": "previous"][verb] ?? verb)
+        } else {
+            _ = run(player.command(verb))
+        }
         // the player needs a moment to answer with its new state
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.refresh() }
     }
@@ -164,5 +200,63 @@ final class NowPlaying: ObservableObject {
     /// AppleScript writes decimals with the user's decimal separator.
     private static func number(_ text: String) -> Double {
         Double(text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)) ?? 0
+    }
+}
+
+/// macOS's "now playing" of any player (Linux's MPRIS). macOS gives it to Apple's own programs only
+/// since 15.4, so Muna asks /usr/bin/perl (one of them) to load Muna's small library
+/// (Resources/MunaNowPlaying.dylib, macos/Helpers/NowPlayingHelper.m) and read it.
+enum SystemNowPlaying {
+    struct Now {
+        let title, artist, album: String
+        let duration, elapsed: Double
+        let playing: Bool
+        let app: String
+        let artwork: URL?
+    }
+
+    static var library: String? {
+        guard let path = Bundle.main.resourceURL?.appendingPathComponent("MunaNowPlaying.dylib").path,
+              FileManager.default.fileExists(atPath: path), FileManager.default.fileExists(atPath: "/usr/bin/perl") else { return nil }
+        return path
+    }
+
+    /// Turned off after it gives nothing usable several times in a row (a macOS that closed this door too).
+    private static var failures = 0
+    static var isAvailable: Bool { library != nil && failures < 5 }
+
+    private static let script = "use DynaLoader; my $h = DynaLoader::dl_load_file($ARGV[0], 0) or die; "
+        + "my $s = DynaLoader::dl_find_symbol($h, $ARGV[1]) or die; DynaLoader::dl_install_xsub('main::f', $s); f();"
+
+    private static func perl(_ symbol: String, environment: [String: String] = [:]) -> String? {
+        guard let library else { return nil }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/perl")
+        process.arguments = ["-e", script, library, symbol]
+        process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return process.terminationStatus == 0 ? String(data: data, encoding: .utf8) : nil
+    }
+
+    /// What plays now; nil when nothing does (or macOS said nothing).
+    static func read() -> Now? {
+        guard let line = perl("muna_now_playing"), let data = line.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { failures += 1; return nil }
+        guard let title = json["title"] as? String, !title.isEmpty else { return nil }
+        failures = 0
+        let artwork = (json["artwork"] as? String).flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0) }
+        return Now(title: title, artist: json["artist"] as? String ?? "", album: json["album"] as? String ?? "",
+                   duration: json["duration"] as? Double ?? 0, elapsed: json["elapsed"] as? Double ?? 0,
+                   playing: json["playing"] as? Bool ?? false, app: json["app"] as? String ?? "", artwork: artwork)
+    }
+
+    /// "playpause", "next", "previous", "play", "pause" or "seek <seconds>".
+    static func send(_ command: String) {
+        DispatchQueue.global(qos: .userInitiated).async { _ = perl("muna_send", environment: ["MUNA_COMMAND": command]) }
     }
 }

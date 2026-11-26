@@ -256,6 +256,9 @@ final class CapsuleController {
     private var pending: DispatchWorkItem?
     private var cardTimer: DispatchWorkItem?
     private var observers: [AnyCancellable] = []
+    private var gestureMonitor: Any?
+    private var swipeSum: CGFloat = 0
+    private var swipeDone = false
     private var clickMonitor: Any?
 
     init(app: AppState, screen: NSScreen) {
@@ -323,6 +326,11 @@ final class CapsuleController {
             }
         }.store(in: &observers)
         applyShadow()
+        // Linux's capsule gestures (Settings → Gestures): two fingers over the capsule open, close and skip tracks
+        gestureMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .otherMouseDown]) { [weak self] event in
+            guard let self, event.window === self.panel else { return event }
+            return self.capsuleGesture(event) ? nil : event
+        }
         app.localSend.incomingPublisher.dropFirst().sink { [weak self] _ in
             self?.scheduleUpdate()
         }.store(in: &observers)
@@ -442,6 +450,53 @@ final class CapsuleController {
         (hovering && preferences.autoCollapse) || pinned || model.isEditing || model.isDropTarget
             || app.localSend.incoming?.state == .asking || (!preferences.autoCollapse && model.isOpen)
             || (model.tab == .agent && app.agents.waiting != nil)
+    }
+
+    /// true when the event was a gesture of the capsule (and so taken).
+    private func capsuleGesture(_ event: NSEvent) -> Bool {
+        let p = preferences
+        if event.type == .otherMouseDown {
+            guard event.buttonNumber == 2, !model.isOpen else { return false }
+            switch p.string("gestures-middle-click") {
+            case "play-pause": app.nowPlaying.playPause(); return true
+            case "activity": open(on: .muna); return true
+            default: return false
+            }
+        }
+        if event.phase == .began || (event.phase.isEmpty && event.momentumPhase.isEmpty && abs(event.scrollingDeltaY) + abs(event.scrollingDeltaX) > 0 && !swipeDone && swipeSum == 0) {
+            swipeSum = 0
+            swipeDone = false
+        }
+        if event.phase == .ended || event.phase == .cancelled || !event.momentumPhase.isEmpty {
+            defer { if event.phase == .ended || event.phase == .cancelled { swipeSum = 0; swipeDone = false } }
+            return !event.momentumPhase.isEmpty && swipeDone
+        }
+        guard !swipeDone else { return true }
+        let dx = event.scrollingDeltaX, dy = event.scrollingDeltaY
+        if abs(dx) > abs(dy) {
+            // sideways: the next or previous track while music plays
+            guard p.bool("gestures-media-swipe"), app.nowPlaying.track != nil, !(model.isOpen && model.tab == .muna && model.layout.pages.count > 1) else { return false }
+            swipeSum += event.isDirectionInvertedFromDevice ? -dx : dx
+            if abs(swipeSum) >= 40 {
+                swipeDone = true
+                if swipeSum < 0 { app.nowPlaying.next() } else { app.nowPlaying.previous() }
+            }
+            return true
+        }
+        // with natural scrolling the content follows the fingers: fingers down is a positive delta
+        var fingersDown = event.isDirectionInvertedFromDevice ? dy > 0 : dy < 0
+        if p.bool("gestures-invert") { fingersDown.toggle() }
+        if !model.isOpen && fingersDown && p.bool("gestures-swipe-open") {
+            swipeSum += abs(dy)
+            if swipeSum >= 30 { swipeDone = true; open(on: PanelTab.visible.contains(model.tab) ? model.tab : .muna) }
+            return true
+        }
+        if model.isOpen && !fingersDown && p.bool("gestures-swipe-close") && model.pageIndex == 0 && (model.tab == .muna || model.tab == .tray) {
+            swipeSum += abs(dy)
+            if swipeSum >= 30 { swipeDone = true; pinned = false; close() }
+            return true
+        }
+        return false
     }
 
     /// Linux's shadow under the capsule (macOS draws it from the capsule's shape).

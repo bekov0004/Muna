@@ -53,7 +53,7 @@ extension off brings the stock GNOME clock back.
 |---|---|---|
 | Linux (GNOME Shell 50, 51) | Available: everything on this page | [`linux/`](linux) |
 | macOS | First version: the capsule with music, calendar, Tray, LocalSend and groups, clipboard, notes, to-dos | [`macos/`](macos) |
-| Windows | Planned after macOS | [`windows/`](windows) |
+| Windows | First version: the capsule on every monitor with the widgets, Tray, LocalSend and groups, clipboard, Command Bar, quick panel and tools | [`windows/`](windows) |
 | Android | The Muna Phone app (the phone's side of the Phone card) | [`android/`](android) |
 
 What the platforms share (how they exchange files, the data files, colours, the logo) is described

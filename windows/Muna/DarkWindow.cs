@@ -30,7 +30,54 @@ public class DarkWindow : Window
         };
         Preferences.Shared.Changed += key => { if (key is "color-scheme" or "*") Dispatcher.BeginInvoke(ApplyScheme); };
         try { Icon = Ui.LoadResource("Assets/Muna.ico"); } catch { /* no icon */ }
+        Resources.Add(typeof(ScrollBar), ThinScrollBar.Value);
     }
+
+    /// <summary>Thin rounded scroll bars in grey, readable on light and dark (Windows' own are white boxes).</summary>
+    static readonly Lazy<Style> ThinScrollBar = new(() => (Style)System.Windows.Markup.XamlReader.Parse("""
+        <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="ScrollBar">
+          <Setter Property="Background" Value="Transparent"/>
+          <Setter Property="Width" Value="10"/>
+          <Setter Property="MinWidth" Value="10"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Track x:Name="PART_Track" IsDirectionReversed="True">
+                  <Track.Thumb>
+                    <Thumb>
+                      <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb"><Border CornerRadius="3" Background="#7F8A8A90" Margin="3,2,3,2"/></ControlTemplate>
+                      </Thumb.Template>
+                    </Thumb>
+                  </Track.Thumb>
+                </Track>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+          <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+              <Setter Property="Width" Value="Auto"/>
+              <Setter Property="MinWidth" Value="0"/>
+              <Setter Property="Height" Value="10"/>
+              <Setter Property="Template">
+                <Setter.Value>
+                  <ControlTemplate TargetType="ScrollBar">
+                    <Track x:Name="PART_Track" IsDirectionReversed="False">
+                      <Track.Thumb>
+                        <Thumb>
+                          <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb"><Border CornerRadius="3" Background="#7F8A8A90" Margin="2,3,2,3"/></ControlTemplate>
+                          </Thumb.Template>
+                        </Thumb>
+                      </Track.Thumb>
+                    </Track>
+                  </ControlTemplate>
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+          </Style.Triggers>
+        </Style>
+        """));
 
     /// The window's colours and title bar follow Settings → General → Appearance.
     void ApplyScheme()

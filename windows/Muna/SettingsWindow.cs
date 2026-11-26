@@ -74,6 +74,7 @@ public sealed class SettingsWindow : DarkWindow
     }
 
     readonly TextBox _search = Input();
+    readonly Grid _searchHolder = new();
     readonly TextBox _reminderText = Input();
     readonly TextBox _reminderTime = Input();
     string _reminderRepeat = "once";
@@ -101,6 +102,22 @@ public sealed class SettingsWindow : DarkWindow
         _alias.Text = _p.LocalSendAlias;
         _p.Changed += _ => Dispatcher.BeginInvoke(() => { if (IsVisible) Render(); });
         PreviewKeyDown += (_, e) => RecordKey(e);
+        // Linux's search entry: a magnifier and "Search" while it is empty
+        _search.Padding = new Thickness(28, 6, 8, 6);
+        var magnifier = Ui.Icon(Glyph.Search, 12, C.WinSecondary);
+        magnifier.IsHitTestVisible = false;
+        magnifier.Margin = new Thickness(10, 0, 0, 0);
+        magnifier.VerticalAlignment = VerticalAlignment.Center;
+        magnifier.HorizontalAlignment = HorizontalAlignment.Left;
+        var hint = Ui.Text("Search", 13, color: C.WinSecondary);
+        hint.IsHitTestVisible = false;
+        hint.Margin = new Thickness(30, 0, 0, 0);
+        hint.VerticalAlignment = VerticalAlignment.Center;
+        hint.HorizontalAlignment = HorizontalAlignment.Left;
+        _searchHolder.Children.Add(_search);
+        _searchHolder.Children.Add(magnifier);
+        _searchHolder.Children.Add(hint);
+        _search.TextChanged += (_, _) => hint.Visibility = _search.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         _search.TextChanged += (_, _) =>
         {
             Render();
@@ -121,7 +138,12 @@ public sealed class SettingsWindow : DarkWindow
     {
         var side = Ui.Column(2, Ui.Row(10, Ui.Butterfly(20), Ui.Bold("Muna", 15, C.WinText)).Margin(8, 0, 0, 10));
         _search.ToolTip = "Search the settings";
-        side.Children.Add(Ui.Detach(_search).Margin(0, 0, 0, 8));
+        // the entry follows light and dark too (it is made once)
+        _search.Background = C.WinControl;
+        _search.Foreground = C.WinText;
+        _search.CaretBrush = C.WinText;
+        _search.BorderBrush = C.WinBorder;
+        side.Children.Add(Ui.Detach(_searchHolder).Margin(0, 0, 0, 8));
         var query = _search.Text.Trim();
         string? group = null;
         foreach (var (id, title, glyph, about, heading) in Pages)
@@ -210,12 +232,60 @@ public sealed class SettingsWindow : DarkWindow
         return Setting(title, value, slider);
     }
 
+    /// <summary>Linux's appearance chooser: three small windows, System (half light, half dark), Light
+    /// and Dark; the chosen one has a blue frame.</summary>
+    static UIElement SchemeCards(int chosen, Action<int> choose)
+    {
+        static Border Window(Brush body, Brush bar) => new()
+        {
+            CornerRadius = new CornerRadius(6), Background = body, ClipToBounds = true, Height = 74,
+            Child = new Border { Height = 10, Background = bar, VerticalAlignment = VerticalAlignment.Top },
+        };
+        var light = C.Rgb(0xf2, 0xf2, 0xf5);
+        var lightBar = C.Rgb(0xd6, 0xd6, 0xdc);
+        var dark = C.Rgb(0x2c, 0x2c, 0x30);
+        var darkBar = C.Rgb(0x3a, 0x3a, 0x3f);
+        var grid = new Grid { Margin = new Thickness(12) };
+        var names = new[] { "System", "Light", "Dark" };
+        for (var i = 0; i < 3; i++)
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition());
+            UIElement picture;
+            if (i == 0)
+            {
+                // half light, half dark, cut on the diagonal
+                var half = Window(dark, darkBar);
+                var top = Window(light, lightBar);
+                top.Clip = new PathGeometry(new[] { new PathFigure(new Point(0, 0), new PathSegment[] { new LineSegment(new Point(200, 0), false), new LineSegment(new Point(0, 74), false) }, true) });
+                var both = new Grid();
+                both.Children.Add(half);
+                both.Children.Add(top);
+                both.SizeChanged += (_, e) => top.Clip = new PathGeometry(new[] { new PathFigure(new Point(0, 0), new PathSegment[] { new LineSegment(new Point(e.NewSize.Width * 0.75, 0), false), new LineSegment(new Point(e.NewSize.Width * 0.35, 74), false), new LineSegment(new Point(0, 74), false) }, true) });
+                picture = both;
+            }
+            else picture = i == 1 ? Window(light, lightBar) : Window(dark, darkBar);
+            var on = i == chosen;
+            var index = i;
+            var tile = new Border
+            {
+                Child = Ui.Column(6, picture, Ui.Semi(names[i], 12, on ? C.WinAccent : C.WinText).Align(h: HorizontalAlignment.Center)),
+                Padding = new Thickness(8), Margin = new Thickness(6, 0, 6, 0), CornerRadius = new CornerRadius(10),
+                BorderThickness = new Thickness(2), BorderBrush = on ? C.WinAccent : C.Clear,
+                Background = on ? C.Rgb(0x12, 0x83, 0xff, 0.10) : C.Clear, Cursor = System.Windows.Input.Cursors.Hand,
+            };
+            tile.MouseLeftButtonUp += (_, _) => choose(index);
+            Grid.SetColumn(tile, i);
+            grid.Children.Add(tile);
+        }
+        return grid;
+    }
+
     IEnumerable<UIElement> General()
     {
         var schemes = new[] { "default", "light", "dark" };
-        yield return Card("Appearance",
-            Setting("Muna's windows", "Applies to the settings window of Muna (and the agents and scratchpad windows), not to the whole desktop.",
-                Choice(new[] { "System", "Light", "Dark" }, Math.Max(0, Array.IndexOf(schemes, _p.Text("color-scheme"))), i => _p.SetValue("color-scheme", schemes[i]))));
+        var chosen = Math.Max(0, Array.IndexOf(schemes, _p.Text("color-scheme")));
+        yield return Ui.Column(8, Card("Appearance", SchemeCards(chosen, i => _p.SetValue("color-scheme", schemes[i]))),
+            Ui.Text("Applies to the settings window of Muna (and the agents and scratchpad windows), not to the whole desktop.", 11, color: C.WinSecondary, wrap: true).Margin(4, 0, 0, 0));
         foreach (var card in TopBar()) yield return card;
         yield return Card("Muna",
             Switch("Open on hover", "Off: the capsule opens on click only.", _p.OpenOnHover, v => _p.OpenOnHover = v),

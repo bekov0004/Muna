@@ -344,13 +344,36 @@ public static class Ui
         ? new Rectangle { Width = 1, Fill = color ?? C.Divider }
         : new Rectangle { Height = 1, Fill = color ?? C.Divider };
 
-    public static ScrollViewer Scroll(UIElement content, bool horizontal = false) => new()
+    public static ScrollViewer Scroll(UIElement content, bool horizontal = false) => new WheelScroller
     {
         Content = Detach(content), Focusable = false,
         VerticalScrollBarVisibility = horizontal ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden,
         HorizontalScrollBarVisibility = horizontal ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Disabled,
         PanningMode = horizontal ? PanningMode.HorizontalOnly : PanningMode.VerticalOnly,
     };
+
+    /// <summary>A list that scrolls as far as the wheel or the touchpad turned: WPF moves 48 px for
+    /// every wheel message, so a precision touchpad's many small messages raced the list away. A
+    /// list at its end lets the wheel go on to the list around it.</summary>
+    public sealed class WheelScroller : ScrollViewer
+    {
+        protected override void OnMouseWheel(System.Windows.Input.MouseWheelEventArgs e)
+        {
+            if (e.Handled) return;
+            var step = e.Delta * 0.4;   // 120 (one notch) = 48 px, as before
+            if (HorizontalScrollBarVisibility != ScrollBarVisibility.Disabled && VerticalScrollBarVisibility == ScrollBarVisibility.Disabled)
+            {
+                if (ScrollableWidth <= 0 || (step > 0 && HorizontalOffset <= 0) || (step < 0 && HorizontalOffset >= ScrollableWidth)) return;
+                ScrollToHorizontalOffset(HorizontalOffset - step);
+            }
+            else
+            {
+                if (ScrollableHeight <= 0 || (step > 0 && VerticalOffset <= 0) || (step < 0 && VerticalOffset >= ScrollableHeight)) return;
+                ScrollToVerticalOffset(VerticalOffset - step);
+            }
+            e.Handled = true;
+        }
+    }
 
     /// <summary>Bars that move while the music plays (redrawn by the caller's clock).</summary>
     /// Settings → Live Activities → Effect type and Colored effects: Linux's spectrum (bars) or waves,

@@ -98,6 +98,7 @@ struct DisplaysPage: View {
                         .foregroundColor(MunaColor.secondary)
                 }
             }
+            DisplaySwitches()
             if displays.displays.count > 1 {
                 QuickBlock {
                     Arrangement(displays: displays.displays)
@@ -218,6 +219,45 @@ struct ArrangementBlock: View {
                     Pill(label: "Display settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Displays-Settings.extension")!) }
                 }
             }
+        }
+    }
+}
+
+/// Night Shift, the keyboard light and automatic brightness, as in Linux's displays tab.
+struct DisplaySwitches: View {
+    @EnvironmentObject var state: QuickPanelState
+
+    var body: some View {
+        QuickBlock {
+            if NightShift.available {
+                row("moon", "Night Shift", "Warmer colours", on: NightShift.isOn) { NightShift.set($0) }
+            }
+            if let auto = AutoBrightness.isOn {
+                row("sun.max", "Automatic brightness", "The light sensor sets the screen's brightness", on: auto) { on in
+                    if !AutoBrightness.set(on) { state.message = "macOS did not allow it" }
+                }
+            }
+            if KeyboardLight.available { VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: "light.max").foregroundColor(MunaColor.secondary)
+                    Text("Keyboard light").font(.system(size: 12, weight: .semibold))
+                    Spacer()
+                    Text("\(Int(KeyboardLight.level * 100))%").font(.system(size: 11).monospacedDigit()).foregroundColor(MunaColor.secondary)
+                }
+                Slider(value: Binding(get: { KeyboardLight.level }, set: { KeyboardLight.set($0); state.objectWillChange.send() }), in: 0...1)
+            } }
+        }
+    }
+
+    private func row(_ symbol: String, _ title: String, _ details: String, on: Bool, set: @escaping (Bool) -> Void) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).foregroundColor(MunaColor.secondary).frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.system(size: 12, weight: .semibold))
+                Text(details).font(.system(size: 10)).foregroundColor(MunaColor.secondary)
+            }
+            Spacer()
+            Toggle("", isOn: Binding(get: { on }, set: { set($0); state.objectWillChange.send() })).toggleStyle(.switch).labelsHidden()
         }
     }
 }

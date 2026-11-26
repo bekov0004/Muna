@@ -44,8 +44,8 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Reminders (`reminders`) | the butterfly's reminders: once, every day, weekdays | ✅ | ✅ | |
 | AI Agents (`agents`) | working now, tokens 5 h and week, cards, Codex | ✅ | ✅ | |
 | Phone (`phone`) | live screen, control, QR pairing, Muna Phone link, dark screen | ✅ | ✅ | |
-| Keep awake (`awake`) | for a while or until off, lid closed, icon and colour | 🟡 | 🟡 | the icon and colour in the menu bar / tray ✅; lid closed needs administrator rights ➖ |
-| Displays (`displays`) | brightness of every monitor and keyboard light, night light, auto brightness, arrangement (main, sides, mirror, only one) | 🟡 | 🟡 | arrangement ✅ (main, the side of each, joined, mirrored; Windows also only one); Windows: automatic brightness ✅, no keyboard light API ➖; Mac: Night Shift and the keyboard light ✅, automatic brightness needs administrator rights ➖ |
+| Keep awake (`awake`) | for a while or until off, lid closed, icon and colour | ✅ | ✅ | lid closed: Windows sets the power plan's lid action to nothing; the Mac switches sleep off with the administrator's password; both give it back |
+| Displays (`displays`) | brightness of every monitor and keyboard light, night light, auto brightness, arrangement (main, sides, mirror, only one) | ✅ | 🟡 | arrangement ✅ (main, the side of each, joined, mirrored; Windows also only one); Mac: Night Shift, keyboard light, automatic brightness (CoreBrightness; the administrator's password when macOS refuses); Windows: automatic brightness ✅, no common keyboard light API ➖ (each maker has its own program) |
 | Utilities (`utilities`) | every tool in one list, reordered and hidden | ✅ | ✅ | |
 | Controls (`controls`) | switches for windows, mouse, keyboard, files, with counters | ✅ | ✅ | |
 | Quick toggles (`toggles`) | dark mode, keyboard light, microphone, trash, disks, hidden files, lock, screen | ✅ | ✅ | also Wi-Fi, Bluetooth, night light, airplane on Windows |

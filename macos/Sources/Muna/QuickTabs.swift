@@ -476,6 +476,8 @@ enum KeyboardLight {
         return kind.init()
     }()
 
+    static var available: Bool { client != nil }
+
     static var level: Double {
         guard let client else { return 0 }
         let selector = NSSelectorFromString("brightnessForKeyboard:")

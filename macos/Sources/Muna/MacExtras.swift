@@ -6,6 +6,38 @@ import IOKit.ps
 import MunaCore
 
 /// Night Shift on or off (macOS's own CoreBrightness, what Control Centre's switch uses).
+/// Automatic brightness (the light sensor), Linux's "auto brightness": CoreBrightness's
+/// BrightnessSystemClient and its "DisplayBrightnessAuto", what System Settings switches. When macOS
+/// refuses it, the switch is written with the administrator's password instead.
+enum AutoBrightness {
+    private static let client: NSObject? = {
+        guard dlopen("/System/Library/PrivateFrameworks/CoreBrightness.framework/CoreBrightness", RTLD_LAZY) != nil,
+              let type = NSClassFromString("BrightnessSystemClient") as? NSObject.Type else { return nil }
+        return type.init()
+    }()
+    private static let key = "DisplayBrightnessAuto" as NSString
+
+    /// nil: this Mac does not say (no light sensor, or the class is gone).
+    static var isOn: Bool? {
+        guard let client, client.responds(to: NSSelectorFromString("copyPropertyForKey:")),
+              let value = client.perform(NSSelectorFromString("copyPropertyForKey:"), with: key)?.takeRetainedValue() else { return nil }
+        return (value as? NSNumber)?.boolValue
+    }
+
+    /// Switches it; false when macOS did not take it.
+    @discardableResult
+    static func set(_ on: Bool) -> Bool {
+        if let client, client.responds(to: NSSelectorFromString("setProperty:forKey:")) {
+            _ = client.perform(NSSelectorFromString("setProperty:forKey:"), with: NSNumber(value: on), with: key)
+            if isOn == on { return true }
+        }
+        var error: NSDictionary?
+        let write = "/usr/bin/defaults write /Library/Preferences/com.apple.iokit.AmbientLightSensor 'Automatic Display Enabled' -bool \(on ? "true" : "false")"
+        _ = NSAppleScript(source: "do shell script \"\(write)\" with administrator privileges")?.executeAndReturnError(&error)
+        return error == nil
+    }
+}
+
 enum NightShift {
     private static let client: NSObject? = {
         guard dlopen("/System/Library/PrivateFrameworks/CoreBrightness.framework/CoreBrightness", RTLD_LAZY) != nil,

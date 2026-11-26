@@ -913,7 +913,9 @@ public sealed class QuickPanel : Window
         column.Children.Add(Block(
             Ui.Row(6, Ui.Icon(Glyph.Down, 11, C.Accent), Ui.Digits($"read {Speed(m.DiskReadPerSecond)}", 12), Ui.Spacer(), Ui.Icon(Glyph.Up, 11, C.Muna), Ui.Digits($"write {Speed(m.DiskWritePerSecond)}", 12)),
             Graph(m.DiskHistory),
-            Ui.Text($"Since Muna started: {Ui.SizeText((long)m.DiskReadSinceStart)} read, {Ui.SizeText((long)m.DiskWrittenSinceStart)} written", 11, color: C.Secondary)));
+            Ui.Text($"Since Muna started: {Ui.SizeText((long)m.DiskReadSinceStart)} read, {Ui.SizeText((long)m.DiskWrittenSinceStart)} written", 11, color: C.Secondary),
+            _app.Power.DiskTemperature is { } t ? Ui.Text($"Temperature {SystemMonitor.TemperatureText(t)}", 11, color: C.Secondary) : null));
+        _app.Power.Touch();
         return column;
     }
 
@@ -940,6 +942,12 @@ public sealed class QuickPanel : Window
             var rows = new List<UIElement?> { Ui.Text("USING THE PROCESSOR", 10, FontWeights.Black, C.Caption) };
             foreach (var (name, share) in power.Busy)
                 rows.Add(Ui.Row(6, Ui.Text(name, 12).Grow(), Ui.Digits($"{share * 100:0}%", 11, color: C.Secondary)));
+            column.Children.Add(Block(rows.ToArray()));
+        }
+        if (power.Devices.Count > 0)
+        {
+            var rows = new List<UIElement?> { Ui.Text("DEVICES", 10, FontWeights.Black, C.Caption) };
+            foreach (var (name, percent) in power.Devices) rows.Add(Meter(name, percent / 100.0, $"{percent}%"));
             column.Children.Add(Block(rows.ToArray()));
         }
         column.Children.Add(Ui.Row(6, Ui.Pill("Power settings", () => CapsuleViews.Launch("ms-settings:powersleep")), Ui.Pill("Battery use", () => CapsuleViews.Launch("ms-settings:batterysaver-usagedetails"))));

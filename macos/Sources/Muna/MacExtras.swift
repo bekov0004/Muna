@@ -128,23 +128,26 @@ enum Thermal {
                 unsafeBitCast(d, to: CopyEvent.self), unsafeBitCast(e, to: GetFloat.self), unsafeBitCast(f, to: CopyProperty.self))
     }()
 
+    /// The hottest sensor of the flash storage (NAND) in °C.
+    static func disk() -> Double? { hottest { $0.contains("nand") || $0.contains("ssd") } }
+
     /// The hottest processor sensor in °C (any sensor when none is named for the processor).
-    static func cpu() -> Double? {
+    static func cpu() -> Double? { hottest { $0.contains("tdie") || $0.contains("cpu") || $0.contains("pmu") } ?? hottest { _ in true } }
+
+    private static func hottest(_ matching: (String) -> Bool) -> Double? {
         guard let f = functions, let client = f.0(kCFAllocatorDefault)?.takeRetainedValue() else { return nil }
         let (setMatching, copyServices, copyEvent, getFloat, copyProperty) = (f.1, f.2, f.3, f.4, f.5)
         _ = setMatching(client, ["PrimaryUsagePage": 0xff00, "PrimaryUsage": 5] as CFDictionary)
         guard let services = copyServices(client)?.takeRetainedValue() as? [AnyObject] else { return nil }
-        var processor: Double?
-        var any: Double?
+        var best: Double?
         for service in services {
             guard let event = copyEvent(service, 15, 0, 0)?.takeRetainedValue() else { continue }   // kIOHIDEventTypeTemperature
             let value = getFloat(event, 15 << 16)
             guard value > 0, value < 130 else { continue }
             let name = (copyProperty(service, "Product" as CFString)?.takeRetainedValue() as? String ?? "").lowercased()
-            any = max(any ?? 0, value)
-            if name.contains("tdie") || name.contains("cpu") || name.contains("pmu") { processor = max(processor ?? 0, value) }
+            if matching(name) { best = max(best ?? 0, value) }
         }
-        return processor ?? any
+        return best
     }
 }
 

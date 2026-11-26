@@ -29,6 +29,7 @@ final class DisksModel: ObservableObject {
     @Published private(set) var writing: Double = 0
     @Published private(set) var readSinceStart: UInt64 = 0
     @Published private(set) var writtenSinceStart: UInt64 = 0
+    @Published private(set) var temperature: Double?
     private var first: (read: UInt64, write: UInt64)?
     private var last: (read: UInt64, write: UInt64, at: Date)?
     private var timer: Timer?
@@ -55,6 +56,7 @@ final class DisksModel: ObservableObject {
             return Volume(url: url, name: values.volumeName ?? url.lastPathComponent, free: values.volumeAvailableCapacityForImportantUsage ?? 0,
                           total: Int64(total), removable: removable)
         }
+        temperature = Thermal.disk()
         let (read, write) = Self.bytes()
         if first == nil { first = (read, write) }
         if let last {
@@ -128,6 +130,9 @@ struct DisksPage: View {
                 Graph(values: disks.readHistory)
                 Text("Since Muna started: \(sizeText(Int64(disks.readSinceStart))) read, \(sizeText(Int64(disks.writtenSinceStart))) written")
                     .font(.system(size: 11)).foregroundColor(MunaColor.secondary)
+                if let temperature = disks.temperature {
+                    Text("Temperature \(Readings.temperature(temperature))").font(.system(size: 11)).foregroundColor(MunaColor.secondary)
+                }
             }
         }
         .onAppear { disks.watch() }

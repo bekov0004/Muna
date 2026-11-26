@@ -34,8 +34,8 @@ All eighteen tabs, in Linux's order, chosen, hidden and ordered in Settings → 
 | Focus (`focus`) | Pomodoro and stopwatch with laps | ✅ | ✅ | |
 | System (`system`) | processor, memory, temperature, graphics, uptime, graphs, chosen blocks | ✅ | ✅ | Mac: temperatures of Apple silicon (IOKit HID), graphics (IOAccelerator) |
 | Network (`network`) | speeds and graph, this session's traffic, address, speed test | ✅ | ✅ | |
-| Disks (`disks`) | each disk: fullness, live read/write, since start, temperature, eject, open | 🟡 | 🟡 | no disk temperature |
-| Power (`power`) | charge and history, busy programs, heat, power draw, adapter, health, devices' batteries | ✅ | 🟡 | Windows: no batteries of Bluetooth devices yet |
+| Disks (`disks`) | each disk: fullness, live read/write, since start, temperature, eject, open | ✅ | ✅ | the temperature where the system gives it (Mac: the flash's sensor; Windows: the storage counters) |
+| Power (`power`) | charge and history, busy programs, heat, power draw, adapter, health, devices' batteries | ✅ | ✅ | |
 | Sound (`sound`) | output volume, system sounds, microphone, every app's volume | 🟡 | ✅ | Mac: system sounds ✅; macOS has no per-app volume without an audio driver ➖ |
 | Downloads (`downloads`) | files arriving with progress | ✅ | ✅ | |
 | Input (`input`) | mouse and keyboard switches | ✅ | ✅ | Mac: some take effect at the next login (macOS) |

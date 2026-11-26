@@ -226,6 +226,42 @@ static class Wmi
         return null;
     }
 
+    /// The disks' temperatures in °C (Windows' storage reliability counters; none when Windows does not give them).
+    public static double? DiskTemperature()
+    {
+        try
+        {
+            double? best = null;
+            foreach (var o in Query(@"root\Microsoft\Windows\Storage", "SELECT Temperature FROM MSFT_StorageReliabilityCounter"))
+                if (o["Temperature"] is { } t && Convert.ToDouble(t) is > 0 and < 120 and var c) best = Math.Max(best ?? 0, c);
+            return best;
+        }
+        catch { return null; }
+    }
+
+    /// Bluetooth devices that report their battery (the PnP property Windows shows in Settings → Bluetooth).
+    public static List<(string Name, int Percent)> DeviceBatteries()
+    {
+        var list = new List<(string, int)>();
+        try
+        {
+            foreach (var o in Query(@"root\cimv2", "SELECT * FROM Win32_PnPEntity WHERE PNPClass = 'Bluetooth' OR PNPClass = 'System'"))
+            {
+                if (o is not System.Management.ManagementObject device || device["Name"] is not string name) continue;
+                try
+                {
+                    var result = device.InvokeMethod("GetDeviceProperties", new object[] { new[] { "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2" } });
+                    if (result is not System.Management.ManagementBaseObject[] { Length: > 0 } properties) continue;
+                    if (properties[0]["Data"] is { } data && Convert.ToInt32(data) is >= 0 and <= 100 and var percent && list.All(d => d.Item1 != name))
+                        list.Add((name, percent));
+                }
+                catch { /* no battery */ }
+            }
+        }
+        catch { /* WMI not available */ }
+        return list;
+    }
+
     /// The battery's designed and full capacity (mWh) and its cycles (root\WMI's battery classes).
     public static (double Design, double Full, int? Cycles)? BatteryHealth()
     {
@@ -268,6 +304,8 @@ public sealed class PowerModel : Model
     public double DesignWh { get; private set; }
     public double FullWh { get; private set; }
     public List<(string Name, double Share)> Busy { get; private set; } = new();
+    public List<(string Name, int Percent)> Devices { get; private set; } = new();
+    public double? DiskTemperature { get; private set; }
     readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(5) };
     Dictionary<int, TimeSpan> _cpu = new();
     DateTime _cpuAt;
@@ -306,6 +344,8 @@ public sealed class PowerModel : Model
         Task.Run(() =>
         {
             var health = Wmi.BatteryHealth();
+            var devices = Wmi.DeviceBatteries();
+            var diskTemperature = Wmi.DiskTemperature();
             var now = DateTime.Now;
             var times = new Dictionary<int, (string, TimeSpan)>();
             foreach (var process in Process.GetProcesses())
@@ -313,11 +353,13 @@ public sealed class PowerModel : Model
                 try { times[process.Id] = (process.ProcessName, process.TotalProcessorTime); } catch { }
                 process.Dispose();
             }
-            return (health, now, times);
+            return (health, now, times, devices, diskTemperature);
         }).ContinueWith(t => Ui(() =>
         {
             if (t.IsFaulted) return;
-            var (health, now, times) = t.Result;
+            var (health, now, times, devices, diskTemperature) = t.Result;
+            Devices = devices;
+            DiskTemperature = diskTemperature;
             if (health is { } h)
             {
                 HealthPercent = (int)Math.Min(100, Math.Round(h.Full * 100 / h.Design));

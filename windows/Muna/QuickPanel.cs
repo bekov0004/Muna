@@ -22,14 +22,46 @@ namespace Muna;
 /// focus, reminders, downloads, windows, agents and quick tools.</summary>
 public sealed class QuickPanel : Window
 {
-    static readonly (string Id, string Title, string Glyph)[] Pages =
+    /// Linux's tabs of the top-bar window, in Linux's order (linux/prefsWindow.js MENU_ORDER).
+    static readonly (string Id, string Title, string Glyph, string About)[] AllPages =
     {
-        ("system", "System", Glyph.Cpu), ("network", "Network", Glyph.Network), ("sound", "Sound", Glyph.Volume),
-        ("displays", "Displays", Glyph.Brightness), ("phone", "Phone", Glyph.Phone), ("awake", "Keep awake", Glyph.Coffee),
-        ("focus", "Focus", Glyph.Flag), ("reminders", "Reminders", Glyph.Bell), ("downloads", "Downloads", Glyph.Download),
-        ("windows", "Windows", Glyph.Window), ("agents", "AI agents", Glyph.Sparkle), ("controls", "Controls", Glyph.Sliders),
-        ("tools", "Tools", Glyph.Settings),
+        ("awake", "Keep awake", Glyph.Coffee, "Keeps your computer awake for as long as you want."),
+        ("reminders", "Reminders", Glyph.Bell, "The butterfly tells you something at a time you choose."),
+        ("phone", "Phone", Glyph.Phone, "Phone screen on the computer, with control."),
+        ("displays", "Displays", Glyph.Brightness, "Brightness of every monitor, night light, and where the monitors stand."),
+        ("sound", "Sound", Glyph.Volume, "Volume of each app, one slider each."),
+        ("system", "System", Glyph.Cpu, "Processor, graphics and memory at a glance."),
+        ("network", "Network", Glyph.Network, "Internet speed and its graph."),
+        ("disks", "Disks", Glyph.Disk, "Free space and disk activity."),
+        ("power", "Power", Glyph.Battery, "Battery, charging and power use."),
+        ("utilities", "Utilities", Glyph.Settings, "Screenshots, colour picker and other tools."),
+        ("controls", "Controls", Glyph.Sliders, "Switches for mouse, keyboard and windows."),
+        ("toggles", "Quick toggles", Glyph.Wifi, "Wi-Fi, Bluetooth, dark mode, microphone, bin and more."),
+        ("windows", "Windows", Glyph.Window, "A picture of each screen: drag windows, split them into columns or rows."),
+        ("workspaces", "Desktops", Glyph.Desktop, "Create, switch and remove desktops."),
+        ("focus", "Focus", Glyph.Flag, "A focus timer and a stopwatch."),
+        ("input", "Input", Glyph.Keyboard, "Mouse and keyboard switches."),
+        ("downloads", "Downloads", Glyph.Download, "Files arriving in Downloads."),
+        ("agents", "AI agents", Glyph.Sparkle, "Claude Code and Codex at work."),
     };
+
+    /// The tabs in the order chosen in Settings → Menu bar (new ones at the end).
+    public static List<(string Id, string Title, string Glyph, string About)> Ordered(List<string> order)
+    {
+        var chosen = order.Select(id => AllPages.FirstOrDefault(p => p.Id == id)).Where(p => p.Id is not null).ToList();
+        return chosen.Concat(AllPages.Where(p => !order.Contains(p.Id))).ToList();
+    }
+
+    /// The tabs shown: in their order, without the ones switched off.
+    static List<(string Id, string Title, string Glyph, string About)> Pages
+    {
+        get
+        {
+            var p = Preferences.Shared;
+            var shown = Ordered(p.Strings("menu-order")).Where(t => !p.Has("menu-hidden", t.Id)).ToList();
+            return shown.Count > 0 ? shown : AllPages.Where(t => t.Id == "system").ToList();
+        }
+    }
 
     readonly AppState _app;
     string _page = "system";
@@ -58,7 +90,7 @@ public sealed class QuickPanel : Window
         Deactivated += (_, _) => HidePanel();
         KeyDown += (_, e) => { if (e.Key == Key.Escape) HidePanel(); };
         SizeChanged += (_, _) => Place();
-        foreach (var model in new Model[] { app.Monitor, app.Awake, app.Focus, app.Reminders, app.Downloads, app.Sound, app.Agents, app.Windows, app.Displays, app.Phone, app.Desktops })
+        foreach (var model in new Model[] { app.Monitor, app.Awake, app.Focus, app.Reminders, app.Downloads, app.Sound, app.Agents, app.Windows, app.Displays, app.Phone, app.Desktops, app.Power })
             model.Changed += Queue;
         _reminderText.Submitted += AddReminder;
         _reminderTime.Submitted += AddReminder;
@@ -80,7 +112,7 @@ public sealed class QuickPanel : Window
         _app.Downloads.Refresh();
         if (_page == "phone") _app.Phone.Watch();
         if (_page == "agents") _app.Agents.WatchSessions();
-        if (_page == "tools") RefreshRadios();
+        if (_page == "toggles") RefreshRadios();
         if (_page == "windows") StartPictures();
         Render();
         Show();
@@ -91,7 +123,8 @@ public sealed class QuickPanel : Window
     /// <summary>Opens on a page (or as it was); when open on that page already, it closes.</summary>
     public void ShowPage(string? page)
     {
-        if (page is not null && Pages.Any(p => p.Id == page))
+        if (page == "tools") page = "toggles";
+        if (page is not null && AllPages.Any(p => p.Id == page))
         {
             if (IsVisible && _page == page) { HidePanel(); return; }
             if (IsVisible) { SetPage(page); return; }
@@ -150,7 +183,7 @@ public sealed class QuickPanel : Window
         _page = page;
         if (page == "phone") { _app.Phone.Watch(); _app.Phone.ReadSize(); }
         if (page == "agents") _app.Agents.WatchSessions();
-        if (page == "tools") RefreshRadios();
+        if (page == "toggles") RefreshRadios();
         if (page == "windows") StartPictures(); else _pictureTimer.Stop();
         _message = null;
         Render();
@@ -164,8 +197,10 @@ public sealed class QuickPanel : Window
 
     void Render()
     {
-        var tabs = new UniformGrid { Columns = 7 };
-        foreach (var (id, title, glyph) in Pages)
+        var pages = Pages;
+        if (pages.All(t => t.Id != _page)) _page = pages[0].Id;
+        var tabs = new UniformGrid { Columns = Math.Min(9, pages.Count) };
+        foreach (var (id, title, glyph, _) in pages)
         {
             var selected = id == _page;
             var page = id;
@@ -175,7 +210,7 @@ public sealed class QuickPanel : Window
         var column = Ui.Column(12,
             Ui.Butterfly(22).Align(HorizontalAlignment.Center),
             Ui.Box(tabs, C.White(0.05), 14, 4, 4),
-            Ui.Text(Pages.First(p => p.Id == _page).Title.ToUpperInvariant(), 10, FontWeights.Black, C.Caption));
+            Ui.Text(AllPages.First(p => p.Id == _page).Title.ToUpperInvariant(), 10, FontWeights.Black, C.Caption));
         UIElement body = _page switch
         {
             "system" => SystemPage(),
@@ -190,6 +225,11 @@ public sealed class QuickPanel : Window
             "windows" => WindowsPage(),
             "agents" => AgentsPage(),
             "controls" => ControlsPage(),
+            "disks" => DisksPage(),
+            "power" => PowerPage(),
+            "input" => InputPage(),
+            "workspaces" => DesktopsPage(),
+            "utilities" => UtilitiesPage(),
             _ => ToolsPage(),
         };
         column.Children.Add(body);
@@ -765,16 +805,152 @@ public sealed class QuickPanel : Window
             grid.Children.Add(tile.OnClick(action, C.White(0.12)));
         }
         Tile(Glyph.Moon, "Dark mode", () => Say(QuickTools.ToggleDarkMode() ? "Dark mode on" : "Light mode on"));
-        Tile(Glyph.Screenshot, "Screenshot", () => { HidePanel(); QuickTools.Screenshot(); });
-        Tile(Glyph.Eyedropper, "Colour", () => { HidePanel(); ColorPicker.Pick(hex => _app.Capsules.Tell("Colour copied", hex, Glyph.Eyedropper, true)); });
         Tile(Glyph.Delete, "Empty bin", () => Say(QuickTools.EmptyRecycleBin() ? "The recycle bin is empty" : "The recycle bin was empty"));
         Tile(Glyph.Up, "Eject disks", () => Say(QuickTools.EjectDisks() is var n and > 0 ? $"{n} disk{(n == 1 ? "" : "s")} ejected" : "No disk to eject"));
+        var hidden = SystemSwitches.All.First(x => x.Id == "hidden");
+        Tile(Glyph.Eye, SystemSwitches.Read(hidden) ? "Hide hidden files" : "Show hidden files", () => { SystemSwitches.Write(hidden, !SystemSwitches.Read(hidden)); Render(); });
         Tile(Glyph.Monitor, "Screen off", () => { HidePanel(); QuickTools.ScreenOff(); });
         Tile(Glyph.Lock, "Lock", () => { HidePanel(); Native.LockWorkStation(); });
-        Tile(Glyph.Note, "Scratchpad", () => { HidePanel(); _app.ShowScratchpad(); });
-        Tile(Glyph.Broom, "Cleaning", () => { HidePanel(); CleaningMode.Start(); });
-        Tile(Glyph.Search, "Command Bar", () => { HidePanel(); _app.Capsules.OpenCommand(); });
         return Ui.Column(8, toggles, grid);
+    }
+
+    // --- the other tabs of Linux's top-bar window -------------------------------------------------------
+
+    /// Linux's Utilities: every tool in one list, each a click away.
+    UIElement UtilitiesPage()
+    {
+        var rows = new List<UIElement?>();
+        void Row(string glyph, string title, string about, Action action) =>
+            rows.Add(Ui.Box(Ui.Row(10, Ui.Icon(glyph, 14, C.Accent).Size(22), Ui.Column(1, Ui.Semi(title, 12), Ui.Text(about, 10, color: C.Secondary)).Grow(), Ui.Icon(Glyph.Right, 9, C.Secondary)),
+                            C.Clear, 8, 6, 5).OnClick(action, C.White(0.08)));
+        Row(Glyph.Screenshot, "Screenshot", "A part of the screen or a window, copied", () => { HidePanel(); QuickTools.Screenshot(); });
+        Row(Glyph.Video, "Screen recording", "The Snipping Tool, recording", () => { HidePanel(); _app.Perform("recording"); });
+        Row(Glyph.Eyedropper, "Colour picker", "Copies the colour as a hex code", () => { HidePanel(); _app.Perform("color"); });
+        Row(Glyph.Clipboard, "Clipboard", "What you copied", () => { HidePanel(); _app.Capsules.Open(PanelTab.Clipboard); });
+        Row(Glyph.Window, "Window layout", "The window map, columns, rows, a grid", () => SetPage("windows"));
+        Row(Glyph.Broom, "Cleaning mode", "Keyboard and pointer locked while you clean", () => { HidePanel(); CleaningMode.Start(); });
+        Row(Glyph.Camera, "Camera preview", "See yourself before a call", () => { HidePanel(); _app.Capsules.Open(PanelTab.Mirror); });
+        Row(Glyph.Search, "Command Bar", "Apps, calculator, units, snippets", () => { HidePanel(); _app.Capsules.OpenCommand(); });
+        Row(Glyph.Note, "Scratchpad", "One long note in its own window", () => { HidePanel(); _app.ShowScratchpad(); });
+        Row(Glyph.Apps, "Radial menu", "Your actions around the pointer", () => { HidePanel(); _app.ToggleRadial(); });
+        return Block(rows.ToArray());
+    }
+
+    string? _disk;
+
+    /// Linux's Disks: each disk, how full, eject, live reading and writing, since Muna started.
+    UIElement DisksPage()
+    {
+        var drives = System.IO.DriveInfo.GetDrives().Where(d => d.IsReady).ToList();
+        var shown = drives.FirstOrDefault(d => d.Name == _disk) ?? drives.FirstOrDefault();
+        var pills = Ui.Row(6);
+        foreach (var d in drives)
+        {
+            var name = d.Name;
+            pills.Children.Add(Ui.Pill(d.Name.TrimEnd('\\'), () => { _disk = name; Render(); }, active: d.Name == shown?.Name));
+        }
+        var column = Ui.Column(10, pills);
+        if (shown is not null)
+        {
+            var removable = shown.DriveType is System.IO.DriveType.Removable or System.IO.DriveType.CDRom;
+            var actions = Ui.Row(6, Ui.Pill("Open", () => CapsuleViews.Launch(shown.RootDirectory.FullName)));
+            if (removable) actions.Children.Add(Ui.Pill("Eject", () => { QuickTools.EjectDisks(shown.Name); Render(); }));
+            actions.Children.Add(Ui.Spacer());
+            actions.Children.Add(Ui.Pill("Disk Management", () => CapsuleViews.Launch("diskmgmt.msc")));
+            var label = string.IsNullOrEmpty(shown.VolumeLabel) ? shown.Name : $"{shown.VolumeLabel} ({shown.Name.TrimEnd('\\')})";
+            column.Children.Add(Block(Meter(label, 1 - (double)shown.AvailableFreeSpace / Math.Max(1, shown.TotalSize), $"{Ui.SizeText(shown.AvailableFreeSpace)} free of {Ui.SizeText(shown.TotalSize)}"), actions));
+        }
+        var m = _app.Monitor;
+        column.Children.Add(Block(
+            Ui.Row(6, Ui.Icon(Glyph.Down, 11, C.Accent), Ui.Digits($"read {Speed(m.DiskReadPerSecond)}", 12), Ui.Spacer(), Ui.Icon(Glyph.Up, 11, C.Muna), Ui.Digits($"write {Speed(m.DiskWritePerSecond)}", 12)),
+            Graph(m.DiskHistory),
+            Ui.Text($"Since Muna started: {Ui.SizeText((long)m.DiskReadSinceStart)} read, {Ui.SizeText((long)m.DiskWrittenSinceStart)} written", 11, color: C.Secondary)));
+        return column;
+    }
+
+    /// Linux's Power: the charge and its history, the power drawn, the battery's health, busy programs.
+    UIElement PowerPage()
+    {
+        var battery = SystemMonitor.Battery();
+        var m = _app.Monitor;
+        var power = _app.Power;
+        power.Touch();
+        var column = Ui.Column(10);
+        if (battery.HasBattery)
+            column.Children.Add(Block(
+                Meter(battery.Charging ? "Battery · charging" : "Battery", battery.Percent / 100.0,
+                      $"{battery.Percent}%{(battery.MinutesLeft > 0 && !battery.Charging ? $" · {battery.MinutesLeft / 60} h {battery.MinutesLeft % 60} min" : "")}"),
+                Graph(power.History, 1),
+                Ui.Row(6, Ui.Text(m.PowerWatts is { } w ? $"Drawing {w:0.0} W" : "", 11, color: C.Secondary).Grow(), Ui.Text(battery.Charging ? "On the adapter" : "", 11, color: C.Secondary))));
+        else column.Children.Add(Block(Ui.Text("This computer has no battery.", 12, color: C.Secondary)));
+        if (power.HealthPercent is { } health)
+            column.Children.Add(Block(Meter("Battery health", health / 100.0, $"{health}%"),
+                Ui.Text($"{(power.Cycles is { } c ? $"{c} cycles · " : "")}designed for {power.DesignWh:0} Wh, holds {power.FullWh:0} Wh{(m.Temperature is { } t ? $" · {SystemMonitor.TemperatureText(t)}" : "")}", 11, color: C.Secondary)));
+        if (power.Busy.Count > 0)
+        {
+            var rows = new List<UIElement?> { Ui.Text("USING THE PROCESSOR", 10, FontWeights.Black, C.Caption) };
+            foreach (var (name, share) in power.Busy)
+                rows.Add(Ui.Row(6, Ui.Text(name, 12).Grow(), Ui.Digits($"{share * 100:0}%", 11, color: C.Secondary)));
+            column.Children.Add(Block(rows.ToArray()));
+        }
+        column.Children.Add(Ui.Row(6, Ui.Pill("Power settings", () => CapsuleViews.Launch("ms-settings:powersleep")), Ui.Pill("Battery use", () => CapsuleViews.Launch("ms-settings:batterysaver-usagedetails"))));
+        return column;
+    }
+
+    /// Linux's Input: the mouse and keyboard switches.
+    UIElement InputPage()
+    {
+        var rows = new List<UIElement?>();
+        foreach (var item in SystemSwitches.All.Where(x => x.Group == "Mouse and keyboard"))
+        {
+            var s = item;
+            rows.Add(Ui.Row(10, Ui.Icon(item.Glyph, 13, C.Secondary), Ui.Column(1, Ui.Semi(item.Title, 12), Ui.Text(item.Description, 10, color: C.Secondary, wrap: true)).Grow(),
+                DarkWindow.Toggle(SystemSwitches.Read(item), value => { SystemSwitches.Write(s, value); Render(); })));
+        }
+        rows.Add(Ui.Row(6, Ui.Pill("Mouse settings", () => CapsuleViews.Launch("ms-settings:mousetouchpad")), Ui.Pill("Touchpad", () => CapsuleViews.Launch("ms-settings:devices-touchpad")),
+                        Ui.Pill("Keyboard", () => CapsuleViews.Launch("ms-settings:typing"))));
+        return Block(rows.ToArray());
+    }
+
+    /// Linux's Desktops: the list with a click to switch, a new one, separate desktops for every monitor.
+    UIElement DesktopsPage()
+    {
+        var desktops = _app.Desktops;
+        var column = Ui.Column(10);
+        if (desktops.On)
+        {
+            foreach (var screen in Forms.Screen.AllScreens.OrderByDescending(x => x.Primary))
+            {
+                var id = screen.DeviceName;
+                var monitor = desktops.For(id);
+                var row = Ui.Row(4);
+                for (var i = 0; i < monitor.Count; i++)
+                {
+                    var desk = i;
+                    row.Children.Add(Ui.Pill($"Desktop {i + 1}", () => desktops.Switch(id, desk), active: i == monitor.Current));
+                }
+                row.Children.Add(Ui.IconButton(Glyph.Add, () => desktops.Add(id), tip: "Another desktop"));
+                if (monitor.Count > 1) row.Children.Add(Ui.IconButton(Glyph.Remove, () => desktops.RemoveLast(id), tip: "Remove the last desktop"));
+                column.Children.Add(Block(Ui.Text(screen.Primary ? "MAIN SCREEN" : "SCREEN", 10, FontWeights.Black, C.Caption), row));
+            }
+            column.Children.Add(Block(Ui.Pill("Send the window in front to the next desktop", () => { HidePanel(); desktops.MoveFront(1); })));
+        }
+        else
+        {
+            var (count, current) = VirtualDesktops.State();
+            var row = Ui.Row(4);
+            for (var i = 0; i < count; i++)
+            {
+                var desk = i;
+                row.Children.Add(Ui.Pill($"Desktop {i + 1}", () => { VirtualDesktops.SwitchTo(desk); Queue(); }, active: i == current));
+            }
+            row.Children.Add(Ui.IconButton(Glyph.Add, () => { VirtualDesktops.New(); Queue(); }, tip: "New desktop"));
+            column.Children.Add(Block(row, Ui.Row(6, Ui.Pill("Task view", VirtualDesktops.TaskView), Ui.Pill("Close this desktop", () => { Keys.Chord(0x11, 0x5B, 0x73); Queue(); }))));
+        }
+        var perMonitor = SystemSwitches.All.First(x => x.Id == "permonitor");
+        column.Children.Add(Block(Ui.Row(10, Ui.Column(1, Ui.Semi(perMonitor.Title, 12), Ui.Text(perMonitor.Description, 10, color: C.Secondary, wrap: true)).Grow(),
+            DarkWindow.Toggle(SystemSwitches.Read(perMonitor), value => { SystemSwitches.Write(perMonitor, value); Render(); }))));
+        return column;
     }
 
     readonly HashSet<string> _folded = new();
@@ -829,9 +1005,12 @@ public static class QuickTools
     public static void Screenshot() => CapsuleViews.Launch("ms-screenclip:");
 
     /// <summary>Ejects the removable drives and discs (Explorer's own "Eject"); how many.</summary>
-    public static int EjectDisks()
+    public static int EjectDisks(string? only = null)
     {
-        var drives = System.IO.DriveInfo.GetDrives().Where(d => d.DriveType is System.IO.DriveType.Removable or System.IO.DriveType.CDRom && d.IsReady).ToList();
+        // the drives excluded in Settings → Quick toggles stay (unless one is asked for by name)
+        var excluded = Preferences.Shared.Strings("eject-excluded");
+        var drives = System.IO.DriveInfo.GetDrives().Where(d => d.DriveType is System.IO.DriveType.Removable or System.IO.DriveType.CDRom && d.IsReady)
+            .Where(d => only is null ? !excluded.Contains(d.Name) : d.Name == only).ToList();
         if (drives.Count == 0 || Type.GetTypeFromProgID("Shell.Application") is not { } type) return 0;
         var count = 0;
         try

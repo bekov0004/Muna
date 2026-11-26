@@ -62,6 +62,54 @@ public sealed class Preferences
         Changed?.Invoke(key);
     }
 
+    // --- every other setting of Linux, by its key, with Linux's defaults --------------------------
+
+    public static readonly Dictionary<string, JsonNode?> LinuxDefaults = new()
+    {
+        ["collapsed-width-adjust"] = 0.0, ["butterfly-flap"] = true, ["butterfly-flap-every"] = 30.0,
+        ["gestures-swipe-open"] = true, ["gestures-swipe-close"] = true, ["gestures-invert"] = false, ["gestures-media-swipe"] = true,
+        ["gestures-middle-click"] = "none", ["fingerprint-agents"] = true, ["fingerprint-private"] = true,
+        ["activity-media"] = true, ["activity-timer"] = true, ["activity-calendar"] = true, ["activity-files"] = true, ["activity-downloads"] = true,
+        ["peek-media-seconds"] = 2.5, ["peek-files-seconds"] = 1.5, ["peek-calendar-seconds"] = 6.0,
+        ["album-corner-radius"] = 8.0, ["media-effect"] = "spectrum", ["colored-effects"] = true,
+        ["show-caps-lock"] = true, ["show-input-source"] = true, ["clipboard-click-pastes"] = false,
+        ["monitor-interval"] = 2.0, ["graph-scale"] = true, ["cleaning-visible"] = false, ["color-scheme"] = "dark",
+    };
+
+    public JsonNode? Value(string key) => _values[key] ?? (LinuxDefaults.TryGetValue(key, out var d) ? d : null);
+    public bool Bool(string key) { try { return Value(key)?.GetValue<bool>() ?? false; } catch { return false; } }
+    public double Number(string key) { try { return Value(key)?.GetValue<double>() ?? 0; } catch { return 0; } }
+    public string Text(string key) { try { return Value(key)?.GetValue<string>() ?? ""; } catch { return ""; } }
+
+    /// A list setting ("menu-hidden", "system-blocks" …); fallback when it was never set.
+    public List<string> Strings(string key, params string[] fallback) =>
+        (_values[key] as JsonArray)?.Select(n => n?.GetValue<string>()).OfType<string>().ToList() ?? fallback.ToList();
+
+    public void SetValue(string key, JsonNode? value)
+    {
+        if (value is null) { _values.Remove(key); _store.Save(_values); Changed?.Invoke(key); return; }
+        Set(key, value);
+    }
+
+    public void SetStrings(string key, IEnumerable<string> values) => Set(key, new JsonArray(values.Select(v => (JsonNode?)v).ToArray()));
+
+    /// A switch on one item of a list setting.
+    public bool Has(string key, string item) => Strings(key).Contains(item);
+    public void Toggle(string key, string item, bool inList)
+    {
+        var list = Strings(key).Where(x => x != item).ToList();
+        if (inList) list.Add(item);
+        SetStrings(key, list);
+    }
+
+    /// Settings → General → Reset all settings.
+    public void ResetAll()
+    {
+        _values.Clear();
+        _store.Save(_values);
+        Changed?.Invoke("*");
+    }
+
     // the capsule
     public bool OpenOnHover { get => Get("open-on-hover", true); set => Set("open-on-hover", value); }
     public bool AutoCollapse { get => Get("auto-collapse", true); set => Set("auto-collapse", value); }

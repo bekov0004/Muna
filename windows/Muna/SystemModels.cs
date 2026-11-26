@@ -35,10 +35,16 @@ public sealed class SystemMonitor : Model
     public double? Gpu { get; private set; }
     /// <summary>Bytes read and written per second on all disks.</summary>
     public double? DiskBytesPerSecond { get; private set; }
+    public double DiskReadPerSecond { get; private set; }
+    public double DiskWritePerSecond { get; private set; }
+    public List<double> DiskHistory { get; } = new();
+    /// Bytes read and written since Muna started (the rates added up between samples).
+    public double DiskReadSinceStart { get; private set; }
+    public double DiskWrittenSinceStart { get; private set; }
     /// <summary>Watts the battery gives (discharging) or takes, null when unknown.</summary>
     public double? PowerWatts { get; private set; }
     public List<double> TemperatureHistory { get; } = new();
-    DateTime _extrasAt;
+    DateTime _extrasAt, _diskAt;
     bool _extrasBusy;
     public string Address { get; private set; } = "";
     long _idle, _kernel, _user, _received, _sent;
@@ -91,7 +97,16 @@ public sealed class SystemMonitor : Model
         {
             _extrasBusy = false;
             if (t.IsFaulted) return;
-            (Temperature, Gpu, DiskBytesPerSecond, PowerWatts) = t.Result;
+            var (temperature, gpu, disk, watts) = t.Result;
+            (Temperature, Gpu, PowerWatts) = (temperature, gpu, watts);
+            if (disk is { } d)
+            {
+                var seconds = Math.Max(1, (DateTime.Now - _diskAt).TotalSeconds);
+                if (_diskAt != default) { DiskReadSinceStart += d.Read * seconds; DiskWrittenSinceStart += d.Write * seconds; }
+                _diskAt = DateTime.Now;
+                (DiskReadPerSecond, DiskWritePerSecond, DiskBytesPerSecond) = (d.Read, d.Write, d.Read + d.Write);
+                Push(DiskHistory, d.Read + d.Write);
+            }
             if (Temperature is { } c) Push(TemperatureHistory, c);
         }));
     }
@@ -194,15 +209,31 @@ static class Wmi
         catch { return null; }
     }
 
-    public static double? DiskBytes()
+    /// Bytes read and written per second on all disks.
+    public static (double Read, double Write)? DiskBytes()
     {
         try
         {
-            foreach (var o in Query(@"root\cimv2", "SELECT DiskBytesPersec FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk WHERE Name='_Total'"))
-                return Convert.ToDouble(o["DiskBytesPersec"]);
+            foreach (var o in Query(@"root\cimv2", "SELECT DiskReadBytesPersec, DiskWriteBytesPersec FROM Win32_PerfFormattedData_PerfDisk_PhysicalDisk WHERE Name='_Total'"))
+                return (Convert.ToDouble(o["DiskReadBytesPersec"]), Convert.ToDouble(o["DiskWriteBytesPersec"]));
         }
         catch { /* no counters */ }
         return null;
+    }
+
+    /// The battery's designed and full capacity (mWh) and its cycles (root\WMI's battery classes).
+    public static (double Design, double Full, int? Cycles)? BatteryHealth()
+    {
+        try
+        {
+            double design = 0, full = 0;
+            int? cycles = null;
+            foreach (var o in Query(@"root\WMI", "SELECT DesignedCapacity FROM BatteryStaticData")) design = Convert.ToDouble(o["DesignedCapacity"]);
+            foreach (var o in Query(@"root\WMI", "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity")) full = Convert.ToDouble(o["FullChargedCapacity"]);
+            try { foreach (var o in Query(@"root\WMI", "SELECT CycleCount FROM BatteryCycleCount")) cycles = Convert.ToInt32(o["CycleCount"]); } catch { }
+            return design > 0 && full > 0 ? (design, full, cycles) : null;
+        }
+        catch { return null; }
     }
 
     public static double? PowerWatts()
@@ -219,6 +250,88 @@ static class Wmi
         }
         catch { /* not allowed or no battery */ }
         return null;
+    }
+}
+
+/// <summary>Linux's Power tab: the charge's history, the battery's health, the programs that keep the
+/// processor busy. Read every 5 seconds while the tab is shown.</summary>
+public sealed class PowerModel : Model
+{
+    public List<double> History { get; } = new();
+    public int? HealthPercent { get; private set; }
+    public int? Cycles { get; private set; }
+    public double DesignWh { get; private set; }
+    public double FullWh { get; private set; }
+    public List<(string Name, double Share)> Busy { get; private set; } = new();
+    readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(5) };
+    Dictionary<int, TimeSpan> _cpu = new();
+    DateTime _cpuAt;
+    DateTime _wanted;
+
+    public PowerModel()
+    {
+        _timer.Tick += (_, _) =>
+        {
+            if ((DateTime.Now - _wanted).TotalSeconds > 30) { _timer.Stop(); return; }
+            Sample();
+        };
+        // the charge's history runs all the time (one point a minute)
+        var history = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+        history.Tick += (_, _) =>
+        {
+            var b = SystemMonitor.Battery();
+            if (!b.HasBattery) return;
+            History.Add(b.Percent / 100.0);
+            if (History.Count > 120) History.RemoveAt(0);
+        };
+        history.Start();
+    }
+
+    /// The tab is shown: keep reading for a while.
+    public void Touch()
+    {
+        _wanted = DateTime.Now;
+        if (_timer.IsEnabled) return;
+        _timer.Start();
+        Sample();
+    }
+
+    void Sample()
+    {
+        Task.Run(() =>
+        {
+            var health = Wmi.BatteryHealth();
+            var now = DateTime.Now;
+            var times = new Dictionary<int, (string, TimeSpan)>();
+            foreach (var process in Process.GetProcesses())
+            {
+                try { times[process.Id] = (process.ProcessName, process.TotalProcessorTime); } catch { }
+                process.Dispose();
+            }
+            return (health, now, times);
+        }).ContinueWith(t => Ui(() =>
+        {
+            if (t.IsFaulted) return;
+            var (health, now, times) = t.Result;
+            if (health is { } h)
+            {
+                HealthPercent = (int)Math.Min(100, Math.Round(h.Full * 100 / h.Design));
+                Cycles = h.Cycles;
+                (DesignWh, FullWh) = (h.Design / 1000, h.Full / 1000);
+            }
+            if (_cpuAt != default)
+            {
+                var span = (now - _cpuAt).TotalMilliseconds * Environment.ProcessorCount;
+                Busy = times.Where(p => _cpu.ContainsKey(p.Key))
+                    .GroupBy(p => p.Value.Item1)
+                    .Select(g => (g.Key, g.Sum(p => (p.Value.Item2 - _cpu[p.Key]).TotalMilliseconds) / Math.Max(1, span)))
+                    .Where(x => x.Item2 >= 0.01).OrderByDescending(x => x.Item2).Take(5).ToList();
+            }
+            _cpu = times.ToDictionary(p => p.Key, p => p.Value.Item2);
+            _cpuAt = now;
+            if (History.Count == 0 && SystemMonitor.Battery() is { HasBattery: true } b) History.Add(b.Percent / 100.0);
+            Notify();
+        }));
     }
 }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
 
@@ -10,6 +11,9 @@ namespace Muna;
 public sealed class SoundModel : Model
 {
     public sealed record Output(string Id, string Name);
+    /// One app's sound (a session of the default output): its name, process, volume and mute.
+    public sealed record AppSound(int ProcessId, string Name, double Volume, bool Muted);
+    public List<AppSound> Apps { get; private set; } = new();
 
     public double Volume { get; private set; }
     public bool Muted { get; private set; }
@@ -52,6 +56,7 @@ public sealed class SoundModel : Model
             }
             else HasMicrophone = false;
             Outputs = Devices(enumerator);
+            Apps = Sessions(enumerator);
             DefaultOutput = DefaultId(enumerator, 0) ?? "";
         }
         catch { /* no audio service */ }
@@ -93,12 +98,77 @@ public sealed class SoundModel : Model
 
     /// <summary>Makes a device the default output (for every role).</summary>
     /// <summary>The next sound output (the radial menu and the gestures' "next output").</summary>
+    /// The sessions of the default output (Windows' volume mixer: one per app that plays).
+    static List<AppSound> Sessions(IMMDeviceEnumerator enumerator)
+    {
+        var list = new List<AppSound>();
+        foreach (var (pid, volume) in SessionVolumes(enumerator))
+        {
+            volume.GetMasterVolume(out var level);
+            volume.GetMute(out var mute);
+            string name;
+            try { name = pid == 0 ? "System sounds" : System.Diagnostics.Process.GetProcessById(pid).ProcessName; }
+            catch { continue; }
+            if (list.Any(a => a.ProcessId == pid)) continue;
+            list.Add(new AppSound(pid, pid == 0 ? "System sounds" : char.ToUpperInvariant(name[0]) + name[1..], level, mute));
+        }
+        return list;
+    }
+
+    static IEnumerable<(int Pid, ISimpleAudioVolume Volume)> SessionVolumes(IMMDeviceEnumerator enumerator)
+    {
+        if (enumerator.GetDefaultAudioEndpoint(0, 1, out var device) != 0) yield break;
+        var iid = typeof(IAudioSessionManager2).GUID;
+        if (device.Activate(ref iid, 23, IntPtr.Zero, out var managerObject) != 0) yield break;
+        var manager = (IAudioSessionManager2)managerObject;
+        if (manager.GetSessionEnumerator(out var sessions) != 0) yield break;
+        sessions.GetCount(out var count);
+        for (var i = 0; i < count; i++)
+        {
+            if (sessions.GetSession(i, out var control) != 0) continue;
+            var control2 = (IAudioSessionControl2)control;
+            control2.GetState(out var state);
+            if (state == 2) continue;   // expired
+            control2.GetProcessId(out var pid);
+            yield return ((int)pid, (ISimpleAudioVolume)control);
+        }
+    }
+
+    public void SetAppVolume(AppSound app, double value)
+    {
+        try
+        {
+            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            var context = Guid.Empty;
+            foreach (var (pid, volume) in SessionVolumes(enumerator))
+                if (pid == app.ProcessId) volume.SetMasterVolume((float)Math.Clamp(value, 0, 1), ref context);
+        }
+        catch { /* the app stopped */ }
+        Refresh();
+    }
+
+    public void ToggleAppMute(AppSound app)
+    {
+        try
+        {
+            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
+            var context = Guid.Empty;
+            foreach (var (pid, volume) in SessionVolumes(enumerator))
+                if (pid == app.ProcessId) volume.SetMute(!app.Muted, ref context);
+        }
+        catch { /* the app stopped */ }
+        Refresh();
+    }
+
     public void NextOutput()
     {
         if (Outputs.Count == 0) Refresh();
-        if (Outputs.Count < 2) return;
-        var index = Outputs.FindIndex(o => o.Id == DefaultOutput);
-        SelectOutput(Outputs[(index + 1) % Outputs.Count].Id);
+        // the outputs switched off in Settings → Output switcher are skipped
+        var skipped = Preferences.Shared.Strings("output-skipped");
+        var cycle = Outputs.Where(o => !skipped.Contains(o.Name) || o.Id == DefaultOutput).ToList();
+        if (cycle.Count < 2) return;
+        var index = cycle.FindIndex(o => o.Id == DefaultOutput);
+        SelectOutput(cycle[(index + 1) % cycle.Count].Id);
     }
 
     public void SelectOutput(string id)
@@ -150,6 +220,53 @@ public sealed class SoundModel : Model
     // --- Core Audio COM -----------------------------------------------------------------------------
 
     [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator { }
+
+    [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionManager2
+    {
+        [PreserveSig] int GetAudioSessionControl(IntPtr guid, int flags, out IntPtr control);
+        [PreserveSig] int GetSimpleAudioVolume(IntPtr guid, int flags, out IntPtr volume);
+        [PreserveSig] int GetSessionEnumerator(out IAudioSessionEnumerator sessions);
+    }
+
+    [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionEnumerator
+    {
+        [PreserveSig] int GetCount(out int count);
+        [PreserveSig] int GetSession(int index, out IAudioSessionControl session);
+    }
+
+    [ComImport, Guid("F4B1A599-7266-4319-A8CA-E70ACB11E8CD"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionControl
+    {
+        [PreserveSig] int GetState(out int state);
+    }
+
+    [ComImport, Guid("bfb7ff88-7239-4fc9-8fa2-07c950be9c6d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionControl2
+    {
+        [PreserveSig] int GetState(out int state);
+        [PreserveSig] int GetDisplayName([MarshalAs(UnmanagedType.LPWStr)] out string name);
+        [PreserveSig] int SetDisplayName([MarshalAs(UnmanagedType.LPWStr)] string name, ref Guid context);
+        [PreserveSig] int GetIconPath([MarshalAs(UnmanagedType.LPWStr)] out string path);
+        [PreserveSig] int SetIconPath([MarshalAs(UnmanagedType.LPWStr)] string path, ref Guid context);
+        [PreserveSig] int GetGroupingParam(out Guid grouping);
+        [PreserveSig] int SetGroupingParam(ref Guid grouping, ref Guid context);
+        [PreserveSig] int RegisterAudioSessionNotification(IntPtr notify);
+        [PreserveSig] int UnregisterAudioSessionNotification(IntPtr notify);
+        [PreserveSig] int GetSessionIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        [PreserveSig] int GetSessionInstanceIdentifier([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        [PreserveSig] int GetProcessId(out uint pid);
+    }
+
+    [ComImport, Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface ISimpleAudioVolume
+    {
+        [PreserveSig] int SetMasterVolume(float level, ref Guid context);
+        [PreserveSig] int GetMasterVolume(out float level);
+        [PreserveSig] int SetMute(bool mute, ref Guid context);
+        [PreserveSig] int GetMute(out bool mute);
+    }
     [ComImport, Guid("870af99c-171d-4f9e-af0d-e63df40c2bc9")] class PolicyConfigClient { }
 
     [StructLayout(LayoutKind.Sequential)] struct PropertyKey { public Guid fmtid; public int pid; }

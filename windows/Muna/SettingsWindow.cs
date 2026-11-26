@@ -15,27 +15,66 @@ namespace Muna;
 /// the pages).</summary>
 public sealed class SettingsWindow : DarkWindow
 {
+    // The pages of Linux's settings window (linux/prefsWindow.js), section for section.
     static readonly (string Id, string Title, string Glyph, string About, string Group)[] Pages =
     {
-        ("general", "General", Glyph.Settings, "How the capsule opens and closes, where it shows, what tells you things, open at login.", "Dynamic Island"),
-        ("appearance", "Appearance", Glyph.Brightness, "The capsule's size, shape, colour and shadow.", "Dynamic Island"),
-        ("activities", "Live Activities", Glyph.Play, "What the closed capsule shows while something is going on, and for how long.", "Dynamic Island"),
-        ("widgets", "Widgets", Glyph.Apps, "The widgets of the Muna section: which, in what order, how wide.", "Dynamic Island"),
-        ("gestures", "Touchpad gestures", Glyph.Gesture, "Three and four fingers, pinches, resting the fingers, and one finger along the touchpad's edges.", "Dynamic Island"),
-        ("calendar", "Calendar", Glyph.Calendar, "The calendars the Calendar widget shows.", "Widgets"),
-        ("phone", "Phone", Glyph.Phone, "An Android phone on the computer: its screen, touches, keys and typing; pairing over Wi-Fi; Muna Phone.", "Widgets"),
-        ("bars", "Readings and bars", Glyph.Cpu, "Readings of the computer, when to warn you, the Muna bar across the top of monitors, the taskbar, desktops.", "System"),
-        ("keys", "Keys and radial menu", Glyph.Keyboard, "The keyboard shortcuts, and the actions around the radial menu.", "System"),
-        ("tools", "Tools", Glyph.Broom, "Keep awake, reminders, the scratchpad, cleaning mode and the quick toggles.", "System"),
-        ("agents", "AI agents", Glyph.Sparkle, "Claude Code and Codex: tasks, their questions in the capsule, their use.", "System"),
-        ("privacy", "Windows Hello", Glyph.Fingerprint, "Private notes and clipboard items open with your face, finger or PIN.", "System"),
+        ("general", "General", Glyph.Settings, "Size, shortcuts and where Muna is shown.", "Essentials"),
+        ("tools", "Menu bar", Glyph.Window, "Click Muna's icon in the notification area to open the window. Its tabs appear in this order.", "Essentials"),
+        ("touchpad", "Touchpad gestures", Glyph.Gesture, "Three and four fingers on the touchpad do what you choose here, anywhere: switch apps, desktops, windows, sound, tabs, Muna, or any keys.", "Essentials"),
+        ("fingerprint", "Fingerprint", Glyph.Fingerprint, "Windows Hello (face, finger or PIN): allow Claude's questions, open private notes and clipboard items.", "Essentials"),
+        ("monitor", "Monitor", Glyph.Cpu, "What the notification area, the Muna bar and the panel show about this computer, and when to warn you.", "Essentials"),
+        ("features", "Overview", Glyph.Apps, "Everything Muna can do, by topic. Each line says where it appears: in the window of Muna's icon, or in the capsule (the island).", "Features"),
+        ("feat-media", "Music and media", Glyph.Music, "The player, the lyrics, the colours of the album art, the sound and the mirror.", "Features"),
+        ("feat-system", "System", Glyph.Monitor, "The processor, the network, the disks, the battery, the monitors, staying awake, and the warnings about them.", "Features"),
+        ("feat-windows", "Windows and desktops", Glyph.Window, "Windows, desktops, the switches for them, the mouse and the keyboard, and the touchpad.", "Features"),
+        ("feat-work", "Work", Glyph.Checklist, "Focus, timer, to-do, notes, reminders, shortcuts, the calendar and the AI agents.", "Features"),
+        ("feat-files", "Files and sharing", Glyph.Folder, "The tray, downloads, the clipboard, LocalSend and the phone.", "Features"),
+        ("feat-capsule", "Capsule", Glyph.Sparkle, "What the capsule shows on its own (Live Activities, cards), how it opens and closes, and the companion.", "Features"),
+        ("command", "Command Bar", Glyph.Search, "", "Utilities"),
+        ("quickpanel", "Quick panel", Glyph.Sparkle, "", "Utilities"),
+        ("toggles", "Quick toggles", Glyph.Sliders, "", "Utilities"),
+        ("cleaning", "Cleaning Mode", Glyph.Keyboard, "", "Utilities"),
+        ("screenshot", "Screenshot", Glyph.Screenshot, "", "Utilities"),
+        ("phone", "Phone", Glyph.Phone, "", "Utilities"),
+        ("camera", "Camera preview", Glyph.Camera, "", "Utilities"),
+        ("scratchpad", "Scratchpad", Glyph.Note, "", "Utilities"),
+        ("color", "Color picker", Glyph.Eyedropper, "", "Utilities"),
+        ("radial", "Radial menu", Glyph.Apps, "", "Utilities"),
+        ("sound", "Volume mixer", Glyph.Volume, "", "Sound"),
+        ("output", "Output switcher", Glyph.Volume, "", "Sound"),
+        ("mic", "Mute microphone", Glyph.Microphone, "", "Sound"),
+        ("muna", "Widgets", Glyph.Apps, "Choose the widgets of the capsule (the island), their order and their width.", "Dynamic Island"),
+        ("appearance", "Appearance", Glyph.Brightness, "The look of the capsule and the Muna bar.", "Dynamic Island"),
+        ("gestures", "Gestures", Glyph.Gesture, "How the capsule opens, closes and reacts to the pointer and the touchpad.", "Dynamic Island"),
+        ("activities", "Live Activities", Glyph.Play, "What the capsule shows while something is going on, and for how long.", "Dynamic Island"),
+        ("tray", "Tray", Glyph.Tray, "The file shelf: drag files to the top of the screen to keep them there.", "Tabs"),
+        ("clipboard", "Clipboard", Glyph.Clipboard, "The history of what you copy, and how it behaves.", "Tabs"),
         ("localsend", "LocalSend", Glyph.Wifi, "Sending files to other computers and phones, and receiving them.", "Tabs"),
-        ("clipboard", "Clipboard and Tray", Glyph.Clipboard, "What is kept of what you copy, and of the Tray.", "Tabs"),
         ("snippets", "Snippets", Glyph.Edit, "Texts you use often: type ;trigger in the Command Bar (Alt+Space), Enter copies the text.", "Tabs"),
-        ("about", "About", Glyph.Info, "Muna for Windows.", "Muna"),
+        ("about", "About", Glyph.Info, "", "Muna"),
     };
 
+    /// What the blue "Try it" button of a page does (as on Linux).
+    static readonly Dictionary<string, string> TryIt = new()
+    {
+        ["command"] = "command", ["quickpanel"] = "quickpanel", ["toggles"] = "dark", ["cleaning"] = "cleaning", ["screenshot"] = "screenshot",
+        ["color"] = "color", ["mic"] = "mic", ["radial"] = "radial", ["output"] = "output", ["sound"] = "quickpanel:sound", ["tools"] = "quickpanel",
+    };
+
+    readonly List<string> _back = new(), _forward = new();
+
+    void Go(string page)
+    {
+        if (page == _page) return;
+        _back.Add(_page);
+        _forward.Clear();
+        _page = page;
+        Render();
+    }
+
     readonly TextBox _search = Input();
+    readonly TextBox _reminderText = Input();
+    readonly TextBox _reminderTime = Input();
 
     readonly AppState _app;
     readonly Preferences _p = Preferences.Shared;
@@ -91,28 +130,57 @@ public sealed class SettingsWindow : DarkWindow
             var on = id == _page;
             var page = id;
             side.Children.Add(Ui.Box(Ui.Row(10, Ui.Icon(glyph, 13, on ? Brushes.White : C.WinSecondary), Ui.Text(title, 13, color: on ? Brushes.White : C.WinText)),
-                                     on ? C.WinAccent : C.Clear, 8, 10, 6).OnClick(() => { _page = page; Render(); }, on ? null : C.White(0.06)));
+                                     on ? C.WinAccent : C.Clear, 8, 10, 6).OnClick(() => { _search.Text = ""; Go(page); }, on ? null : C.White(0.06)));
         }
         var info = Pages.First(p => p.Id == _page);
-        var content = Ui.Column(18, Ui.Column(4, Ui.Bold(info.Title, 22, C.WinText), Ui.Text(info.About, 12, color: C.WinSecondary, wrap: true)));
-        foreach (var block in _page switch
+        var searching = query.Length > 0;
+        var head = Ui.Row(10,
+            Ui.Box(Ui.Icon(Glyph.Back, 11, _back.Count > 0 ? C.WinText : C.WinSecondary), C.White(0.07), 13).Size(30, 26).OnClick(() =>
+            {
+                if (_back.Count == 0) return;
+                _forward.Add(_page); _page = _back[^1]; _back.RemoveAt(_back.Count - 1); Render();
+            }),
+            Ui.Box(Ui.Icon(Glyph.Forward, 11, _forward.Count > 0 ? C.WinText : C.WinSecondary), C.White(0.07), 13).Size(30, 26).OnClick(() =>
+            {
+                if (_forward.Count == 0) return;
+                _back.Add(_page); _page = _forward[^1]; _forward.RemoveAt(_forward.Count - 1); Render();
+            }),
+            Ui.Bold(searching ? "Search" : info.Title, 20, C.WinText).Grow());
+        if (!searching && TryIt.TryGetValue(_page, out var action)) head.Children.Add(Button("▶  Try it", () => _app.Perform(action), accent: true));
+        var content = Ui.Column(18, head);
+        if (!searching && info.About.Length > 0) content.Children.Add(Ui.Text(info.About, 12, color: C.WinSecondary, wrap: true));
+        foreach (var block in searching ? FeatureList(Features.All(_app)) : _page switch
         {
             "general" => General(),
-            "appearance" => Appearance(),
-            "bars" => Bars(),
-            "gestures" => Gestures(),
-            "activities" => Activities(),
+            "tools" => MenuBarPage(),
+            "touchpad" => Gestures(),
+            "fingerprint" => PrivacyPage(),
+            "monitor" => Monitor(),
+            "features" => FeaturesOverview(),
+            "command" => CommandPage(),
+            "quickpanel" => QuickPanelPage(),
+            "toggles" => TogglesPage(),
+            "cleaning" => CleaningPage(),
+            "screenshot" => ScreenshotPage(),
             "phone" => PhonePage(),
-            "keys" => KeysPage(),
-            "tools" => ToolsPage(),
-            "agents" => AgentsPage(),
-            "privacy" => PrivacyPage(),
-            "widgets" => Widgets(),
-            "calendar" => Calendar(),
-            "localsend" => LocalSendPage(),
+            "camera" => CameraPage(),
+            "scratchpad" => ScratchpadPage(),
+            "color" => ColorPage(),
+            "radial" => RadialPage(),
+            "sound" => MixerPage(),
+            "output" => OutputPage(),
+            "mic" => MicPage(),
+            "muna" => Widgets().Concat(Calendar()),
+            "appearance" => Appearance(),
+            "gestures" => CapsuleGestures(),
+            "activities" => Activities(),
+            "tray" => TrayPage(),
             "clipboard" => ClipboardPage(),
+            "localsend" => LocalSendPage(),
             "snippets" => Snippets(),
-            _ => About(),
+            "about" => About(),
+            var topic when topic.StartsWith("feat-") => FeatureList(Features.All(_app).Where(f => f.Topic == topic)),
+            _ => General(),
         }) content.Children.Add(block);
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(230) });
@@ -139,38 +207,298 @@ public sealed class SettingsWindow : DarkWindow
 
     IEnumerable<UIElement> General()
     {
-        yield return Card("The capsule",
-            Switch("Open on hover", "Off: the capsule opens on a click only.", _p.OpenOnHover, v => _p.OpenOnHover = v),
-            Switch("Collapse when the pointer leaves", "Off: it stays open until you click somewhere else.", _p.AutoCollapse, v => _p.AutoCollapse = v),
-            SliderRow("Open after", $"{_p.OpenDelay:0.00} s", 0, 1, _p.OpenDelay, v => _p.OpenDelay = Math.Round(v, 2)),
-            SliderRow("Close after", $"{_p.CloseDelay:0.00} s", 0, 2, _p.CloseDelay, v => _p.CloseDelay = Math.Round(v, 2)),
-            Switch("Butterfly in the capsule", "Off: a small dark circle, like a camera.", _p.CapsuleButterfly, v => _p.CapsuleButterfly = v),
-            Switch("Step aside for full-screen apps", "Games, videos and presentations hide the capsule.", _p.HideInFullscreen, v => _p.HideInFullscreen = v),
+        foreach (var card in TopBar()) yield return card;
+        yield return Card("Muna",
+            Switch("Open on hover", "Off: the capsule opens on click only.", _p.OpenOnHover, v => _p.OpenOnHover = v),
+            Switch("Collapse when the pointer leaves", "Off: it stays open until you close it.", _p.AutoCollapse, v => _p.AutoCollapse = v),
+            SliderRow("Collapsed width", $"{(int)_p.Number("collapsed-width-adjust")} px · fine tune the width of the collapsed capsule", -60, 120, _p.Number("collapsed-width-adjust"),
+                      v => _p.SetValue("collapsed-width-adjust", Math.Round(v / 2) * 2), 2),
+            SliderRow("Animation speed", $"{_p.AnimationSpeed:0.00}× · how fast the capsule grows and shrinks", 0.25, 4, _p.AnimationSpeed, v => _p.AnimationSpeed = Math.Round(v, 2), 0.25),
+            SliderRow("Open after", $"{(int)(_p.OpenDelay * 1000)} ms the pointer rests on the capsule before it opens", 0, 1000, _p.OpenDelay * 1000, v => _p.OpenDelay = Math.Round(v / 25) * 25 / 1000, 25),
+            SliderRow("Close after", $"{(int)(_p.CloseDelay * 1000)} ms it stays open after the pointer left it", 0, 2000, _p.CloseDelay * 1000, v => _p.CloseDelay = Math.Round(v / 50) * 50 / 1000, 50),
+            Switch("Step aside for full-screen apps", "Games, videos and presentations hide the capsule.", _p.HideInFullscreen, v => _p.HideInFullscreen = v));
+        yield return Card("Show on",
             Setting("Screens", "Which monitors have a capsule.", Choice(new[] { "Every screen", "The main screen" }, _p.CapsuleScreens == "main" ? 1 : 0, i => _p.CapsuleScreens = i == 1 ? "main" : "all")));
+        yield return Card("Shortcuts",
+            Switch("Command Bar: Alt+Space", null, _p.CommandHotKey, v => _p.CommandHotKey = v),
+            Switch("Radial menu: Ctrl+Alt+Space", null, _p.RadialHotKey, v => _p.RadialHotKey = v),
+            Switch("Muna, Tray, LocalSend, Clipboard, Alerts: Ctrl+Alt+1 … 5", "Each opens the capsule on its own tab, from anywhere.", _p.SectionHotKeys, v => _p.SectionHotKeys = v));
+        yield return Card("LocalSend",
+            Switch("Receive files", _app.LocalSend.ReceiveProblem ?? "Other computers and phones on this network can send you files; you accept every sending.", _p.LocalSendReceive, v => _p.LocalSendReceive = v),
+            Setting("Save received files in", _p.ReceiveFolder, Button("Choose…", () =>
+            {
+                var dialog = new Microsoft.Win32.OpenFolderDialog { InitialDirectory = _p.ReceiveFolder };
+                if (dialog.ShowDialog(this) == true) _p.LocalSendFolder = dialog.FolderName;
+            })));
         yield return Card("Alerts",
             Switch("Other apps' notifications", _app.Notifications.Problem ?? "What apps tell you shows in the Alerts section too; a click opens the app. Muna reads Windows' notification list on this computer, nothing is sent anywhere.", _p.AppNotifications, v => _p.AppNotifications = v),
-            Switch("System alerts", "Cards for a busy processor, heat, a full disk or memory and a low battery.", _p.SystemAlerts, v => _p.SystemAlerts = v),
             Setting("Do not disturb", "Windows' own setting: which apps may show notifications.", Button("Open", () => CapsuleViews.Launch("ms-settings:notifications"))));
-        yield return Card("System",
+        yield return Card("Start",
             Switch("Open at login", "Muna starts when you sign in.", AutoStart.Enabled, v => { try { AutoStart.Enabled = v; } catch { } Render(); }));
+        yield return Card("Feedback",
+            Setting("Send feedback", "Send a bug report or a feature idea directly to the person who maintains Muna.", Button("Send feedback", () => CapsuleViews.Launch("https://github.com/bekov0004/Muna/issues/new"))));
+        yield return Card(null,
+            Setting("Reset all settings", "Every setting goes back to Muna's default. Your notes, to-dos and files stay.", Button("Reset all settings", _p.ResetAll)));
+    }
+
+    IEnumerable<UIElement> MenuBarPage()
+    {
+        var order = QuickPanel.Ordered(_p.Strings("menu-order"));
+        var rows = new List<UIElement>();
+        for (var i = 0; i < order.Count; i++)
+        {
+            var (id, title, glyph, about) = order[i];
+            var index = i;
+            rows.Add(new Border
+            {
+                Child = Ui.Row(10, Ui.Icon(glyph, 14, C.WinAccent).Size(22), Ui.Column(2, Ui.Text(title, 13, color: C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true)).Grow(),
+                    Ui.IconButton(Glyph.Up, () => MoveTab(order, index, -1), tip: "Earlier"), Ui.IconButton(Glyph.Down, () => MoveTab(order, index, 1), tip: "Later"),
+                    Toggle(!_p.Has("menu-hidden", id), on => _p.Toggle("menu-hidden", id, !on))),
+                Padding = new Thickness(14, 8, 14, 8),
+            });
+        }
+        yield return Card("Tabs of the window", rows.ToArray());
+        yield return Ui.Text("Switch off anything you do not need; the arrows change the order.", 11, color: C.WinSecondary, wrap: true);
+    }
+
+    void MoveTab(List<(string Id, string Title, string Glyph, string About)> order, int index, int step)
+    {
+        var ids = order.Select(o => o.Id).ToList();
+        var target = index + step;
+        if (target < 0 || target >= ids.Count) return;
+        (ids[index], ids[target]) = (ids[target], ids[index]);
+        _p.SetStrings("menu-order", ids);
+    }
+
+    IEnumerable<UIElement> CommandPage()
+    {
+        yield return Card("Command Bar",
+            Setting("Open the search now", "One shortcut (Alt+Space) opens a field over whatever you are doing. Type a few letters, press Enter and it happens. Nothing you type is saved.",
+                    Button("Try", () => _app.Perform("command"))),
+            Switch("Shortcut Alt+Space", null, _p.CommandHotKey, v => _p.CommandHotKey = v));
+        yield return Card("Other shortcuts",
+            Setting("Open the capsule", "Ctrl+Alt+1", Button("Open", () => _app.Perform("capsule:Muna"))),
+            Setting("File shelf", "Ctrl+Alt+2", Button("Open", () => _app.Perform("capsule:Tray"))),
+            Setting("LocalSend", "Ctrl+Alt+3", Button("Open", () => _app.Perform("capsule:LocalSend"))),
+            Setting("Clipboard history", "Ctrl+Alt+4", Button("Open", () => _app.Perform("capsule:Clipboard"))),
+            Setting("Alerts", "Ctrl+Alt+5", Button("Open", () => _app.Perform("capsule:Alerts"))),
+            Switch("These shortcuts", "Each opens the capsule on its own tab, from anywhere.", _p.SectionHotKeys, v => _p.SectionHotKeys = v));
+    }
+
+    IEnumerable<UIElement> QuickPanelPage()
+    {
+        yield return Card("Quick panel",
+            Setting("Open quick panel", "The window of Muna's icon with your favourite tools.", Button("Open", () => _app.Perform("quickpanel"))),
+            Setting("Its tabs", "Choose, hide and order them in Essentials → Menu bar.", Button("Menu bar", () => Go("tools"))));
+    }
+
+    IEnumerable<UIElement> TogglesPage()
+    {
+        var night = SystemSwitches.NightLight;
+        yield return Card("Quick toggles",
+            Setting("Switch dark mode", "Apps and Windows between light and dark.", Button("Switch", () => _app.Perform("dark"))),
+            Switch("Night light", "Warmer colours at night.", night ?? false, on => { if (!SystemSwitches.SetNightLight(on)) CapsuleViews.Launch("ms-settings:nightlight"); Render(); }));
+        var drives = System.IO.DriveInfo.GetDrives().Where(d => d.DriveType is System.IO.DriveType.Removable or System.IO.DriveType.CDRom && d.IsReady).ToList();
+        var rows = drives.Select(d => Switch($"{d.Name} {d.VolumeLabel}", "Never ejected by Eject disks.", _p.Has("eject-excluded", d.Name), on => _p.Toggle("eject-excluded", d.Name, on))).ToList();
+        if (rows.Count == 0) rows.Add(Ui.Text("No drives are connected.", 12, color: C.WinSecondary).Margin(14, 10, 14, 10));
+        yield return Card("Excluded drives", rows.ToArray());
+        yield return Ui.Text("One-click system actions in the quick panel (Quick toggles) and in the radial menu.", 11, color: C.WinSecondary, wrap: true);
+    }
+
+    IEnumerable<UIElement> CleaningPage()
+    {
+        yield return Card("Cleaning Mode",
+            Setting("Lock keyboard now", "Locks the keyboard and the pointer so you can clean safely. Hold Esc for 3 seconds to finish; it ends by itself after a minute.", Button("Lock", () => _app.Perform("cleaning"))),
+            Switch("Keep screen visible", "Shows a discreet indicator in the corner of the screen instead of blacking out the content.", _p.Bool("cleaning-visible"), v => _p.SetValue("cleaning-visible", v)));
+    }
+
+    IEnumerable<UIElement> ScreenshotPage()
+    {
+        yield return Card("Screenshot",
+            Setting("Take a screenshot", "A part of the screen or a window, copied.", Button("Take", () => _app.Perform("screenshot"))),
+            Setting("Screen recording", "Opens Windows' Snipping Tool in recording mode.", Button("Record", () => _app.Perform("recording"))));
+    }
+
+    IEnumerable<UIElement> CameraPage()
+    {
+        yield return Card("Camera preview",
+            Switch("Show in the capsule", "A mirror: see yourself in the capsule before a call. The camera is on only while the capsule shows it.", _p.EnabledWidgets.Contains("mirror"), on => SetWidget("mirror", on)));
+    }
+
+    IEnumerable<UIElement> ScratchpadPage()
+    {
+        yield return Card("Scratchpad",
+            Setting("Open the scratchpad", "One long note in its own window, kept on this computer.", Button("Open", () => _app.Perform("scratchpad"))),
+            Switch("Notes in the capsule", "Quick notes you can copy later.", _p.EnabledWidgets.Contains("notes"), on => SetWidget("notes", on)),
+            Switch("To-do list", "A short list of things to do, next to the notes.", _p.EnabledWidgets.Contains("todo"), on => SetWidget("todo", on)));
+    }
+
+    void SetWidget(string id, bool on)
+    {
+        var list = _p.EnabledWidgets;
+        list.Remove(id);
+        if (on) list.Add(id);
+        _p.EnabledWidgets = list;
+    }
+
+    IEnumerable<UIElement> ColorPage()
+    {
+        yield return Card("Color picker",
+            Setting("Pick a color", "Pick any pixel of the screen. The color is copied as a hex code.", Button("Pick", () => _app.Perform("color"))));
+    }
+
+    IEnumerable<UIElement> MixerPage()
+    {
+        var sound = _app.Sound;
+        sound.Refresh();
+        yield return Card("Volume",
+            SliderRow("Volume", $"{(int)Math.Round(sound.Volume * 100)} %", 0, 1, sound.Volume, sound.SetVolume, 0.01),
+            Switch("Mute", null, sound.Muted, _ => sound.ToggleMute()));
+        var apps = sound.Apps;
+        var rows = apps.Select(a =>
+        {
+            var app = a;
+            return SliderRow(app.Name, $"{(int)Math.Round(app.Volume * 100)} %{(app.Muted ? " · muted" : "")}", 0, 1, app.Volume, v => sound.SetAppVolume(app, v), 0.01);
+        }).ToList();
+        if (rows.Count == 0) rows.Add(Ui.Text("No app plays sound now.", 12, color: C.WinSecondary).Margin(14, 10, 14, 10));
+        yield return Card("Every application on its own", rows.ToArray());
+        yield return Setting("Open the volume mixer", "The Sound tab of the quick panel.", Button("Open", () => _app.Perform("quickpanel:sound")));
+    }
+
+    IEnumerable<UIElement> OutputPage()
+    {
+        var sound = _app.Sound;
+        sound.Refresh();
+        yield return Card("Output switcher",
+            Setting("Switch output now", "Switches the sound to the next output: speakers, headphones, a Bluetooth device.", Button("Switch", () => _app.Perform("output"))));
+        var rows = sound.Outputs.Select(o => Switch(o.Name, o.Id == sound.DefaultOutput ? "Playing now" : null, !_p.Has("output-skipped", o.Name),
+                                                    on => _p.Toggle("output-skipped", o.Name, !on))).ToList();
+        if (rows.Count == 0) rows.Add(Ui.Text("No sound outputs found.", 12, color: C.WinSecondary).Margin(14, 10, 14, 10));
+        yield return Card("Outputs in the cycle", rows.ToArray());
+        yield return Ui.Text("Turn an output off to skip it when switching.", 11, color: C.WinSecondary, wrap: true);
+    }
+
+    IEnumerable<UIElement> MicPage()
+    {
+        var sound = _app.Sound;
+        yield return Card("Mute microphone",
+            Setting(sound.MicrophoneMuted ? "The microphone is muted" : "The microphone is on", "Cuts the microphone with a click, across every app.",
+                    Button(sound.MicrophoneMuted ? "Unmute" : "Mute", () => { _app.Perform("mic"); Render(); })));
+    }
+
+    IEnumerable<UIElement> CapsuleGestures()
+    {
+        yield return Card("Capsule",
+            Switch("Swipe down to open", "Two-finger swipe down over the collapsed capsule.", _p.Bool("gestures-swipe-open"), v => _p.SetValue("gestures-swipe-open", v)),
+            Switch("Swipe up to close", "Two-finger swipe up over the open capsule (on its first page).", _p.Bool("gestures-swipe-close"), v => _p.SetValue("gestures-swipe-close", v)),
+            Switch("Invert direction", "Reverses every swipe: up opens, down closes, and so on.", _p.Bool("gestures-invert"), v => _p.SetValue("gestures-invert", v)));
+        yield return Card("Media",
+            Switch("Swipe sideways to skip tracks", "While music is playing: left is the previous track, right the next one.", _p.Bool("gestures-media-swipe"), v => _p.SetValue("gestures-media-swipe", v)));
+        var modes = new[] { "none", "activity", "play-pause" };
+        yield return Card("Middle click",
+            Setting("On the collapsed capsule", null, Choice(new[] { "Nothing", "Next activity", "Play / pause" }, Math.Max(0, Array.IndexOf(modes, _p.Text("gestures-middle-click"))),
+                                                           i => _p.SetValue("gestures-middle-click", modes[i]))));
+    }
+
+    IEnumerable<UIElement> TrayPage()
+    {
+        yield return Card("Tray",
+            Switch("Keep files", "Remember the tray after a restart or logout (references to your files, not copies).", _p.TrayKeepFiles, v => _p.TrayKeepFiles = v));
+    }
+
+    // --- Features: the overview and the topics (Linux's _featurePages) ---------------------------------
+
+    IEnumerable<UIElement> FeatureList(IEnumerable<Feature> features)
+    {
+        var query = _search.Text.Trim();
+        var shown = features.Where(f => query.Length == 0 || $"{f.Title} {f.Subtitle} {f.Group}".Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (shown.Count == 0) yield return Ui.Text("Nothing found.", 12, color: C.WinSecondary);
+        foreach (var group in shown.Select(f => f.Group).Distinct())
+        {
+            var rows = shown.Where(f => f.Group == group).Select(f =>
+            {
+                var feature = f;
+                var title = Ui.Row(8, Ui.Text(feature.Title, 13, color: C.WinText));
+                if (Features.Badge(group) is { } badge) title.Children.Add(Ui.Box(Ui.Text(badge, 10, FontWeights.SemiBold, C.WinAccent), C.Rgb(18, 131, 255, 0.18), 8, 6, 1));
+                return (UIElement)new Border
+                {
+                    Child = Ui.Row(12, Ui.Box(Ui.Icon(feature.Glyph, 13, C.WinAccent), C.Rgb(18, 131, 255, 0.16), 8).Size(28, 28),
+                        Ui.Column(2, title, Ui.Text(feature.Subtitle, 11, color: C.WinSecondary, wrap: true)).Grow(),
+                        Toggle(feature.Get(), on => feature.Set(on))),
+                    Padding = new Thickness(14, 8, 14, 8),
+                };
+            }).ToArray();
+            yield return Card(group, rows);
+        }
+    }
+
+    IEnumerable<UIElement> FeaturesOverview()
+    {
+        var all = Features.All(_app);
+        var presets = new (string Name, string About, string[] Widgets)[]
+        {
+            ("Everything", "Every tool and widget.", WidgetCatalog.All.Select(w => w.Id).ToArray()),
+            ("Essentials", "Music, calendar and mirror in the capsule, with every tool in the window of Muna's icon.", new[] { "media", "calendar", "mirror", "timer" }),
+            ("Light island", "Only music and calendar.", new[] { "media", "calendar" }),
+        };
+        var grid = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3 };
+        foreach (var (name, about, widgets) in presets)
+        {
+            var list = widgets;
+            var light = name == "Light island";
+            grid.Children.Add(Ui.Box(Ui.Column(6, Ui.Semi(name, 13, C.WinText), Ui.Text(about, 11, color: C.WinSecondary, wrap: true),
+                Button("Apply", () =>
+                {
+                    _p.EnabledWidgets = list.ToList();
+                    _p.SetStrings("menu-hidden", light ? QuickPanel.Ordered(new List<string>()).Select(t => t.Id) : Array.Empty<string>());
+                })), C.White(0.05), 10, 10, 10).Margin(4, 4, 4, 4));
+        }
+        var on = _p.EnabledWidgets.Count + QuickPanel.Ordered(new List<string>()).Count(t => !_p.Has("menu-hidden", t.Id));
+        var total = WidgetCatalog.All.Length + QuickPanel.Ordered(new List<string>()).Count;
+        yield return Card("Start with a bundle", Ui.Column(8, Ui.Semi($"{on} of {total} tools and widgets are on", 13, C.WinText), grid).Margin(14, 10, 14, 10));
+        var topics = Pages.Where(p => p.Id.StartsWith("feat-")).Select(p =>
+        {
+            var id = p.Id;
+            var members = all.Where(f => f.Topic == id).ToList();
+            return (UIElement)new Border
+            {
+                Child = Ui.Row(12, Ui.Box(Ui.Icon(p.Glyph, 13, C.WinAccent), C.Rgb(18, 131, 255, 0.16), 8).Size(28, 28),
+                    Ui.Column(2, Ui.Text(p.Title, 13, color: C.WinText), Ui.Text(p.About, 11, color: C.WinSecondary, wrap: true)).Grow(),
+                    Ui.Text($"{members.Count(f => f.Get())} of {members.Count} on", 11, color: C.WinSecondary), Ui.Icon(Glyph.Right, 10, C.WinSecondary)),
+                Padding = new Thickness(14, 10, 14, 10),
+            }.OnClick(() => Go(id), C.White(0.04));
+        }).ToArray();
+        yield return Card("By topic", topics);
     }
 
     IEnumerable<UIElement> Activities()
     {
-        yield return Card("The closed capsule",
-            Switch("Activities in the closed capsule", "Music, the timer and sendings take the sides of the closed capsule.", _p.ActivitiesInCollapsed, v => _p.ActivitiesInCollapsed = v),
-            SliderRow("Cards stay", $"{_p.CardSeconds:0.0} s (a sending ended, time is up, a reminder …)", 1, 15, _p.CardSeconds, v => _p.CardSeconds = Math.Round(v * 2) / 2, 0.5));
-        yield return Card("Media",
-            Switch("Show the lyrics", "The words of the song from lrclib.net (artist, title, album and length are sent there).", _p.ShowLyrics, v => _p.ShowLyrics = v));
+        yield return Card("Live Activities",
+            Switch("Music", "Playing track", _p.Bool("activity-media"), v => _p.SetValue("activity-media", v)),
+            Switch("Timer", "Countdown", _p.Bool("activity-timer"), v => _p.SetValue("activity-timer", v)),
+            Switch("Calendar", "Next meeting", _p.Bool("activity-calendar"), v => _p.SetValue("activity-calendar", v)),
+            Switch("Tray", "Added files", _p.Bool("activity-files"), v => _p.SetValue("activity-files", v)),
+            Switch("Downloads", "Files arriving", _p.Bool("activity-downloads"), v => _p.SetValue("activity-downloads", v)));
+        yield return Ui.Text("Choose what gets its own place in the capsule.", 11, color: C.WinSecondary, wrap: true);
+        yield return Card("Collapsed capsule",
+            Switch("Show activities when collapsed", "A running timer, music or a meeting instead of the time.", _p.ActivitiesInCollapsed, v => _p.ActivitiesInCollapsed = v),
+            SliderRow("Music card", $"{_p.Number("peek-media-seconds"):0.0} s the card with the new track stays on screen", 0.5, 10, _p.Number("peek-media-seconds"), v => _p.SetValue("peek-media-seconds", Math.Round(v * 2) / 2), 0.5),
+            SliderRow("Tray card", $"{_p.Number("peek-files-seconds"):0.0} s the \"Adding / Added files\" card stays on screen", 0.5, 10, _p.Number("peek-files-seconds"), v => _p.SetValue("peek-files-seconds", Math.Round(v * 2) / 2), 0.5),
+            SliderRow("Meeting card", $"{_p.Number("peek-calendar-seconds"):0.0} s the card about an upcoming meeting stays on screen", 0.5, 30, _p.Number("peek-calendar-seconds"), v => _p.SetValue("peek-calendar-seconds", Math.Round(v * 2) / 2), 0.5),
+            SliderRow("Other cards", $"{_p.CardSeconds:0.0} s (a sending ended, time is up, a reminder …)", 1, 15, _p.CardSeconds, v => _p.CardSeconds = Math.Round(v * 2) / 2, 0.5));
+        var effects = new[] { "spectrum", "waves" };
+        yield return Card("Music",
+            SliderRow("Album corner radius", $"{(int)_p.Number("album-corner-radius")}", 0, 24, _p.Number("album-corner-radius"), v => _p.SetValue("album-corner-radius", Math.Round(v)), 1),
+            Setting("Effect type", "The animation shown while music plays.", Choice(new[] { "Audio spectrum", "Waves" }, Math.Max(0, Array.IndexOf(effects, _p.Text("media-effect"))), i => _p.SetValue("media-effect", effects[i]))),
+            Switch("Show lyrics", "The line being sung, from lrclib.net (artist, title, album and length are sent there).", _p.ShowLyrics, v => _p.ShowLyrics = v),
+            Switch("Colored effects", "The effect takes the color of the album art; otherwise it is white.", _p.Bool("colored-effects"), v => _p.SetValue("colored-effects", v)));
     }
 
-    IEnumerable<UIElement> KeysPage()
+    IEnumerable<UIElement> RadialPage()
     {
-        yield return Card("Keys",
-            Switch("Command Bar: Alt+Space", null, _p.CommandHotKey, v => _p.CommandHotKey = v),
-            Switch("Radial menu: Ctrl+Alt+Space", null, _p.RadialHotKey, v => _p.RadialHotKey = v),
-            Switch("Sections: Ctrl+Alt+1 to Ctrl+Alt+5", "Muna, Tray, LocalSend, Clipboard, Alerts.", _p.SectionHotKeys, v => _p.SectionHotKeys = v),
-            Setting("Desktops", "Ctrl+Win+← and → (each monitor its own with separate desktops: Readings and bars).", Ui.Text("Windows' keys", 12, color: C.WinSecondary)));
+        yield return Card("Radial menu",
+            Setting("Open the radial menu", "Opens a wheel of your favorite actions around the pointer.", Button("Open", () => _app.Perform("radial"))),
+            Switch("Shortcut Ctrl+Alt+Space", null, _p.RadialHotKey, v => _p.RadialHotKey = v));
         var chosen = _p.RadialActions;
         var rows = new List<UIElement>();
         for (var i = 0; i < chosen.Count; i++)
@@ -196,7 +524,7 @@ public sealed class SettingsWindow : DarkWindow
                     list.Add(missing[i - 1].Id);
                     _p.RadialActions = list;
                 })));
-        yield return Card("Radial menu", rows.ToArray());
+        yield return Card("Actions", rows.ToArray());
         yield return Button("Reset the radial menu", () => _p.RadialActions = new List<string> { "play-pause", "next", "screenshot", "downloads", "color", "prev" }).Align(HorizontalAlignment.Left);
     }
 
@@ -207,20 +535,6 @@ public sealed class SettingsWindow : DarkWindow
         if (target < 0 || target >= list.Count) return;
         (list[index], list[target]) = (list[target], list[index]);
         _p.RadialActions = list;
-    }
-
-    IEnumerable<UIElement> ToolsPage()
-    {
-        yield return Card("Keep awake",
-            Switch("Keep awake when Muna starts", "Until you turn it off in the quick panel (the screen may still sleep).", _p.AwakeOnStart, v => _p.AwakeOnStart = v));
-        yield return Card("Reminders",
-            Switch("A sound with the reminder", "The butterfly card comes with Windows' alert sound.", _p.ReminderSound, v => _p.ReminderSound = v));
-        yield return Card("Scratchpad and cleaning",
-            Setting("Scratchpad", "One long note in its own window, saved as you type (the same file as on Linux and the Mac).", Button("Open", _app.ShowScratchpad)),
-            Setting("Cleaning mode", "The keyboard and the mouse do nothing for a while, so you can wipe them.", Button("Start", CleaningMode.Start)));
-        yield return Card("Quick toggles",
-            Setting("Wi-Fi, Bluetooth, night light, airplane mode, microphone, keep awake", "In the quick panel's Tools page (Muna's icon in the notification area).", Button("Open", () => _app.ShowQuickPanel("tools"))),
-            Setting("System switches", "Focus follows the mouse, snapping, animations, mouse acceleration, hidden files …", Button("Open", () => _app.ShowQuickPanel("controls"))));
     }
 
     IEnumerable<UIElement> PhonePage()
@@ -236,20 +550,13 @@ public sealed class SettingsWindow : DarkWindow
         yield return Ui.Text("The Phone widget shows the phone in the capsule (Widgets); the quick panel's Phone page shows it big.", 11, color: C.WinSecondary, wrap: true);
     }
 
-    IEnumerable<UIElement> AgentsPage()
-    {
-        var agents = _app.Agents;
-        yield return Card("Agents",
-            Setting("Claude Code", agents.ClaudePath ?? "Not installed", agents.ClaudePath is null ? Button("Get it", () => CapsuleViews.Launch("https://docs.anthropic.com/en/docs/claude-code")) : Ui.Text("Found", 12, color: C.Ok)),
-            Setting("Codex", agents.CodexPath ?? "Not installed (npm install -g @openai/codex)", Ui.Text(agents.CodexPath is null ? "" : "Found", 12, color: C.Ok)),
-            Switch("Cards when a task ends", "A card in the capsule and a line in Alerts when an agent is done or stopped.", _p.AgentsAlerts, v => _p.AgentsAlerts = v),
-            Setting("The agents window", "Tasks, their conversation and questions, new tasks.", Button("Open", _app.ShowAgents)));
-        yield return Ui.Text("Muna reads only the token counts and times in the agents' logs, never the prompts.", 11, color: C.WinSecondary, wrap: true);
-    }
-
     IEnumerable<UIElement> PrivacyPage()
     {
         var privacy = _app.Privacy;
+        yield return Card("Confirm",
+            Switch("Claude Code's questions", "While Claude Code asks to edit a file or run a command, Windows Hello allows it (Deny stays a button).", _p.Bool("fingerprint-agents"), v => _p.SetValue("fingerprint-agents", v)));
+        yield return Card("Private notes and clipboard items",
+            Switch("Ask for Windows Hello", "Notes and clipboard items you mark private stay hidden until Windows Hello opens them, for 5 minutes.", _p.Bool("fingerprint-private"), v => _p.SetValue("fingerprint-private", v)));
         yield return Card("Private items",
             Setting("Windows Hello", privacy.Problem ?? (privacy.Unlocked ? "Open now (for 5 minutes)" : "Locked"),
                     privacy.Unlocked ? Button("Lock", privacy.Lock) : Button("Open", privacy.Unlock, accent: true)));
@@ -265,6 +572,43 @@ public sealed class SettingsWindow : DarkWindow
 
     IEnumerable<UIElement> Appearance()
     {
+        yield return Card("Butterfly",
+            Switch("Butterfly in the capsule", "The little butterfly in the middle of the closed capsule. Off: a small camera circle.", _p.CapsuleButterfly, v => _p.CapsuleButterfly = v),
+            Switch("Flap its wings", "Now and then it beats its wings and blinks.", _p.Bool("butterfly-flap"), v => _p.SetValue("butterfly-flap", v)),
+            SliderRow("Every", $"{(int)_p.Number("butterfly-flap-every")} s between two flaps", 5, 300, _p.Number("butterfly-flap-every"), v => _p.SetValue("butterfly-flap-every", Math.Round(v / 5) * 5), 5));
+        var reminders = _app.Reminders;
+        var list = reminders.Reminders.Select(r =>
+        {
+            var item = r;
+            var at = DateTimeOffset.FromUnixTimeMilliseconds(r.At).LocalDateTime;
+            return (UIElement)new Border
+            {
+                Child = Ui.Row(10, Ui.Icon(Glyph.Bell, 12, C.WinAccent), Ui.Text(r.Text, 13, color: C.WinText).Grow(),
+                               Ui.Text(at.ToString("g", System.Globalization.CultureInfo.CurrentCulture), 11, color: C.WinSecondary), Button("Remove", () => reminders.Remove(item))),
+                Padding = new Thickness(14, 8, 14, 8),
+            };
+        }).ToList();
+        if (list.Count == 0) list.Add(Ui.Text("No reminders yet.", 12, color: C.WinSecondary).Margin(14, 10, 14, 10));
+        _reminderText.Width = 260;
+        _reminderTime.Width = 70;
+        list.Add(new Border
+        {
+            Child = Ui.Row(8, Ui.Detach(_reminderText), Ui.Detach(_reminderTime), Button("Add", () =>
+            {
+                var time = _reminderTime.Text.Trim();
+                if (TimeSpan.TryParse(time, System.Globalization.CultureInfo.InvariantCulture, out var t) && t.TotalHours < 24)
+                {
+                    reminders.Add(_reminderText.Text, t.Hours, t.Minutes);
+                    _reminderText.Text = "";
+                    _reminderTime.Text = "";
+                }
+            }, accent: true)),
+            Padding = new Thickness(14, 8, 14, 8),
+        });
+        yield return Card("Reminders",
+            Switch("A sound with a reminder", "At the time you choose the butterfly flies out of the capsule, grows and shows your text. Also in the quick panel (Reminders).", _p.ReminderSound, v => _p.ReminderSound = v));
+        yield return Card(null, list.ToArray());
+        yield return Ui.Text("Write the time as 18:30.", 11, color: C.WinSecondary);
         yield return Card("Shape",
             SliderRow("Corner radius", $"{(int)_p.CornerRadius} px", 8, 44, _p.CornerRadius, v => _p.CornerRadius = Math.Round(v), 1),
             SliderRow("Transparency", $"{_p.BackgroundOpacity:0.00} (1.00 is fully opaque)", 0.5, 1, _p.BackgroundOpacity, v => _p.BackgroundOpacity = Math.Round(v, 2), 0.02),
@@ -300,10 +644,12 @@ public sealed class SettingsWindow : DarkWindow
             Switch("Dividers", "Thin lines between widgets.", _p.ShowDividers, v => _p.ShowDividers = v),
             Setting("Width", "Auto follows the widgets; fixed is a share of the screen.", Choice(new[] { "Auto", "Fixed" }, _p.WidthMode == "fixed" ? 1 : 0, i => _p.WidthMode = i == 1 ? "fixed" : "auto")),
             _p.WidthMode == "fixed" ? SliderRow("Fixed width", $"{(int)(_p.FixedWidth * 100)}% of the screen", 0.25, 0.9, _p.FixedWidth, v => _p.FixedWidth = Math.Round(v, 2), 0.05) : null);
+        yield return Card(null,
+            Switch("System alerts", "Cards for a busy processor, heat, a full disk or memory and low batteries.", _p.SystemAlerts, v => _p.SystemAlerts = v));
         yield return Button("Reset the appearance", _p.ResetAppearance).Align(HorizontalAlignment.Left);
     }
 
-    IEnumerable<UIElement> Bars()
+    IEnumerable<UIElement> Monitor()
     {
         var chosen = _p.BarMetrics;
         var rows = new List<UIElement>();
@@ -330,7 +676,26 @@ public sealed class SettingsWindow : DarkWindow
             SliderRow("Memory is nearly full", $"under {_p.AlertMemory}% free", 2, 30, _p.AlertMemory, v => _p.AlertMemory = (int)Math.Round(v), 1),
             SliderRow("The battery is low", $"{_p.AlertBattery}% or less", 5, 50, _p.AlertBattery, v => _p.AlertBattery = (int)Math.Round(v), 5));
         yield return Ui.Text("Each reading gets a small icon of its own in the notification area with its value (Windows has no top bar), and a place in the Muna bar. A click opens the quick panel on it. The temperature is the hottest of the computer's thermal zones.", 11, color: C.WinSecondary, wrap: true);
+        yield return Card("In the panel",
+            Switch("Processor", null, _p.Strings("system-blocks", "temps", "cpu", "gpu", "memory", "uptime").Contains("cpu"), v => ToggleBlock("cpu", v)),
+            Switch("Graphics", null, _p.Strings("system-blocks", "temps", "cpu", "gpu", "memory", "uptime").Contains("gpu"), v => ToggleBlock("gpu", v)),
+            Switch("Memory", null, _p.Strings("system-blocks", "temps", "cpu", "gpu", "memory", "uptime").Contains("memory"), v => ToggleBlock("memory", v)),
+            Switch("Temperatures", null, _p.Strings("system-blocks", "temps", "cpu", "gpu", "memory", "uptime").Contains("temps"), v => ToggleBlock("temps", v)),
+            Switch("Uptime", null, _p.Strings("system-blocks", "temps", "cpu", "gpu", "memory", "uptime").Contains("uptime"), v => ToggleBlock("uptime", v)),
+            Switch("Show graph scale", "Write the highest value on the dotted line of every graph.", _p.Bool("graph-scale"), v => _p.SetValue("graph-scale", v)),
+            Setting("Update every", "How often the numbers are read while a monitor page or a value is shown.",
+                Choice(new[] { "1 second", "2 seconds", "5 seconds" }, _p.Number("monitor-interval") switch { <= 1 => 0, >= 5 => 2, _ => 1 }, c => _p.SetValue("monitor-interval", c switch { 0 => 1.0, 2 => 5.0, _ => 2.0 }))));
+    }
 
+    void ToggleBlock(string id, bool on)
+    {
+        var list = _p.Strings("system-blocks", "temps", "cpu", "gpu", "memory", "uptime").Where(b => b != id).ToList();
+        if (on) list.Add(id);
+        _p.SetStrings("system-blocks", list);
+    }
+
+    IEnumerable<UIElement> TopBar()
+    {
         var swatches = Ui.Row(8);
         foreach (var (name, hex) in Colors)
         {
@@ -552,12 +917,11 @@ public sealed class SettingsWindow : DarkWindow
     IEnumerable<UIElement> ClipboardPage()
     {
         yield return Card("Clipboard",
+            Switch("A click pastes", "Clicking an item puts it in the app you were using (Ctrl+V). Off: it is only copied.", _p.Bool("clipboard-click-pastes"), v => _p.SetValue("clipboard-click-pastes", v)),
             Switch("Keep the history", "Off: the list is forgotten when Muna quits (pinned items stay).", _p.ClipboardKeepHistory, v => _p.ClipboardKeepHistory = v),
             SliderRow("Items kept", $"{_p.ClipboardMaxItems}", 5, 200, _p.ClipboardMaxItems, v => _p.ClipboardMaxItems = (int)Math.Round(v), 5),
             Switch("Clean copied links", "Tracking parameters (utm_…, fbclid …) are taken out of links you copy.", _p.ClipboardCleanUrls, v => _p.ClipboardCleanUrls = v),
             Setting("Clear the history", "Pinned items stay.", Button("Clear", _app.Clipboard.Clear)));
-        yield return Card("Tray",
-            Switch("Keep the files after a restart", "The Tray keeps references to files, never copies.", _p.TrayKeepFiles, v => _p.TrayKeepFiles = v));
     }
 
     IEnumerable<UIElement> Snippets()
@@ -595,5 +959,83 @@ public sealed class SettingsWindow : DarkWindow
             Padding = new Thickness(18),
         });
         yield return Card("Data", Setting("Notes, to-dos, clipboard, groups …", DataDirectory.Path, Button("Open folder", () => CapsuleViews.Launch(DataDirectory.Path))));
+    }
+}
+
+/// One line of the feature lists of the settings (Linux's _featurePages): a capsule widget, a tab of
+/// the quick panel, or a setting.
+public sealed record Feature(string Topic, string Group, string Title, string Subtitle, string Glyph, Func<bool> Get, Action<bool> Set);
+
+public static class Features
+{
+    public const string Tools = "Window of Muna's icon";
+    public const string Island = "Island widgets (the capsule)";
+
+    public static string? Badge(string group) => group switch
+    {
+        Tools => "Muna's icon",
+        Island or "Live Activities" or "Cards and alerts" => "Island",
+        _ => null,
+    };
+
+    static readonly Dictionary<string, string> TopicOf = new()
+    {
+        ["media"] = "feat-media", ["sound"] = "feat-media", ["mirror"] = "feat-media",
+        ["system"] = "feat-system", ["network"] = "feat-system", ["disks"] = "feat-system", ["power"] = "feat-system", ["awake"] = "feat-system",
+        ["displays"] = "feat-system", ["toggles"] = "feat-system", ["utilities"] = "feat-system",
+        ["windows"] = "feat-windows", ["workspaces"] = "feat-windows", ["controls"] = "feat-windows", ["input"] = "feat-windows",
+        ["focus"] = "feat-work", ["timer"] = "feat-work", ["todo"] = "feat-work", ["notes"] = "feat-work", ["reminders"] = "feat-work",
+        ["shortcuts"] = "feat-work", ["calendar"] = "feat-work", ["agents"] = "feat-work",
+        ["downloads"] = "feat-files", ["phone"] = "feat-files", ["phonecard"] = "feat-files",
+    };
+
+    public static List<Feature> All(AppState app)
+    {
+        var p = Preferences.Shared;
+        var list = new List<Feature>();
+        foreach (var (id, title, glyph, about) in QuickPanel.Ordered(new List<string>()))
+        {
+            var tab = id;
+            list.Add(new Feature(TopicOf.GetValueOrDefault(id, "feat-system"), Tools, title, about, glyph, () => !p.Has("menu-hidden", tab), on => p.Toggle("menu-hidden", tab, !on)));
+        }
+        foreach (var widget in WidgetCatalog.All)
+        {
+            var id = widget.Id;
+            list.Add(new Feature(TopicOf.GetValueOrDefault(id, "feat-capsule"), Island, widget.Title, widget.Subtitle, widget.Glyph, () => p.EnabledWidgets.Contains(id), on =>
+            {
+                var enabled = p.EnabledWidgets;
+                enabled.Remove(id);
+                if (on) enabled.Add(id);
+                p.EnabledWidgets = enabled;
+            }));
+        }
+        Feature Key(string topic, string group, string title, string subtitle, string glyph, string key) =>
+            new(topic, group, title, subtitle, glyph, () => p.Bool(key), on => p.SetValue(key, on));
+        list.AddRange(new[]
+        {
+            Key("feat-capsule", "Live Activities", "Music", "The playing track in the collapsed capsule", Glyph.Music, "activity-media"),
+            Key("feat-capsule", "Live Activities", "Timer", "A running countdown or focus session in the capsule", Glyph.Clock, "activity-timer"),
+            Key("feat-capsule", "Live Activities", "Calendar", "The next meeting, from 10 minutes before it", Glyph.Calendar, "activity-calendar"),
+            Key("feat-capsule", "Live Activities", "Tray", "A card when files are added to the tray", Glyph.Tray, "activity-files"),
+            Key("feat-capsule", "Live Activities", "Downloads", "Files arriving in the Downloads folder", Glyph.Download, "activity-downloads"),
+            new Feature("feat-system", "Cards and alerts", "System alerts", "A busy processor, heat, a full disk or memory, a low battery", Glyph.Warning, () => p.SystemAlerts, on => p.SystemAlerts = on),
+            new Feature("feat-work", "Cards and alerts", "AI agents finished", "A card when Claude Code or Codex finishes a task", Glyph.CheckCircle, () => p.AgentsAlerts, on => p.AgentsAlerts = on),
+            Key("feat-capsule", "Cards and alerts", "Keyboard layout", "The capsule widens for a moment and shows the layout when you switch it", Glyph.Keyboard, "show-input-source"),
+            Key("feat-capsule", "Cards and alerts", "Caps Lock", "The capsule shows whether Caps Lock is on or off", Glyph.Keyboard, "show-caps-lock"),
+            new Feature("feat-media", "Music", "Lyrics", "The line being sung under the title (the song is looked up on lrclib.net)", Glyph.Music, () => p.ShowLyrics, on => p.ShowLyrics = on),
+            Key("feat-media", "Music", "Colored effects", "The effect takes the color of the album art", Glyph.Brightness, "colored-effects"),
+            Key("feat-media", "Music", "Swipe to change tracks", "A sideways swipe on the capsule skips songs", Glyph.Next, "gestures-media-swipe"),
+            Key("feat-files", "Clipboard", "Click pastes", "A click on an item pastes it into the app you were in", Glyph.Clipboard, "clipboard-click-pastes"),
+            new Feature("feat-files", "Clipboard", "Keep history", "Save everything you copied after a restart (pinned items and notes are always saved)", Glyph.Clipboard, () => p.ClipboardKeepHistory, on => p.ClipboardKeepHistory = on),
+            new Feature("feat-files", "Clipboard", "Clean links", "Remove tracking parameters (utm_*, fbclid ...) from copied links", Glyph.Link, () => p.ClipboardCleanUrls, on => p.ClipboardCleanUrls = on),
+            new Feature("feat-files", "Files and sharing", "Keep the tray", "The files on the tray stay after a restart", Glyph.Tray, () => p.TrayKeepFiles, on => p.TrayKeepFiles = on),
+            new Feature("feat-files", "Files and sharing", "Receive files with LocalSend", "This computer becomes visible to LocalSend devices (port 53317); every transfer asks first", Glyph.Wifi, () => p.LocalSendReceive, on => p.LocalSendReceive = on),
+            new Feature("feat-windows", "Behaviour", "Touchpad gestures everywhere", "Three and four fingers: switch apps, desktops, windows, sound and more", Glyph.Gesture, () => p.TouchpadGestures, on => p.TouchpadGestures = on),
+            new Feature("feat-capsule", "Behaviour", "Open on hover", "The capsule opens when the pointer rests on it", Glyph.Sparkle, () => p.OpenOnHover, on => p.OpenOnHover = on),
+            new Feature("feat-capsule", "Behaviour", "Collapse when the pointer leaves", "The open panel closes by itself", Glyph.Shrink, () => p.AutoCollapse, on => p.AutoCollapse = on),
+            Key("feat-capsule", "Behaviour", "Swipe down to open", "A two-finger swipe down on the capsule opens it", Glyph.Gesture, "gestures-swipe-open"),
+            Key("feat-capsule", "Behaviour", "Swipe up to close", "A two-finger swipe up closes the panel", Glyph.Gesture, "gestures-swipe-close"),
+        });
+        return list;
     }
 }

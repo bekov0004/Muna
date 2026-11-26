@@ -41,6 +41,7 @@ public sealed class AppState
     public readonly DisplaysModel Displays = new();
     public readonly PhoneModel Phone = new();
     public readonly MonitorDesktops Desktops = new();
+    public readonly PowerModel Power = new();
     public readonly SystemNotifications Notifications = new();
     public GestureActions Gestures { get; }
     public SystemAlerts SystemAlerts { get; }
@@ -114,6 +115,32 @@ public sealed class AppState
     {
         _scratchpadWindow ??= new ScratchpadWindow(Scratchpad);
         _scratchpadWindow.ShowFront();
+    }
+
+    /// One action by its name (Linux's names: the settings' "Try it" buttons, the radial menu, gestures' "muna:…").
+    public void Perform(string id)
+    {
+        switch (id)
+        {
+            case "quickpanel": ShowQuickPanel(null); break;
+            case var page when page.StartsWith("quickpanel:"): ShowQuickPanel(page[11..]); break;
+            case "command": Capsules.OpenCommand(); break;
+            case "radial": ToggleRadial(); break;
+            case "cleaning": CleaningMode.Start(); break;
+            case "scratchpad": ShowScratchpad(); break;
+            case "screenshot": QuickTools.Screenshot(); break;
+            case "record" or "recording": Keys.Chord(0x5B, 0x10, 0x52); break;       // Win+Shift+R: the Snipping Tool's recording
+            case "color": ColorPicker.Pick(hex => Capsules.Tell("Colour copied", hex, Glyph.Eyedropper, true)); break;
+            case "dark": QuickTools.ToggleDarkMode(); break;
+            case "night": SystemSwitches.SetNightLight(!(SystemSwitches.NightLight ?? false)); break;
+            case "output": Sound.NextOutput(); break;
+            case "mic": Sound.Refresh(); Sound.ToggleMicrophone(); break;
+            case "awake": if (Awake.IsOn) Awake.Stop(); else Awake.Start(null, true); break;
+            case "lock": Native.LockWorkStation(); break;
+            case "downloads": DownloadsModel.OpenFolder(); break;
+            case "clipboard": Capsules.Open(PanelTab.Clipboard); break;
+            case var tab when tab.StartsWith("capsule:") && Enum.TryParse<PanelTab>(tab[8..], out var t): Capsules.Open(t); break;
+        }
     }
 
     public event Action? RadialRequested;

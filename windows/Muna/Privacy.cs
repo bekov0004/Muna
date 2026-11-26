@@ -18,6 +18,15 @@ public sealed class PrivacyModel : Model
     public async void Unlock()
     {
         if (Unlocked || _asking) return;
+        // Settings → Fingerprint → Ask for Windows Hello: off, private items open without asking
+        if (!Preferences.Shared.Bool("fingerprint-private"))
+        {
+            Unlocked = true;
+            _lock.Stop();
+            _lock.Start();
+            Notify();
+            return;
+        }
         _asking = true;
         try
         {

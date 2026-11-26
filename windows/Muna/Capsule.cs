@@ -190,6 +190,7 @@ public sealed class CapsuleWindow : Window
         _capsule.DragLeave += OnDragLeave;
         _capsule.Drop += OnDrop;
         _capsule.MouseWheel += OnWheel;
+        _capsule.MouseDown += OnMiddleClick;
         _capsule.PreviewMouseWheel += OnPull;
         var root = new Grid();
         root.Children.Add(_capsule);
@@ -198,6 +199,12 @@ public sealed class CapsuleWindow : Window
         {
             _hwnd = new WindowInteropHelper(this).Handle;
             Native.AddExStyle(_hwnd, Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE);
+            // the sideways wheel (two fingers sideways on a touchpad) has no WPF event
+            HwndSource.FromHwnd(_hwnd)?.AddHook((IntPtr hwnd, int message, IntPtr w, IntPtr l, ref bool handled) =>
+            {
+                if (message == 0x020E) { SidewaysSwipe((short)((w.ToInt64() >> 16) & 0xffff)); handled = true; }
+                return IntPtr.Zero;
+            });
             Place();
         };
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(Place);
@@ -268,7 +275,8 @@ public sealed class CapsuleWindow : Window
 
     Size ClosedSize()
     {
-        var width = PillWidth + (IsHovering && !IsOpen ? HoverGrow : 0);
+        // Settings → General → Collapsed width
+        var width = Math.Max(120, PillWidth + Preferences.Shared.Number("collapsed-width-adjust")) + (IsHovering && !IsOpen ? HoverGrow : 0);
         var height = BarHeight;
         if (Card is not null)
         {
@@ -503,8 +511,10 @@ public sealed class CapsuleWindow : Window
     public void ActivityChanged()
     {
         var session = App.LocalSend.Session;
-        var active = Preferences.Shared.ActivitiesInCollapsed
-                     && (App.NowPlaying.Track is not null || App.Timer.Active || session.Phase == SessionPhase.Sending);
+        // Settings → Live Activities: each kind can be switched off
+        var p = Preferences.Shared;
+        var active = p.ActivitiesInCollapsed
+                     && ((p.Bool("activity-media") && App.NowPlaying.Track is not null) || (p.Bool("activity-timer") && App.Timer.Active) || session.Phase == SessionPhase.Sending);
         HasActivity = active;
         if (!IsOpen) Invalidate();
     }
@@ -619,8 +629,63 @@ public sealed class CapsuleWindow : Window
     }
 
     /// <summary>On the Muna page, the wheel (or a two-finger swipe sideways) changes the page.</summary>
+    double _swipeSum;
+    DateTime _swipeAt;
+
+    /// Linux's capsule gestures (Settings → Gestures): a two-finger swipe down over the closed capsule
+    /// opens it, up over the open one (its first page) closes it; "Invert direction" swaps them.
+    bool CapsuleSwipe(MouseWheelEventArgs e)
+    {
+        var p = Preferences.Shared;
+        var now = DateTime.Now;
+        if ((now - _swipeAt).TotalMilliseconds > 250) _swipeSum = 0;
+        _swipeAt = now;
+        // with natural scrolling (Windows' default for touchpads) fingers moving down scroll up
+        var fingersDown = e.Delta > 0 != p.Bool("gestures-invert");
+        if (!IsOpen && fingersDown && p.Bool("gestures-swipe-open"))
+        {
+            _swipeSum += Math.Abs(e.Delta);
+            if (_swipeSum >= 120) { _swipeSum = -100000; Open(Tab.HasHeader() ? Tab : PanelTab.Muna); }
+            return true;
+        }
+        if (IsOpen && !fingersDown && p.Bool("gestures-swipe-close") && PageIndex == 0 && !Tab.Growable() && Tab is PanelTab.Muna or PanelTab.Tray)
+        {
+            if (e.OriginalSource is DependencyObject d && FindScroller(d) is { ScrollableHeight: > 0 }) return false;
+            _swipeSum += Math.Abs(e.Delta);
+            if (_swipeSum >= 120) { _swipeSum = -100000; _pinned = false; Close_(); }
+            return true;
+        }
+        return false;
+    }
+
+    /// A sideways two-finger swipe (WM_MOUSEHWHEEL): on the capsule, while music plays, the next or previous track.
+    public void SidewaysSwipe(int delta)
+    {
+        if (!Preferences.Shared.Bool("gestures-media-swipe") || App.NowPlaying.Track is null || (IsOpen && Tab == PanelTab.Muna && Layout.Pages.Count > 1)) return;
+        var now = DateTime.Now;
+        if ((now - _swipeAt).TotalMilliseconds > 250) _swipeSum = 0;
+        _swipeAt = now;
+        _swipeSum += delta;
+        if (Math.Abs(_swipeSum) < 120) return;
+        Native.TapKey(_swipeSum > 0 ? Native.VK_MEDIA_NEXT : Native.VK_MEDIA_PREV);
+        _swipeSum = 0;
+        _swipeAt = now.AddMilliseconds(600);
+    }
+
+    /// Settings → Gestures → Middle click on the collapsed capsule.
+    void OnMiddleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle || IsOpen) return;
+        switch (Preferences.Shared.Text("gestures-middle-click"))
+        {
+            case "play-pause": Native.TapKey(Native.VK_MEDIA_PLAY_PAUSE); e.Handled = true; break;
+            case "activity": Open(App.NowPlaying.Track is not null ? PanelTab.Muna : App.LocalSend.Session.Phase == SessionPhase.Sending ? PanelTab.LocalSend : PanelTab.Muna); e.Handled = true; break;
+        }
+    }
+
     void OnWheel(object sender, MouseWheelEventArgs e)
     {
+        if (CapsuleSwipe(e)) { e.Handled = true; return; }
         if (!IsOpen || Tab != PanelTab.Muna || Layout.Pages.Count < 2) return;
         if (e.OriginalSource is DependencyObject d && FindScroller(d) is { } scroller && scroller.ScrollableHeight > 0) return;
         PageIndex = Math.Clamp(PageIndex + (e.Delta < 0 ? 1 : -1), 0, Layout.Pages.Count - 1);

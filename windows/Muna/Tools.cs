@@ -182,6 +182,8 @@ public static class CleaningMode
         if (IsOn) return;
         IsOn = true;
         _endsAt = DateTime.Now.AddSeconds(60);
+        // Settings → Cleaning Mode → Keep screen visible: a small sign in a corner instead of black
+        var visible = Preferences.Shared.Bool("cleaning-visible");
         foreach (var screen in Forms.Screen.AllScreens)
         {
             var label = Ui.Text("", 16, color: C.White(0.6));
@@ -195,6 +197,12 @@ public static class CleaningMode
                 Cursor = Cursors.None, Title = "Muna cleaning", Tag = label,
             };
             var bounds = screen.Bounds;
+            if (visible)
+            {
+                bounds = new System.Drawing.Rectangle(screen.WorkingArea.Right - 420, screen.WorkingArea.Bottom - 120, 400, 100);
+                window.AllowsTransparency = true;
+                window.Background = C.Rgb(0, 0, 0, 0.8);
+            }
             window.SourceInitialized += (_, _) =>
             {
                 var hwnd = new WindowInteropHelper(window).Handle;

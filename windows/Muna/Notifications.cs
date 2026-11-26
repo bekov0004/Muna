@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using Muna.Core;
+using Forms = System.Windows.Forms;
 
 namespace Muna;
 
@@ -241,5 +242,52 @@ public sealed class SystemAlerts
         if (!bad) { _told.Remove(id); return; }
         if (!_told.Add(id)) return;
         _app.Capsules.Tell(title, details, glyph, false);
+    }
+}
+
+/// Linux's cards for the keyboard: the layout when it changes, Caps Lock on or off (looked at four
+/// times a second; Windows tells no app).
+public sealed class KeyboardCards
+{
+    readonly Action<string, string> _tell;
+    readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    bool _caps = Forms.Control.IsKeyLocked(Forms.Keys.CapsLock);
+    IntPtr _layout;
+
+    [DllImport("user32.dll")] static extern IntPtr GetKeyboardLayout(uint thread);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, IntPtr process);
+
+    public KeyboardCards(Action<string, string> tell)
+    {
+        _tell = tell;
+        _layout = Current();
+        _timer.Tick += (_, _) => Check();
+    }
+
+    public void Start() => _timer.Start();
+
+    static IntPtr Current() => GetKeyboardLayout(GetWindowThreadProcessId(Native.GetForegroundWindow(), IntPtr.Zero));
+
+    void Check()
+    {
+        var p = Preferences.Shared;
+        var caps = Forms.Control.IsKeyLocked(Forms.Keys.CapsLock);
+        if (caps != _caps)
+        {
+            _caps = caps;
+            if (p.Bool("show-caps-lock")) _tell(caps ? "Caps Lock on" : "Caps Lock off", Glyph.Keyboard);
+        }
+        var layout = Current();
+        if (layout != _layout && layout != IntPtr.Zero)
+        {
+            _layout = layout;
+            if (!p.Bool("show-input-source")) return;
+            try
+            {
+                var culture = new System.Globalization.CultureInfo((int)(layout.ToInt64() & 0xffff));
+                _tell(culture.NativeName, Glyph.Keyboard);
+            }
+            catch { /* an unknown layout */ }
+        }
     }
 }

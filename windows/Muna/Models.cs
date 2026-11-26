@@ -176,6 +176,13 @@ public sealed class ClipboardModel : Model
         }
         catch { _ignoreNext = false; }
         Notify();
+        // Settings → Clipboard → A click pastes: Ctrl+V into the app that was in front (after the capsule let go)
+        if (Preferences.Shared.Bool("clipboard-click-pastes"))
+        {
+            var later = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
+            later.Tick += (_, _) => { later.Stop(); Keys.Chord(0x11, 0x56); };
+            later.Start();
+        }
     }
 
     public static void SetText(string text)

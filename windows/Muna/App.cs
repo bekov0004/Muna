@@ -42,6 +42,7 @@ public sealed class AppState
     public readonly PhoneModel Phone = new();
     public readonly MonitorDesktops Desktops = new();
     public readonly PowerModel Power = new();
+    public KeyboardCards? KeyboardCards { get; private set; }
     public readonly SystemNotifications Notifications = new();
     public GestureActions Gestures { get; }
     public SystemAlerts SystemAlerts { get; }
@@ -81,6 +82,8 @@ public sealed class AppState
         Desktops.Start();
         Bars.Rebuild();
         SystemAlerts.Start();
+        KeyboardCards = new KeyboardCards((title, glyph) => Capsules.Tell(title, "", glyph, true));
+        KeyboardCards.Start();
         if (Preferences.Shared.AwakeOnStart) Awake.Start(null, false);
         Gestures.Start();
         if (Preferences.Shared.AppNotifications) Notifications.Start();
@@ -211,12 +214,16 @@ public sealed class CapsuleManager
         app.Timer.Finished += () => Tell("Time is up", "The timer ended", Glyph.Clock, true);
         app.Focus.PhaseEnded += (title, details) => Tell(title, details, Glyph.Flag, true);
         app.Reminders.Due += text => { if (Preferences.Shared.ReminderSound) System.Media.SystemSounds.Exclamation.Play(); Tell("Reminder", text, Glyph.Bell, true); };
-        app.Downloads.Finished += path => Tell("Downloaded", System.IO.Path.GetFileName(path), Glyph.Download, true);
-        app.Agents.PermissionAsked += (_, _) =>
+        app.Downloads.Finished += path => { if (Preferences.Shared.Bool("activity-downloads")) Tell("Downloaded", System.IO.Path.GetFileName(path), Glyph.Download, true); };
+        app.Agents.PermissionAsked += (task, permission) =>
         {
-            if (Current is not { } capsule) return;
-            capsule.SetTab(PanelTab.Agent);
-            capsule.OpenNow();
+            if (Current is { } capsule)
+            {
+                capsule.SetTab(PanelTab.Agent);
+                capsule.OpenNow();
+            }
+            // Settings → Fingerprint → Claude Code's questions: Windows Hello allows it
+            if (Preferences.Shared.Bool("fingerprint-agents")) ConfirmWithHello(task, permission);
         };
         app.Agents.TaskFinished += (task, ok) => { if (Preferences.Shared.AgentsAlerts) Tell(ok ? $"{task.Project} is done" : $"{task.Project} stopped", ok ? task.Current : task.Error, ok ? Glyph.Sparkle : Glyph.Warning, ok); };
         app.Agents.Changed += () =>
@@ -238,6 +245,18 @@ public sealed class CapsuleManager
         app.Timer.Changed += () => All(c => c.ActivityChanged());
         _pointer.Tick += (_, _) => WatchPointer();
         _fullScreen.Tick += (_, _) => WatchFullScreen();
+    }
+
+    async void ConfirmWithHello(ClaudeTask task, Permission permission)
+    {
+        try
+        {
+            if (await global::Windows.Security.Credentials.UI.UserConsentVerifier.CheckAvailabilityAsync() != global::Windows.Security.Credentials.UI.UserConsentVerifierAvailability.Available) return;
+            var result = await global::Windows.Security.Credentials.UI.UserConsentVerifier.RequestVerificationAsync($"Allow Claude to {permission.Verb.ToLowerInvariant()} {permission.Detail}");
+            if (result == global::Windows.Security.Credentials.UI.UserConsentVerificationResult.Verified && _app.Agents.Waiting?.Permission.RequestId == permission.RequestId)
+                _app.Agents.Answer(task, permission, Decision.Allow);
+        }
+        catch { /* Windows Hello did not answer: the buttons stay */ }
     }
 
     void All(Action<CapsuleWindow> action)

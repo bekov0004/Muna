@@ -19,6 +19,7 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
     uniform float muna_h;
     uniform float muna_r;
     uniform float muna_top_r;
+    uniform float muna_blur;
     float muna_box(vec2 p) {
         // the outline as a signed distance (negative inside), in pixels
         vec2 c = vec2(muna_w, muna_h) * 0.5;
@@ -55,17 +56,20 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
         vec3 ray = refract(vec3(0.0, 0.0, -1.0), muna_normal, 1.0 / ior);
         vec2 shift = ray.xy / max(-ray.z, 0.2) * muna_thick;
         vec3 tint = muna_spectrum(t);
-        muna_rgb += texture2D(cogl_sampler0, muna_uv + shift / muna_size).rgb * tint;
+        vec2 at = muna_uv + shift / muna_size;
+        // a light frost: the middle is softly blurred, the steep rim stays sharp
+        vec2 r = vec2(muna_blur * muna_z) / muna_size;
+        vec3 c = texture2D(cogl_sampler0, at).rgb * 0.12;
+        for (int k = 0; k < 8; k++) {
+            float a = float(k) * 0.785398;
+            vec2 o = vec2(cos(a), sin(a));
+            c += texture2D(cogl_sampler0, at + o * r * 0.5).rgb * 0.06;
+            c += texture2D(cogl_sampler0, at + o * r).rgb * 0.05;
+        }
+        muna_rgb += c * tint;
         muna_weight += tint;
     }
     muna_rgb /= muna_weight;
-    // the glass absorbs some light (no colour of its own): what is behind is darker and calmer, so the
-    // white text on the glass reads well; the rim stays bright and sharp
-    float muna_luma = dot(muna_rgb, vec3(0.299, 0.587, 0.114));
-    float muna_calm = muna_z;
-    muna_rgb = mix(muna_rgb, vec3(muna_luma), 0.12 * muna_calm);
-    muna_rgb = mix(muna_rgb, vec3(muna_luma * 0.6 + 0.08), 0.18 * muna_calm);
-    muna_rgb *= mix(1.0, 0.62, muna_calm);
     // light on the glass: a reflection where the rim faces the light (up and to the left), a lit bottom
     // bevel, Fresnel at the steep edge, and the bright rim line
     float muna_edge = 1.0 - muna_z;
@@ -121,6 +125,7 @@ export const LiquidGlass = GObject.registerClass({GTypeName: 'MunaLiquidGlass'},
         this._effect.setUniform('muna_w', [w]);
         this._effect.setUniform('muna_h', [h]);
         this._effect.setUniform('muna_r', [Math.min(radius, h / 2, w / 2)]);
+        this._effect.setUniform('muna_blur', [8.0]);
         this._effect.setUniform('muna_top_r', [hanging ? 0 : Math.min(radius, h / 2, w / 2)]);
         this._effect.queue_repaint();
         this.queue_relayout();

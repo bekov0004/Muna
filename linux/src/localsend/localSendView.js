@@ -62,7 +62,8 @@ function createSideScroll(content) {
  * (other computers with Muna first). A click chooses a device (a group: its members that are
  * here); "Send to N" sends to all of them at once. While sending, the row shows a tile per device
  * with how far it got, and at the end who got the files, with "Try again" for the others.
- * Receiving is switched on and off at the end of the "Send to" line.
+ * Receiving is switched on and off at the end of the "Send to" line. "Text" writes a text message
+ * that goes with the files, or alone (LocalSend's text: the other side shows it at once).
  */
 export class LocalSendView extends St.BoxLayout {
     static {
@@ -81,11 +82,12 @@ export class LocalSendView extends St.BoxLayout {
         this._receiving = receiving;
         this._ui = ui;
         this._naming = false;      // writing the name of a new group
+        this._writing = false;     // writing a text to send
         this._confirmDelete = null;
 
         // While a group name is being written the row stays as it is (devices still arrive).
         session.connectObject('changed', () => {
-            if (!this._naming)
+            if (!this._naming && !this._writing)
                 this._render();
         }, this);
         this.connect('notify::mapped', () => {
@@ -103,7 +105,10 @@ export class LocalSendView extends St.BoxLayout {
 
     _render() {
         this.destroy_all_children();
-        this._buildFiles();
+        if (this._writing)
+            this._buildWriting();
+        else
+            this._buildFiles();
         this._buildDevices();
         this.onContentChanged?.();
     }
@@ -163,14 +168,36 @@ export class LocalSendView extends St.BoxLayout {
             chips.add_child(chip);
         }
 
-        const title = files.length === 0 ? 'FILES' : `FILES · ${files.length} · ${sizeText(total)}`;
+        // the text message, as one more chip
+        const text = this._session.text.trim();
+        if (text) {
+            const chip = new St.BoxLayout({style_class: 'muna-lsv-chip', y_align: Clutter.ActorAlign.CENTER});
+            chip.add_child(new St.Icon({icon_name: 'insert-text-symbolic', style_class: 'muna-lsv-chip-icon', y_align: Clutter.ActorAlign.CENTER}));
+            const words = new St.Label({text: `“${text.replace(/\s+/g, ' ')}”`, style_class: 'muna-lsv-chip-name', y_align: Clutter.ActorAlign.CENTER});
+            words.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+            chip.add_child(words);
+            chip.add_child(new St.Label({text: 'Text', style_class: 'muna-lsv-chip-size', y_align: Clutter.ActorAlign.CENTER}));
+            const edit = new St.Button({style_class: 'muna-ls-file-remove', child: new St.Icon({icon_name: 'document-edit-symbolic', icon_size: 12}), y_align: Clutter.ActorAlign.CENTER, can_focus: true});
+            edit.connect('clicked', () => this._startWriting());
+            chip.add_child(edit);
+            const remove = createButton({iconName: 'window-close-symbolic', styleClass: 'muna-ls-file-remove', onClick: () => this._session.setText('')});
+            remove.y_align = Clutter.ActorAlign.CENTER;
+            chip.add_child(remove);
+            chips.insert_child_at_index(chip, 0);
+        }
+
+        const title = files.length === 0 ? (text ? 'TEXT' : 'FILES') : `FILES · ${files.length} · ${sizeText(total)}${text ? ' · TEXT' : ''}`;
         this.add_child(this._caption(title, [
+            {label: 'Text', onClick: () => this._startWriting()},
             {label: 'Add from Tray', onClick: () => this._session.offer(this._getTrayUris())},
-            ...(files.length > 0 ? [{label: 'Clear', onClick: () => this._session.remove([...files])}] : []),
+            ...(files.length > 0 || text ? [{label: 'Clear', onClick: () => {
+                this._session.setText('');
+                this._session.remove([...files]);
+            }}] : []),
         ]));
-        if (files.length === 0) {
+        if (files.length === 0 && !text) {
             this.add_child(new St.Label({
-                text: 'Drop files on the capsule, or add them from the Tray',
+                text: 'Drop files on the capsule, add them from the Tray, or write a text',
                 style_class: 'muna-lsv-hint',
                 y_align: Clutter.ActorAlign.CENTER,
                 y_expand: true,
@@ -200,7 +227,7 @@ export class LocalSendView extends St.BoxLayout {
         if (this._confirmDelete && this._confirmDelete !== group?.id)
             this._confirmDelete = null;
         if (chosen > 0) {
-            const empty = s.basket.length === 0;
+            const empty = !s.hasContent;
             const title = group
                 ? `${group.name.toUpperCase()} · ${chosen} OF ${group.members.length} HERE`
                 : `SEND TO · ${chosen} CHOSEN`;
@@ -223,7 +250,7 @@ export class LocalSendView extends St.BoxLayout {
                 {label: 'Clear', onClick: () => s.clearSelection()},
                 groupAction,
                 {
-                    label: empty ? 'Add files to send' : `Send to ${chosen}`,
+                    label: empty ? 'Add files or a text' : `Send to ${chosen}`,
                     accent: !empty,
                     disabled: empty,
                     onClick: () => s.send(),
@@ -314,6 +341,57 @@ export class LocalSendView extends St.BoxLayout {
             tiles.add_child(tile);
         }
         return createSideScroll(tiles);
+    }
+
+    // --- writing a text ---------------------------------------------------------------
+
+    _startWriting() {
+        this._writing = true;
+        this._render();
+        this._ui?.beginTextInput(() => this._stopWriting(false));
+        this._textEntry?.grab_key_focus();
+    }
+
+    /** Ends writing; `keep`: the text written becomes the message. */
+    _stopWriting(keep) {
+        if (!this._writing)
+            return;
+        const text = this._textEntry?.text ?? '';
+        this._writing = false;
+        this._textEntry = null;
+        this._ui?.endTextInput();
+        if (keep)
+            this._session.setText(text);
+        else
+            this._render();
+    }
+
+    _buildWriting() {
+        this.add_child(this._caption('TEXT', [
+            {label: 'Cancel', onClick: () => this._stopWriting(false)},
+            {label: 'Done', accent: true, onClick: () => this._stopWriting(true)},
+        ]));
+        const entry = new St.Entry({
+            hint_text: 'Write a text to send',
+            text: this._session.text,
+            style_class: 'muna-todo-entry muna-lsv-entry',
+            can_focus: true,
+            x_expand: true,
+        });
+        entry.clutter_text.max_length = 10000;
+        entry.clutter_text.connect('activate', () => this._stopWriting(true));
+        entry.clutter_text.connect('key-press-event', (_actor, event) => {
+            if (event.get_key_symbol() === Clutter.KEY_Escape) {
+                this._stopWriting(false);
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._textEntry = entry;
+        const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-naming'});
+        column.add_child(entry);
+        column.add_child(new St.Label({text: 'Enter keeps it; then choose who gets it. Muna and LocalSend show it at once.', style_class: 'muna-lsv-hint'}));
+        this.add_child(column);
     }
 
     // --- naming a group -------------------------------------------------------------

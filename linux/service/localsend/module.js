@@ -45,6 +45,8 @@ export class LocalSendModule extends Module {
         this._service.connect('basket-changed', () => this.emitState());
         this._service.connect('found', (_s, device) => this.emitEvent('found', {device}));
         this._server.connect('incoming', (_s, transfer) => this._onIncoming(transfer));
+        // a text someone sent: the shell shows it in a card
+        this._server.connect('message', (_s, message) => this.emitEvent('message', message));
     }
 
     get state() {
@@ -82,7 +84,7 @@ export class LocalSendModule extends Module {
 
     // --- sending ---------------------------------------------------------------
 
-    async rpc_send({device, uris = []}) {
+    async rpc_send({device, uris = [], text = ''}) {
         const id = this._nextSend++;
         const cancellable = new Gio.Cancellable();
         this._sends.set(id, cancellable);
@@ -90,6 +92,7 @@ export class LocalSendModule extends Module {
         // After the answer: the client must know the id before the first event about it arrives.
         GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
             this._service.send(device, uris, {
+                text: typeof text === 'string' ? text : '',
                 cancellable,
                 onState: state => this.emitEvent('sendState', {id, ...state}),
             }).then(result => {

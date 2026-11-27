@@ -1,5 +1,7 @@
-# A fake LocalSend device for tests: python3 fakels2.py IP ALIAS MODEL FINGERPRINT [accept|decline] [ACCEPT_DELAY]
-# Received files go to /tmp/ls-group/<ALIAS>/<fileName>.
+# A fake LocalSend device for tests: python3 fakels.py IP ALIAS MODEL FINGERPRINT [accept|decline|notext] [ACCEPT_DELAY]
+# Received files go to /tmp/ls-group/<ALIAS>/<fileName>. A text message (one text/plain entry with
+# `preview`) is answered with 204 and its words written to message-preview.txt, as LocalSend does;
+# 'notext' takes it as an ordinary file instead (an older receiver).
 import http.server, json, os, sys, time
 ip, alias, model, fp = sys.argv[1:5]
 mode = sys.argv[5] if len(sys.argv) > 5 else 'accept'
@@ -22,6 +24,10 @@ class H(http.server.BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n)); time.sleep(delay)
             if mode == 'decline':
                 self._json(403, {'message': 'declined'}); return
+            files = list(body['files'].values())
+            if mode != 'notext' and len(files) == 1 and str(files[0].get('fileType', '')).startswith('text/') and 'preview' in files[0]:
+                open(os.path.join(OUT, 'message-preview.txt'), 'w').write(files[0]['preview'])
+                self.send_response(204); self.send_header('Content-Length', '0'); self.end_headers(); return
             for k, f in body['files'].items(): names[k] = f['fileName']
             self._json(200, {'sessionId': 's-' + alias, 'files': {k: 'tok-' + k for k in body['files']}})
         elif self.path.startswith('/api/localsend/v2/upload'):

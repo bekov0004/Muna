@@ -56,6 +56,12 @@ any server certificate (they are all self-signed).
 Folders are skipped (counted as "skipped"). Several devices are sent to **at the same time**, each
 on its own (one failing does not stop the others).
 
+**A text** (LocalSend's "Text"; Muna: "Text" in the LocalSend section) goes as one more entry
+`{id: "text<n>", fileName: "message.txt", size: <UTF-8 bytes>, fileType: "text/plain", preview:
+<the text>}`, alone or with files. A receiver that knows text messages shows `preview` at once
+and answers `204` (nothing to upload); an older one answers `200` with a token and the text is
+uploaded as `message.txt`. Both count as received.
+
 ## Receiving
 
 Off by default. When on: an HTTPS server on port 53317 (TCP, all addresses) with our certificate.
@@ -68,6 +74,10 @@ Off by default. When on: an HTTPS server on port 53317 (TCP, all addresses) with
 - `POST /upload`: only with the matching session id, file id and token, streamed to
   `<name>.muna-part`, renamed when complete. Names are made safe (no path parts); an existing name
   gets " (1)", " (2)" … before the extension Files go to the Downloads folder unless the user chose another one.
+- **A text message**: a `prepare-upload` with exactly one entry whose `fileType` starts with `text/`
+  and that has a `preview` string is answered `204` at once (no question, nothing uploaded) and its
+  text (at most 100 000 characters) is shown in a card with the sender, Copy, and Open for a single
+  link. This is what LocalSend does too.
 - `POST /cancel`: ends the current transfer, removes the parts.
 
 ## Groups

@@ -62,7 +62,7 @@ export class IncomingTransfer extends Signals.EventEmitter {
  * Receiving files with LocalSend, switched on and off by the setting. The server itself runs in
  * the Muna service; this relays the requests of the devices as 'incoming' transfers.
  *
- * Signal: 'incoming' (IncomingTransfer)
+ * Signals: 'incoming' (IncomingTransfer); 'message' ({sender, text}): a text someone sent
  */
 export class LocalSendServer extends Signals.EventEmitter {
     /** @param {ModuleClient} module */
@@ -101,6 +101,8 @@ export class LocalSendServer extends Signals.EventEmitter {
             const transfer = new IncomingTransfer(this._module, payload);
             this._transfers.set(payload.id, transfer);
             this.emit('incoming', transfer);
+        } else if (name === 'message') {
+            this.emit('message', payload);
         } else if (name === 'incomingState') {
             const transfer = this._transfers.get(payload.id);
             transfer?.update(payload);

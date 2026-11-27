@@ -36,6 +36,8 @@ export class LocalSendSession extends Signals.EventEmitter {
         this._gone = false;
         this._progressId = 0;
         this._uris = [];
+        this._sentText = '';
+        this.text = '';              // a text message that goes with the files (or alone)
         this.phase = 'pick';
         this.devices = [];
         this.selected = new Set();   // device keys
@@ -53,6 +55,18 @@ export class LocalSendSession extends Signals.EventEmitter {
 
     get basket() {
         return this._service.basket;
+    }
+
+    /** Something to send: files or a text. */
+    get hasContent() {
+        return this.basket.length > 0 || this.text.trim().length > 0;
+    }
+
+    /** The text message to send ('' : none). */
+    setText(text) {
+        this.text = String(text ?? '');
+        this._backToPick();
+        this.emit('changed');
     }
 
     get groups() {
@@ -218,10 +232,11 @@ export class LocalSendSession extends Signals.EventEmitter {
      */
     send() {
         const devices = this.selectedDevices;
-        if (this.busy || devices.length === 0 || this.basket.length === 0)
+        if (this.busy || devices.length === 0 || !this.hasContent)
             return Promise.resolve();
         const group = this.activeGroup;
         this._uris = [...this.basket];
+        this._sentText = this.text.trim();
         return this._start(devices, group ? this.groupPresence(group).missing : []);
     }
 
@@ -272,6 +287,7 @@ export class LocalSendSession extends Signals.EventEmitter {
     async _run(transfer) {
         try {
             const result = await this._service.send(transfer.device, this._uris, {
+                text: this._sentText,
                 cancellable: transfer.cancellable,
                 onState: state => {
                     const phaseChanged = transfer.phase !== state.phase;
@@ -315,8 +331,11 @@ export class LocalSendSession extends Signals.EventEmitter {
             return;
         const all = this.transfers;
         const done = all.filter(t => t.phase === 'done');
-        if (done.length === all.length)
+        if (done.length === all.length) {
             this._service.removeFromBasket(this._uris);
+            if (this._sentText && this.text.trim() === this._sentText)
+                this.text = '';
+        }
         const skipped = Math.max(0, ...done.map(t => t.skipped ?? 0));
         const files = Math.max(0, ...done.map(t => t.count ?? 0));
         let title;
@@ -325,7 +344,8 @@ export class LocalSendSession extends Signals.EventEmitter {
             const [one] = all;
             title = one.phase === 'done' ? `Sent to ${one.device.alias}` : one.message;
             if (one.phase === 'done')
-                description = skipped > 0 ? `${skipped} folder skipped` : `${files} file${files === 1 ? '' : 's'}`;
+                description = skipped > 0 ? `${skipped} folder skipped`
+                    : this._uris.length === 0 ? 'A text' : `${this._uris.length} file${this._uris.length === 1 ? '' : 's'}${this._sentText ? ' and a text' : ''}`;
         } else {
             title = done.length === all.length ? `Sent to all ${all.length}` : `${done.length} of ${all.length} received`;
             const left = all.filter(t => t.phase !== 'done').map(t => t.device.alias);

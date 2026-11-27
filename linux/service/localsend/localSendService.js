@@ -5,6 +5,7 @@ import {EventEmitter} from '../lib/signals.js';
 
 Gio._promisify(Soup.Session.prototype, 'send_and_read_async', 'send_and_read_finish');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async', 'communicate_utf8_finish');
+Gio._promisify(Gio.Subprocess.prototype, 'wait_check_async', 'wait_check_finish');
 
 const PORT = 53317;
 const API = '/api/localsend/v2';
@@ -230,7 +231,7 @@ export class LocalSendService extends EventEmitter {
      * @param {{onState?: Function, cancellable?: Gio.Cancellable}} [options]
      * @returns {Promise<{count: number, skipped: number}>}
      */
-    async send(device, uris, {onState = () => {}, cancellable = new Gio.Cancellable()} = {}) {
+    async send(device, uris, {text = '', onState = () => {}, cancellable = new Gio.Cancellable()} = {}) {
         const files = {};
         const entries = [];
         let skipped = 0;
@@ -251,6 +252,14 @@ export class LocalSendService extends EventEmitter {
             const entry = {id, file, size: info.get_size(), type: info.get_content_type() ?? 'application/octet-stream'};
             entries.push(entry);
             files[id] = {id, fileName: file.get_basename(), size: entry.size, fileType: entry.type};
+        }
+        // A text goes as LocalSend's text message: a text/plain "file" with its words in `preview`
+        // (a receiver that knows it shows them and answers 204; an older one takes it as a .txt file).
+        if (text) {
+            const bytes = new TextEncoder().encode(text);
+            const id = `text${entries.length}`;
+            entries.push({id, bytes: new GLib.Bytes(bytes), size: bytes.length, type: 'text/plain'});
+            files[id] = {id, fileName: 'message.txt', size: bytes.length, fileType: 'text/plain', preview: text};
         }
         if (entries.length === 0)
             throw new Error('Nothing to send (folders are not supported yet)');
@@ -281,7 +290,7 @@ export class LocalSendService extends EventEmitter {
             if (prepared.status === 409 || prepared.status === 429)
                 throw new Error(`${device.alias} is busy`);
             if (prepared.status === 204)
-                return {count: 0, skipped};
+                return {count: entries.length, skipped};
             if (prepared.status !== 200)
                 throw new Error(`${device.alias} answered ${prepared.status}`);
             const {sessionId: id, files: tokens} = JSON.parse(prepared.text);
@@ -294,7 +303,7 @@ export class LocalSendService extends EventEmitter {
                 if (!token)
                     continue;
                 const query = `?sessionId=${encodeURIComponent(sessionId)}&fileId=${encodeURIComponent(entry.id)}&token=${encodeURIComponent(token)}`;
-                const stream = entry.file.read(null);
+                const stream = entry.bytes ? Gio.MemoryInputStream.new_from_bytes(entry.bytes) : entry.file.read(null);
                 try {
                     const result = await request(`/upload${query}`, null, entry.type, stream, entry.size, chunk => {
                         sent += chunk;

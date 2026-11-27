@@ -10,7 +10,7 @@ import {CameraState} from './services/cameraService.js';
 import {LocalSendSession} from './localsend/localSendSession.js';
 import {LocalSendView} from './localsend/localSendView.js';
 import {AgentPermissionActivity} from './agents/agentPermissionActivity.js';
-import {LocalSendReceiveActivity} from './localsend/localSendReceiveActivity.js';
+import {LocalSendMessageActivity, LocalSendReceiveActivity} from './localsend/localSendReceiveActivity.js';
 import {CardManager} from './services/cardManager.js';
 import {ClockService} from './services/clockService.js';
 import {DragService} from './services/dragService.js';
@@ -882,6 +882,18 @@ export class Muna {
             }),
         });
         this._incoming = activity;
+        this._services.activities.peek(activity, {persistent: true, priority: Priority.CRITICAL, force: true, target: this});
+    }
+
+    /** Someone sent a text with LocalSend: a card with the text, Copy, and Open for a link. */
+    showMessage({sender, text}) {
+        const activity = new LocalSendMessageActivity({
+            sender,
+            text,
+            copy: value => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, value),
+            open: uri => Gio.AppInfo.launch_default_for_uri(uri, null),
+            onDismiss: () => this._cards.hide(`activity:${activity.id}`),
+        });
         this._services.activities.peek(activity, {persistent: true, priority: Priority.CRITICAL, force: true, target: this});
     }
 

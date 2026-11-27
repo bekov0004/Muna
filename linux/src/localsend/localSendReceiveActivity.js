@@ -190,3 +190,57 @@ export class LocalSendReceiveActivity extends LiveActivity {
             clearTimeout(this._dismissTimer);
     }
 }
+
+/** A text someone sent with LocalSend: who, the text, Copy, and Open when it is a link. */
+export class LocalSendMessageActivity extends LiveActivity {
+    /** @param {{sender: object, text: string, copy: (text: string) => void, open: (uri: string) => void, onDismiss: () => void}} params */
+    constructor({sender, text, copy, open, onDismiss}) {
+        super({id: 'localsend-text', widgetId: 'tray'});
+        this._sender = sender;
+        this._text = text;
+        this._copy = copy;
+        this._open = open;
+        this._onDismiss = onDismiss;
+    }
+
+    get title() {
+        return this._sender.alias;
+    }
+
+    get peekSize() {
+        return {width: 330, height: HEIGHT};
+    }
+
+    createCompactParts() {
+        throw new Error('A received text has no compact face');
+    }
+
+    createPeekView() {
+        const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-ls', x_expand: true, y_expand: true});
+        const header = new St.BoxLayout({style_class: 'muna-ls-header'});
+        const title = new St.Label({text: `${this._sender.alias} sent a text`, style_class: 'muna-ls-title', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        header.add_child(title);
+        const close = createButton({iconName: 'window-close-symbolic', styleClass: 'muna-mirror-control', onClick: () => this._onDismiss()});
+        close.y_align = Clutter.ActorAlign.CENTER;
+        header.add_child(close);
+        root.add_child(header);
+        const words = new St.Label({text: this._text, style_class: 'muna-ls-status', x_expand: true, y_expand: true});
+        words.clutter_text.line_wrap = true;
+        words.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        root.add_child(words);
+        const buttons = new St.BoxLayout({style_class: 'muna-ls-buttons', x_align: Clutter.ActorAlign.CENTER});
+        const link = /^\s*(https?:\/\/\S+)\s*$/.exec(this._text)?.[1];
+        if (link)
+            buttons.add_child(createButton({label: 'Open', styleClass: 'muna-ls-cancel', onClick: () => { this._open(link); this._onDismiss(); }}));
+        const copy = createButton({label: 'Copy', styleClass: 'muna-ls-cancel muna-ls-accept', onClick: () => {
+            this._copy(this._text);
+            copy.label = 'Copied';
+        }});
+        buttons.add_child(copy);
+        root.add_child(buttons);
+        return root;
+    }
+
+    destroy() {}
+}

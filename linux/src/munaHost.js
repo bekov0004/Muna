@@ -452,6 +452,8 @@ export class MunaHost {
             }, this);
             this._server.connectObject('incoming', (_s, transfer) =>
                 this._capsuleAtPointer()?.showIncoming(transfer), this);
+            this._server.connectObject('message', (_s, message) =>
+                this._capsuleAtPointer()?.showMessage(message), this);
         }
         const problem = await this._server.start(this._settings.get('localsend-folder') ?? '');
         if (problem) {

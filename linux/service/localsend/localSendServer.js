@@ -8,6 +8,7 @@ const API = '/api/localsend/v2';
 const MULTICAST = '224.0.0.167';
 const ASK_TIMEOUT_S = 60;
 const MAX_FILES = 500;
+const MAX_TEXT = 100000;     // characters of a text message that are kept
 
 const decode = bytes => new TextDecoder().decode(bytes);
 
@@ -292,6 +293,18 @@ export class LocalSendServer extends EventEmitter {
         const entries = Object.values(request?.files ?? {});
         if (entries.length === 0 || entries.length > MAX_FILES) {
             this._reply(msg, 400, {message: 'Invalid body'});
+            return;
+        }
+        // A text message (LocalSend's "Text"): one text/plain entry whose words are in `preview`.
+        // Nothing is uploaded: it is shown at once and answered with 204, as LocalSend itself does.
+        const only = entries.length === 1 ? entries[0] : null;
+        if (only && typeof only.preview === 'string' && String(only.fileType ?? '').startsWith('text/')) {
+            const info = request.info ?? {};
+            this._reply(msg, 204);
+            this.emit('message', {
+                sender: {alias: String(info.alias ?? 'Unknown device'), deviceModel: String(info.deviceModel ?? ''), deviceType: String(info.deviceType ?? 'desktop')},
+                text: only.preview.slice(0, MAX_TEXT),
+            });
             return;
         }
         if (this._current && ['asking', 'receiving'].includes(this._current.state)) {

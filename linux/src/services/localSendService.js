@@ -96,11 +96,11 @@ export class LocalSendService extends Signals.EventEmitter {
      * receiver accepts), 'sending'. Rejects with a short, readable Error.
      * @param {object} device
      * @param {string[]} uris file:// URIs (folders are skipped)
-     * @param {{onState?: Function, cancellable?: Gio.Cancellable}} [options]
+     * @param {{text?: string, onState?: Function, cancellable?: Gio.Cancellable}} [options] text: a text message sent too
      * @returns {Promise<{count: number, skipped: number}>}
      */
-    async send(device, uris, {onState = () => {}, cancellable = null} = {}) {
-        const {id} = await this._module.call('send', {device, uris});
+    async send(device, uris, {text = '', onState = () => {}, cancellable = null} = {}) {
+        const {id} = await this._module.call('send', {device, uris, text});
         return new Promise((resolve, reject) => {
             this._sends.set(id, {onState, resolve, reject});
             cancellable?.connect(() => this._module.call('cancelSend', {id}).catch(() => {}));

@@ -1031,6 +1031,8 @@ export class MunaPreferences {
 
         const HIDE = [['never', _('Never')], ['intellihide', _('When a window touches it')], ['always', _('Always')]];
         form.append(new Gtk.Label({label: _('Top bar'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
+        this._row(form, _('Top bar'), this._dropdown(settings, 'top-bar-style', [['gnome', _('GNOME\'s')], ['muna', _('Muna\'s')]]),
+            _('Muna\'s: the Muna bar takes the place of GNOME\'s on the main monitor, with every item of GNOME\'s bar (quick settings, keyboard layout, other extensions …) and their menus; on liquid glass when that is on.'));
         this._row(form, _('Hide the top bar'), this._dropdown(settings, 'topbar-hide', HIDE),
             _('Hidden, it comes out when you push the pointer against the top edge of the screen, also over an app in full screen. The capsule hides and comes out with it.'));
         this._toggleRow(form, settings, 'muna-bar', '', _('Muna bar on the other monitors'),
@@ -1578,8 +1580,6 @@ export class MunaPreferences {
             _('The desktop behind the capsule is not blurred but bent at its rim like through real glass: refraction, colours at the edge, a lit rim.'));
         this._row(form, _('Transparency'), this._slider(settings, 'background-opacity', [0.5, 1.0, 0.02], 2),
             _('Background opacity: 1.00 is fully opaque.'));
-        this._row(form, _('Shadow'), this._slider(settings, 'shadow-strength', [0, 1, 0.1], 1),
-            _('0 turns the shadow off.'));
 
         this._rule(form);
         const picker = new Gtk.ColorDialogButton({dialog: new Gtk.ColorDialog({with_alpha: false})});

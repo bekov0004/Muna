@@ -518,7 +518,7 @@ export class MunaHost {
             } catch (e) {
                 // not a reminder
             }
-        } else if (key === 'muna-bar')
+        } else if (key === 'muna-bar' || key === 'top-bar-style')
             this._syncCapsules();
         else if (key === 'topbar-hide' || key === 'muna-bar-hide')
             this._bars?.forEach(bar => bar.syncStruts());
@@ -743,8 +743,16 @@ export class MunaHost {
     _syncMunaBars({rebuild = false} = {}) {
         this._munaBars ??= new Map();
         const primary = Main.layoutManager.primaryIndex;
+        const own = this._settings.get('top-bar-style') === 'muna';
         const wanted = this._settings.get('muna-bar')
             ? Main.layoutManager.monitors.map(m => m.index).filter(i => i !== primary) : [];
+        if (own)
+            wanted.push(primary);
+        // a bar made for another role (primary / not) is made again
+        for (const [index, bar] of this._munaBars) {
+            if (bar._munaPrimary !== (index === primary && own))
+                rebuild = true;
+        }
         for (const [index, bar] of [...this._munaBars]) {
             if (rebuild || !wanted.includes(index)) {
                 this._bars?.get(index)?.destroy();
@@ -756,14 +764,59 @@ export class MunaHost {
         for (const index of wanted) {
             if (this._munaBars.has(index))
                 continue;
-            const bar = new MunaBar({monitorIndex: index, desktops: this._services.desktops, hasCapsule: () => this._capsules.has(index)});
-            Main.layoutManager.addChrome(bar, {affectsStruts: true, trackFullscreen: true});
+            const isPrimary = index === primary && own;
+            const bar = new MunaBar({monitorIndex: index, desktops: this._services.desktops, hasCapsule: () => this._capsules.has(index), primary: isPrimary});
+            bar._munaPrimary = isPrimary;
+            // the primary's bar takes no room of its own: GNOME's bar under it keeps its place (and hides with it)
+            Main.layoutManager.addChrome(bar, {affectsStruts: !isPrimary, trackFullscreen: true});
             glassManager(this._settings).attach(bar, () => ({radius: 0}), {mark: bar});
-            // under the capsules, like GNOME's bar
-            bar.get_parent()?.set_child_below_sibling(bar, Main.layoutManager.panelBox);
+            if (isPrimary) {
+                // over GNOME's (invisible) bar, under the capsules
+                bar.get_parent()?.set_child_above_sibling(bar, Main.layoutManager.panelBox);
+                this._followPanel(bar);
+            } else {
+                // under the capsules, like GNOME's bar
+                bar.get_parent()?.set_child_below_sibling(bar, Main.layoutManager.panelBox);
+            }
             bar.setLook({color: this._settings.get('panel-color'), opacity: this._settings.get('panel-opacity')});
             this._munaBars.set(index, bar);
         }
+    }
+
+    /**
+     * Muna's top bar on the primary monitor: GNOME's bar stays (its struts, its menus, its hiding) but is not
+     * seen; Muna's bar lies over it and moves and hides with it.
+     */
+    _followPanel(bar) {
+        const box = Main.layoutManager.panelBox;
+        Main.panel.opacity = 0;
+        // the menus of GNOME's items in Muna's look, on liquid glass when that is on
+        const styled = [];
+        for (const item of Object.values(Main.panel.statusArea)) {
+            const menu = item?.menu;
+            if (!menu?.actor || !menu.box || menu.actor.has_style_class_name('muna-menu'))
+                continue;
+            menu.actor.add_style_class_name('muna-styled');
+            styled.push({menu, glass: glassManager(this._settings).attach(menu.box, () => ({radius: 24}), {mark: menu.actor})});
+        }
+        const sync = () => {
+            bar.translation_y = box.translation_y;
+            bar.visible = box.visible;
+            bar.opacity = box.opacity;
+        };
+        for (const property of ['translation-y', 'visible', 'opacity', 'y'])
+            box.connectObject(`notify::${property}`, sync, bar);
+        sync();
+        bar.connect('destroy', () => {
+            box.disconnectObject(bar);
+            for (const {menu, glass} of styled) {
+                glass.remove();
+                menu.actor?.remove_style_class_name('muna-styled');
+                menu.actor?.remove_style_class_name('muna-liquid');
+            }
+            if (![...(this._munaBars?.values() ?? [])].some(b => b !== bar && b._munaPrimary))
+                Main.panel.opacity = 255;
+        });
     }
 
     _barFor(index) {

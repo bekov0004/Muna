@@ -19,7 +19,7 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
     uniform float muna_r;
     uniform float muna_top_r;
     float muna_box(vec2 p) {
-        // the capsule's outline as a signed distance (negative inside), in pixels
+        // the outline as a signed distance (negative inside), in pixels
         vec2 c = vec2(muna_w, muna_h) * 0.5;
         // hanging from the screen's top edge: the upper half only has the sides (no top rim), so the field stays smooth
         if (muna_top_r < 0.5)
@@ -27,32 +27,47 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
         vec2 q = abs(p - c) - c + vec2(muna_r);
         return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - muna_r;
     }
+    // a colour of the spectrum, t from 0 (red) to 1 (violet)
+    vec3 muna_spectrum(float t) {
+        return clamp(vec3(1.5 - abs(4.0 * t - 1.0), 1.5 - abs(4.0 * t - 2.0), 1.5 - abs(4.0 * t - 3.0)), 0.0, 1.0);
+    }
 `, `
     vec2 muna_size = vec2(muna_w, muna_h);
     vec2 muna_uv = cogl_tex_coord_in[0].xy;
     vec2 muna_p = muna_uv * muna_size;
     float muna_d = muna_box(muna_p);
-    // the outline's normal, from the distance field
     vec2 muna_n = normalize(vec2(muna_box(muna_p + vec2(1.0, 0.0)) - muna_box(muna_p - vec2(1.0, 0.0)),
                                  muna_box(muna_p + vec2(0.0, 1.0)) - muna_box(muna_p - vec2(0.0, 1.0))) + 1e-5);
-    // how close to the rim (0 in the middle, 1 at the edge), a lens profile
-    float muna_band = clamp(min(muna_w, muna_h) * 0.42, 14.0, 46.0);
+    // the bevel: a wide convex rim, flat in the middle (a thick drop of glass)
+    float muna_band = clamp(min(muna_w, muna_h) * 0.36, 12.0, 64.0);
     float muna_e = clamp(1.0 + muna_d / muna_band, 0.0, 1.0);
-    float muna_lens = muna_e * muna_e;
-    // refraction: near the rim the picture is taken from further in (it bends and magnifies);
-    // dispersion: red, green and blue bend by different amounts
-    // at most a third of the band: the picture magnifies at the rim but never folds over (red bends most)
-    vec2 muna_bend = muna_n * muna_lens * muna_band * 0.26 / muna_size;
-    float muna_red = texture2D(cogl_sampler0, muna_uv - muna_bend * 1.9).r;
-    float muna_green = texture2D(cogl_sampler0, muna_uv - muna_bend).g;
-    float muna_blue = texture2D(cogl_sampler0, muna_uv - muna_bend * 0.15).b;
-    vec3 muna_rgb = vec3(muna_red, muna_green, muna_blue);
-    // rim light: a thin bright line, strongest where it faces the light (up and to the left)
-    float muna_line = smoothstep(-3.0, -0.8, muna_d) * (1.0 - smoothstep(-0.8, 0.5, muna_d));
+    float muna_slope = muna_e * muna_e;
+    // refraction: the picture is taken from further in where the glass slopes (a lens that magnifies)
+    vec2 muna_bend = muna_n * muna_slope * muna_band * 0.44 / muna_size;
+    // dispersion: seven wavelengths bend by different amounts and add up to a rainbow at the rim
+    vec3 muna_rgb = vec3(0.0);
+    vec3 muna_weight = vec3(0.0);
+    for (int i = 0; i < 7; i++) {
+        float t = float(i) / 6.0;
+        vec3 tint = muna_spectrum(t);
+        float k = 1.0 + (t - 0.5) * 0.9 * muna_slope;
+        muna_rgb += texture2D(cogl_sampler0, muna_uv - muna_bend * k).rgb * tint;
+        muna_weight += tint;
+    }
+    muna_rgb /= muna_weight;
+    // light on the glass: brighter where the bevel faces up, a lit thick bevel at the bottom,
+    // a soft shadow inside under the top edge (depth)
+    float muna_up = clamp(-muna_n.y, 0.0, 1.0);
+    float muna_down = clamp(muna_n.y, 0.0, 1.0);
+    muna_rgb += vec3(1.0) * muna_slope * muna_up * 0.10;
+    muna_rgb += vec3(1.0, 0.96, 0.92) * pow(muna_e, 6.0) * muna_down * 0.22;
+    muna_rgb *= 1.0 - pow(muna_e, 3.0) * muna_up * 0.18;
+    // Fresnel: the rim glows where it is seen at a glancing angle
+    muna_rgb += vec3(0.75, 0.8, 1.0) * pow(muna_e, 5.0) * 0.16;
+    // the rim line, lit from above and to the left
+    float muna_line = smoothstep(-2.5, -0.6, muna_d) * (1.0 - smoothstep(-0.6, 0.5, muna_d));
     float muna_face = clamp(dot(muna_n, normalize(vec2(-0.6, -1.0))) * 0.5 + 0.5, 0.0, 1.0);
-    muna_rgb = mix(muna_rgb, vec3(1.0), muna_line * (0.35 + 0.6 * muna_face));
-    // a soft lit band inside the rim, as thick glass catches light
-    muna_rgb += vec3(0.6, 0.65, 1.0) * muna_lens * muna_lens * 0.16;
+    muna_rgb = mix(muna_rgb, vec3(1.0), muna_line * (0.3 + 0.6 * muna_face));
     float muna_inside = 1.0 - smoothstep(-0.5, 0.5, muna_d);
     cogl_color_out = vec4(muna_rgb * muna_inside, muna_inside);
 `);

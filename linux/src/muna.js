@@ -394,7 +394,6 @@ export class Muna {
         // with liquid glass the capsule is only a light indigo tint over the bent desktop
         const opacity = liquid ? Math.min(0.36, this._settings.get('background-opacity')) : this._settings.get('background-opacity');
 
-        const shadow = this._settings.get('shadow-strength');
         // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
         // with a thin lilac rim; the opacity setting still applies (98 % by default).
         const background = `background-gradient-direction: vertical; ` +
@@ -406,10 +405,10 @@ export class Muna {
             const bottom = COLLAPSED.has(this._state) ? Math.min(radius, 14) : radius;
             this._actor.style = `border-radius: 0 0 ${bottom}px ${bottom}px; ` +
                 `${background} border-top-width: 0; border-left-width: 1px; border-right-width: 1px; border-bottom-width: 1px; ` +
-                `box-shadow: 0 14px 36px rgba(0, 0, 0, ${(0.55 * shadow).toFixed(2)});`;
+                'box-shadow: none;';
         } else {
             this._actor.style = `border-radius: ${radius}px; ${background} ` +
-                `box-shadow: 0 2px 10px rgba(0, 0, 0, ${(0.4 * shadow).toFixed(2)});`;
+                'box-shadow: none;';
         }
         for (const ear of this._ears)
             ear.setGradient([38, 41, 84, opacity], [19, 20, 44, opacity]);

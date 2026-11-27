@@ -16,6 +16,15 @@
       <description>Corner radius of the capsule in pixels.</description>
     </key>
 
+    <key name="top-bar-style" type="s">
+      <choices>
+        <choice value="gnome"/>
+        <choice value="muna"/>
+      </choices>
+      <default>'gnome'</default>
+      <summary>Top bar</summary>
+      <description>gnome: GNOME's own top bar. muna: Muna's bar takes its place on the primary monitor, with every item of GNOME's bar (and liquid glass when that is on).</description>
+    </key>
     <key name="liquid-glass" type="b">
       <default>false</default>
       <summary>Liquid glass</summary>

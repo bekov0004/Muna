@@ -6,7 +6,7 @@
     background-color: rgba(30, 32, 66, 0.98);
     border: 1px solid rgba(176, 184, 255, 0.24);
     border-radius: 32px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: none;
     padding: 0;
 }
 
@@ -1992,7 +1992,7 @@
     background-gradient-start: rgba(38, 41, 84, 0.98);
     background-gradient-end: rgba(19, 20, 44, 0.98);
     border: 1px solid rgba(176, 184, 255, 0.24);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: none;
 }
 
 .muna-menu-item {
@@ -2534,7 +2534,7 @@
 .muna-rem-remove:hover { background-color: rgba(158, 166, 255, 0.17); color: white; }
 .muna-bfr-card {
     background-color: rgba(10, 10, 16, 0.94); border-radius: 26px; padding: 16px 22px 14px 22px; spacing: 6px;
-    border: 1px solid rgba(160, 140, 255, 0.28); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(160, 140, 255, 0.28); box-shadow: none;
 }
 .muna-bfr-time { color: #b9a6ff; font-size: 10pt; font-weight: 700; }
 .muna-bfr-text { color: white; font-size: 16pt; font-weight: 700; }
@@ -2573,3 +2573,62 @@
 .muna-bar.muna-liquid {
     background-color: rgba(30, 32, 66, 0.28);
 }
+
+/* Top bar → Muna's: the menus of GNOME's items (quick settings, keyboard, other extensions) in Muna's look */
+.muna-styled .popup-menu-content,
+.muna-styled .quick-settings {
+    box-shadow: none;
+    background-color: rgba(30, 32, 66, 0.98);
+    background-gradient-direction: vertical;
+    background-gradient-start: rgba(38, 41, 84, 0.98);
+    background-gradient-end: rgba(19, 20, 44, 0.98);
+    border: 1px solid rgba(176, 184, 255, 0.24);
+    border-radius: 24px;
+    color: rgba(255, 255, 255, 0.92);
+}
+.muna-styled.muna-liquid .popup-menu-content,
+.muna-styled.muna-liquid .quick-settings {
+    background-color: rgba(30, 32, 66, 0.34);
+    background-gradient-start: rgba(38, 41, 84, 0.32);
+    background-gradient-end: rgba(19, 20, 44, 0.38);
+}
+.muna-styled .quick-toggle,
+.muna-styled .icon-button,
+.muna-styled .quick-toggle-arrow,
+.muna-styled .quick-settings-system-item .icon-button,
+.muna-styled .button {
+    background-color: rgba(158, 166, 255, 0.12);
+    color: white;
+}
+.muna-styled .quick-toggle:hover,
+.muna-styled .icon-button:hover,
+.muna-styled .quick-toggle-arrow:hover,
+.muna-styled .button:hover {
+    background-color: rgba(124, 112, 255, 0.28);
+}
+.muna-styled .quick-toggle:checked,
+.muna-styled .quick-toggle:checked .quick-toggle-arrow {
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
+    color: white;
+}
+.muna-styled .quick-toggle-menu {
+    background-color: rgba(158, 166, 255, 0.10);
+    border-radius: 18px;
+}
+.muna-styled .slider {
+    -barlevel-active-background-color: #7c6cff;
+    -barlevel-background-color: rgba(158, 166, 255, 0.2);
+    -slider-handle-border-color: rgba(176, 184, 255, 0.3);
+    color: white;
+}
+.muna-styled .popup-menu-item:hover,
+.muna-styled .popup-menu-item:focus {
+    background-color: rgba(124, 112, 255, 0.28);
+}
+.muna-styled .popup-separator-menu-item .popup-separator-menu-item-separator {
+    background-color: rgba(176, 184, 255, 0.18);
+}
+.muna-styled .quick-menu-toggle .quick-toggle-separator { background-color: rgba(255, 255, 255, 0.18); }

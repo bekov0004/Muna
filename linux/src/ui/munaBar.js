@@ -8,7 +8,9 @@ import {formatTime} from 'resource:///org/gnome/shell/misc/dateUtils.js';
 import {SignalTracker} from '../utils/signals.js';
 
 /**
- * The Muna bar: a top bar for a monitor that has none of GNOME's (every monitor but the primary one).
+ * The Muna bar: a top bar for a monitor that has none of GNOME's (every monitor but the primary one), and,
+ * with Settings → General → Top bar → Muna's, the top bar of the primary monitor too (GNOME's own bar is then
+ * invisible under it; every item of it shows here and opens its own menu).
  *  - left: the desktops of this monitor (its own when Muna keeps separate desktops per monitor, GNOME's otherwise);
  *    a dot switches, the free space opens the overview;
  *  - middle: the capsule of this monitor, or the date and time when it has none;
@@ -18,7 +20,8 @@ import {SignalTracker} from '../utils/signals.js';
  */
 export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaBar extends St.Widget {
     /** @param {{monitorIndex: number, desktops: MonitorDesktops, hasCapsule: () => boolean}} options */
-    _init({monitorIndex, desktops, hasCapsule}) {
+    _init({monitorIndex, desktops, hasCapsule, primary = false}) {
+        this._primary = primary;
         super._init({style_class: 'muna-bar', reactive: true, layout_manager: new Clutter.BinLayout()});
         this._index = monitorIndex;
         this._desktops = desktops;
@@ -53,8 +56,12 @@ export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaB
         this._syncClock();
 
         // GNOME's items, mirrored
-        this._signals.connect(Main.panel._rightBox, 'child-added', () => this._queueMirrors());
-        this._signals.connect(Main.panel._rightBox, 'child-removed', () => this._queueMirrors());
+        for (const box of [Main.panel._rightBox, Main.panel._leftBox]) {
+            this._signals.connect(box, 'child-added', () => this._queueMirrors());
+            this._signals.connect(box, 'child-removed', () => this._queueMirrors());
+        }
+        // liquid glass on or off: the background turns into a tint or back
+        this._signals.connect(this, 'style-changed', () => this._applyLook());
         this._mirrorsQueued = 0;
         this._queueMirrors();
         this.place();
@@ -78,11 +85,24 @@ export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaB
 
     /** Colour and opacity, like GNOME's bar under Muna (Settings → Appearance → Top bar color). */
     setLook({color, opacity}) {
+        this._look = {color, opacity};
+        this._applyLook();
+    }
+
+    _applyLook() {
+        if (!this._look)
+            return;
+        const {color, opacity} = this._look;
         const match = /^#?([0-9a-f]{6})$/i.exec(color ?? '');
         const hex = match ? match[1] : '000000';
         const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
-        const alpha = Math.min(Math.max(Number(opacity) || 0, 0), 1);
-        this.style = `background-color: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)});`;
+        let alpha = Math.min(Math.max(Number(opacity) || 0, 0), 1);
+        // on liquid glass the bar is only a thin tint of its colour
+        if (this.has_style_class_name('muna-liquid'))
+            alpha = Math.min(alpha, 0.3);
+        const style = `background-color: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)});`;
+        if (this.style !== style)
+            this.style = style;
     }
 
     /** Whether a menu opened from this bar is open (then the bar stays out). */
@@ -148,14 +168,28 @@ export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaB
             mirror.destroy();
         this._mirrors = [];
         this._right.destroy_all_children();
-        // everything in the right part of GNOME's bar, in its order (also the readings, which are not in statusArea)
-        const buttons = Main.panel._rightBox.get_children()
+        const itemsOf = box => box.get_children()
             .map(container => container._delegate ?? container.get_first_child?.())
             .filter(button => button?.menu && button.container);
-        for (const button of buttons) {
+        // everything in the right part of GNOME's bar, in its order (also the readings, which are not in statusArea)
+        for (const button of itemsOf(Main.panel._rightBox)) {
             const mirror = new Mirror(button);
             this._mirrors.push(mirror);
             this._right.add_child(mirror.actor);
+        }
+        // as the primary monitor's bar: the left part too (the app menu, other extensions' items), after the desktops
+        if (this._primary) {
+            for (const child of this._left.get_children()) {
+                if (child !== this._activities)
+                    child.destroy();
+            }
+            for (const button of itemsOf(Main.panel._leftBox)) {
+                if (button === Main.panel.statusArea.activities)
+                    continue;
+                const mirror = new Mirror(button);
+                this._mirrors.push(mirror);
+                this._left.add_child(mirror.actor);
+            }
         }
     }
 

@@ -336,9 +336,6 @@ struct DevicesSection: View {
                 .font(.system(size: 11))
                 .foregroundColor(MunaColor.secondary)
                 .frame(height: 40)
-            if let problem = localSend.receiveProblem {
-                Text("Receiving here: \(problem)").font(.system(size: 11)).foregroundColor(MunaColor.warning)
-            }
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -363,6 +360,10 @@ struct DevicesSection: View {
                 }
             }
             .frame(height: 44)
+        }
+        // why receiving could not start (another LocalSend on this Mac holds the port …): always in sight
+        if let problem = localSend.receiveProblem {
+            Text("Receiving here: \(problem)").font(.system(size: 11)).foregroundColor(MunaColor.warning)
         }
     }
 

@@ -234,8 +234,11 @@ final class CapsuleModel: ObservableObject {
         return size
     }
 
+    /// The open panel's ears (the fillets into the top edge) lie outside its width, as on Linux.
+    static let openEar: CGFloat = 20
+
     var openSize: CGSize {
-        CGSize(width: layout.width,
+        CGSize(width: layout.width + 2 * Self.openEar,
                height: geometry.topInset + headerHeight + tab.bodyHeight + (tab == .clipboard || tab == .alerts ? extra : 0) + Self.bottomPadding)
     }
 
@@ -317,6 +320,21 @@ final class CapsuleController {
         model.$isDropTarget.dropFirst().sink { [weak self] targeted in
             if targeted { self?.openNow() } else { self?.scheduleUpdate() }
         }.store(in: &observers)
+        // macOS makes a transparent window's shadow from what it showed when the shadow was last made:
+        // after the content changed the old picture's shadow would show through the panel, so the
+        // shadow is made again once the drawing has settled
+        Publishers.MergeMany(model.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+                             app.tray.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+                             app.clipboard.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+                             app.alerts.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+                             app.localSend.objectWillChange.map { _ in () }.eraseToAnyPublisher(),
+                             app.nowPlaying.objectWillChange.map { _ in () }.eraseToAnyPublisher())
+            .debounce(for: .seconds(CapsuleMetrics.animationTime + 0.1), scheduler: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self, self.panel.hasShadow else { return }
+                self.panel.invalidateShadow()
+            }
+            .store(in: &observers)
         model.$tab.dropFirst().removeDuplicates().sink { [weak self] _ in
             self?.model.extra = 0
             DispatchQueue.main.async { self?.resizeOpen() }

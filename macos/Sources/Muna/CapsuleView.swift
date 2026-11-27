@@ -82,7 +82,7 @@ struct CapsuleView: View {
         let open = model.isOpen
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
-                CapsuleShape(radius: open ? CGFloat(preferences.cornerRadius) : 12, ear: open ? 20 : 7)
+                CapsuleShape(radius: open ? CGFloat(preferences.cornerRadius) : 12, ear: open ? CapsuleModel.openEar : 7)
                     .fill(Color.black.opacity(preferences.backgroundOpacity))
                 if open {
                     OpenPanel()
@@ -92,7 +92,7 @@ struct CapsuleView: View {
                         .transition(.opacity)
                 }
                 if model.isDropTarget {
-                    CapsuleShape(radius: open ? CGFloat(preferences.cornerRadius) : 12, ear: open ? 20 : 7)
+                    CapsuleShape(radius: open ? CGFloat(preferences.cornerRadius) : 12, ear: open ? CapsuleModel.openEar : 7)
                         .stroke(MunaColor.accent, lineWidth: 2)
                 }
             }
@@ -264,7 +264,7 @@ struct OpenPanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .padding(.top, model.geometry.topInset)
-        .padding(.horizontal, model.layout.inset + 4)
+        .padding(.horizontal, CapsuleModel.openEar + model.layout.inset)
         .padding(.bottom, CapsuleModel.bottomPadding)
         .foregroundColor(MunaColor.text)
     }

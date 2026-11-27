@@ -44,9 +44,8 @@ struct MediaWidget: View {
             }
         } else {
             VStack(spacing: 6) {
-                Image(systemName: "music.note").font(.system(size: 26)).foregroundColor(Color.white.opacity(0.28))
-                Text("Nothing is playing").font(.system(size: 11, weight: .semibold)).foregroundColor(Color.white.opacity(0.4))
-                Text("Music and Spotify show here").font(.system(size: 10)).foregroundColor(Color.white.opacity(0.3))
+                Image(systemName: "music.note").font(.system(size: 28)).foregroundColor(Color.white.opacity(0.28))
+                Text("Nothing playing").font(.system(size: 11, weight: .semibold)).foregroundColor(Color.white.opacity(0.4))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

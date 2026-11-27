@@ -18,6 +18,8 @@ public sealed class LocalSendController : Model
     public event Action<string, string, bool>? Notified;
     /// <summary>Someone wants to send: the capsule opens.</summary>
     public event Action? IncomingAsked;
+    /// <summary>A text someone sent (LocalSend's text message), until it is put away.</summary>
+    public (string From, string Text)? Message { get; private set; }
 
     readonly X509Certificate2? _certificate;
     readonly string _fingerprint;
@@ -44,6 +46,12 @@ public sealed class LocalSendController : Model
             _receiver.Incoming += transfer => Ui(() =>
             {
                 Incoming = transfer;
+                Notify();
+                IncomingAsked?.Invoke();
+            });
+            _receiver.Message += (sender, text) => Ui(() =>
+            {
+                Message = (sender.Alias, text);
                 Notify();
                 IncomingAsked?.Invoke();
             });
@@ -138,6 +146,12 @@ public sealed class LocalSendController : Model
 
     public void Accept() => Incoming?.Accept();
     public void Decline() => Incoming?.Decline();
+
+    public void DismissMessage()
+    {
+        Message = null;
+        Notify();
+    }
 
     /// <summary>The incoming card is put away.</summary>
     public void DismissIncoming()

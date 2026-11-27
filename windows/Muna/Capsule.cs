@@ -61,6 +61,8 @@ public sealed class PanelState
     public readonly Field TodoField = new("Add a to-do");
     public readonly Field ClipboardSearch = new("Search the clipboard");
     public readonly Field GroupName = new("Name of the group");
+    public readonly Field LocalSendText = new("Write a text to send");
+    public bool WritingText;
     public readonly Field ClipNote = new("A note for this item");
     public readonly Field CommandField = new("Search apps, calculate, convert, ;snippets …", 40, 16);
     public readonly Field AgentReply = new("Answer or ask more");
@@ -234,7 +236,7 @@ public sealed class CapsuleWindow : Window
             Native.AddExStyle(_hwnd, Native.WS_EX_NOACTIVATE);
             if (IsEditing) { IsEditing = false; ScheduleUpdate(); }
         };
-        foreach (var field in new[] { State.NoteField, State.TodoField, State.ClipboardSearch, State.GroupName, State.ClipNote, State.CommandField, State.AgentReply })
+        foreach (var field in new[] { State.NoteField, State.TodoField, State.ClipboardSearch, State.GroupName, State.LocalSendText, State.ClipNote, State.CommandField, State.AgentReply })
             field.FocusChanged += focused => { IsEditing = focused; ScheduleUpdate(); };
         KeyDown += (_, e) =>
         {

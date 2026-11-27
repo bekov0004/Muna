@@ -15,16 +15,47 @@ namespace Muna;
 /// what another device wants to send here. Works with Muna on Linux and Mac and with the LocalSend apps.</summary>
 public static class LocalSendPage
 {
-    public static void Wire(CapsuleWindow w) => w.State.GroupName.Submitted += () => SaveGroup(w);
+    public static void Wire(CapsuleWindow w)
+    {
+        w.State.GroupName.Submitted += () => SaveGroup(w);
+        w.State.LocalSendText.Submitted += () => KeepText(w, true);
+    }
+
+    /// <summary>Ends writing the text; <paramref name="keep"/>: it becomes the message to send.</summary>
+    static void KeepText(CapsuleWindow w, bool keep)
+    {
+        w.State.WritingText = false;
+        if (keep) w.App.LocalSend.Session.SetText(w.State.LocalSendText.Text);
+        w.Invalidate();
+    }
 
     public static UIElement Build(CapsuleWindow w)
     {
         var localSend = w.App.LocalSend;
         if (localSend.Incoming is { } incoming) return IncomingCard(w, incoming);
+        if (localSend.Message is { } message) return MessageCard(w, message.From, message.Text);
         return Ui.Column(12, Basket(w), Devices(w));
     }
 
     // --- what comes in ---------------------------------------------------------------------------
+
+    /// <summary>A text someone sent: who, the text, Copy, and Open when it is one link.</summary>
+    static UIElement MessageCard(CapsuleWindow w, string from, string text)
+    {
+        var localSend = w.App.LocalSend;
+        var words = Ui.Text(text, 13, wrap: true);
+        words.MaxHeight = 90;
+        words.TextTrimming = TextTrimming.CharacterEllipsis;
+        var card = Ui.Box(Ui.Row(14, Ui.Box(Ui.Icon(Glyph.Edit, 22, C.Accent), C.Tile, 28).Size(56, 56),
+            Ui.Column(4, Ui.Semi($"{from} sent a text", 15), words).Grow()), C.Tile, 18, 14, 14);
+        var buttons = Ui.Row(8, Ui.Spacer());
+        var link = text.Trim();
+        if (Uri.TryCreate(link, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https") && !link.Contains(' '))
+            buttons.Children.Add(Ui.Pill("Open", () => { CapsuleViews.Launch(link); localSend.DismissMessage(); }));
+        buttons.Children.Add(Ui.Pill("Copy", () => { ClipboardModel.SetText(text); localSend.DismissMessage(); }, accent: true));
+        buttons.Children.Add(Ui.Pill("OK", localSend.DismissMessage));
+        return Ui.Column(10, Ui.Caption($"From {from}"), card, buttons);
+    }
 
     static UIElement IncomingCard(CapsuleWindow w, IncomingTransfer incoming)
     {
@@ -87,20 +118,40 @@ public static class LocalSendPage
     static UIElement Basket(CapsuleWindow w)
     {
         var session = w.App.LocalSend.Session;
+        var ui = w.State;
+        if (ui.WritingText)
+        {
+            // writing the text message: Enter keeps it, Esc or Cancel leaves it as it was
+            return Ui.Column(6,
+                Ui.Caption("Text", Ui.Pill("Cancel", () => KeepText(w, false)), Ui.Pill("Done", () => KeepText(w, true), accent: true)),
+                ui.LocalSendText,
+                Ui.Text("Enter keeps it; then choose who gets it. Muna and LocalSend show it at once.", 11, color: C.Secondary));
+        }
         var basket = session.Basket;
         var total = basket.Sum(SizeOf);
-        var caption = Ui.Caption(basket.Count == 0 ? "Files" : $"Files · {basket.Count} · {Ui.SizeText(total)}",
+        var text = session.Text.Trim();
+        var caption = Ui.Caption(basket.Count == 0 ? (text.Length > 0 ? "Text" : "Files") : $"Files · {basket.Count} · {Ui.SizeText(total)}{(text.Length > 0 ? " · Text" : "")}",
+            Ui.Pill("Text", () => { ui.LocalSendText.Text = session.Text; ui.WritingText = true; w.Invalidate(); }),
             w.App.Tray.Files.Count > 0 ? Ui.Pill("Add from Tray", () => session.Offer(w.App.Tray.Files.ToList())) : null,
             Ui.Pill("Choose…", () => Choose(session)),
-            basket.Count > 0 ? Ui.Pill("Clear", session.ClearBasket) : null);
+            basket.Count > 0 || text.Length > 0 ? Ui.Pill("Clear", () => { session.SetText(""); session.ClearBasket(); }) : null);
         UIElement content;
-        if (basket.Count == 0)
+        if (basket.Count == 0 && text.Length == 0)
         {
-            content = Ui.Text("Drop files on the capsule while this page is open, or choose them", 11, color: C.Secondary).Size(height: 28);
+            content = Ui.Text("Drop files on the capsule while this page is open, choose them, or write a text", 11, color: C.Secondary).Size(height: 28);
         }
         else
         {
             var row = Ui.Row(6);
+            if (text.Length > 0)
+            {
+                var words = Ui.Semi($"“{string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))}”", 11);
+                words.MaxWidth = 180;
+                words.TextTrimming = TextTrimming.CharacterEllipsis;
+                var chip = Ui.Row(6, Ui.Icon(Glyph.Edit, 12, C.Secondary), words, Ui.Text("Text", 10, color: C.Secondary),
+                                  Ui.IconButton(Glyph.Close, () => session.SetText("")));
+                row.Children.Add(Ui.Box(chip, C.Tile, 12).Size(height: 24).WithPadding(8, 0, 4, 0).OnClick(() => { ui.LocalSendText.Text = session.Text; ui.WritingText = true; w.Invalidate(); }));
+            }
             foreach (var file in basket)
             {
                 var name = Ui.Semi(System.IO.Path.GetFileName(file), 11);
@@ -167,7 +218,7 @@ public static class LocalSendPage
             }
             return Ui.Caption(group is not null ? $"{group.Name} · {chosen} of {group.Members.Count} here" : $"Send to · {chosen} chosen",
                 Ui.Pill("Clear", session.ClearSelection), groupPill,
-                Ui.Pill(session.Basket.Count == 0 ? "Add files to send" : $"Send to {chosen}", () => session.Send(), accent: session.Basket.Count > 0, disabled: session.Basket.Count == 0));
+                Ui.Pill(!session.HasContent ? "Add files or a text" : $"Send to {chosen}", () => session.Send(), accent: session.HasContent, disabled: !session.HasContent));
         }
         return Ui.Caption(session.Phase == SessionPhase.Scan ? "Looking for devices…" : "Send to",
             session.Devices.Count >= 2 ? Ui.Pill("All", session.SelectAll) : null,

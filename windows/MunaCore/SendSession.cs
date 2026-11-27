@@ -42,6 +42,10 @@ public sealed class SendSession
     public SessionPhase Phase { get; private set; } = SessionPhase.Pick;
     public List<Device> Devices { get; private set; } = new();
     public List<string> Basket { get; } = new();
+    /// <summary>A text message that goes with the files, or alone ("" : none).</summary>
+    public string Text { get; private set; } = "";
+    string _text = "";
+    public bool HasContent => Basket.Count > 0 || Text.Trim().Length > 0;
     public HashSet<string> Selected { get; private set; } = new();
     public string? ActiveGroupId { get; private set; }
     public List<Transfer> Transfers { get; private set; } = new();
@@ -71,6 +75,13 @@ public sealed class SendSession
     }
 
     public void Remove(string file) { Basket.Remove(file); Change(); }
+
+    public void SetText(string text)
+    {
+        Text = text ?? "";
+        BackToPick();
+        Change();
+    }
     public void ClearBasket() { Basket.Clear(); Change(); }
 
     // choosing
@@ -178,8 +189,9 @@ public sealed class SendSession
     public Task Send()
     {
         var chosen = SelectedDevices;
-        if (Busy || chosen.Count == 0 || Basket.Count == 0) return Task.CompletedTask;
+        if (Busy || chosen.Count == 0 || !HasContent) return Task.CompletedTask;
         _files = Basket.ToList();
+        _text = Text.Trim();
         return Start(chosen, ActiveGroup?.Presence(Devices).Missing ?? new(), new());
     }
 
@@ -238,6 +250,7 @@ public sealed class SendSession
             .ToList();
         Change();
         var files = _files;
+        var text = _text;
         var done = new TaskCompletionSource();
         var waiting = Transfers.Where(t => t.Phase == TransferPhase.Waiting).ToList();
         foreach (var transfer in waiting)
@@ -251,7 +264,7 @@ public sealed class SendSession
                 string? error = null;
                 try
                 {
-                    result = await _transport.Send(device, files, progress => Post(() => Progress(transfer, progress)), cancel.Token);
+                    result = await _transport.Send(device, files, progress => Post(() => Progress(transfer, progress)), cancel.Token, text.Length > 0 ? text : null);
                 }
                 catch (Exception e)
                 {
@@ -305,10 +318,14 @@ public sealed class SendSession
     void Finish()
     {
         var done = Transfers.Where(t => t.Phase == TransferPhase.Done).ToList();
-        if (done.Count == Transfers.Count) Basket.RemoveAll(_files.Contains);
+        if (done.Count == Transfers.Count)
+        {
+            Basket.RemoveAll(_files.Contains);
+            if (_text.Length > 0 && Text.Trim() == _text) Text = "";
+        }
         var files = done.Count == 0 ? 0 : done.Max(t => t.Count);
         var skipped = done.Count == 0 ? 0 : done.Max(t => t.Skipped);
-        var filesText = $"{files} file{(files == 1 ? "" : "s")}";
+        var filesText = _files.Count == 0 ? "A text" : $"{_files.Count} file{(_files.Count == 1 ? "" : "s")}{(_text.Length > 0 ? " and a text" : "")}";
         string details;
         if (Transfers.Count == 1)
         {

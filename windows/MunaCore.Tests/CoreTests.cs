@@ -214,6 +214,28 @@ public class LocalSendTests
         receiver.Stop();
     }
 
+    /// <summary>LocalSend's text messages: Muna to Muna, shown at once (204), no question asked.</summary>
+    [Fact]
+    public async Task TextMessageOverHttps()
+    {
+        using var t = new TempFolder();
+        var certificate = LocalSendCertificate.LoadOrCreate(t.Path);
+        var port = 17000 + Random.Shared.Next(1000);
+        var receiver = new LocalSendReceiver(certificate, () => new DeviceInfo { Alias = "me", Fingerprint = "fp-me" }, () => t.Path, port);
+        Assert.Null(receiver.Start());
+        (string Alias, string Text)? got = null;
+        var asked = false;
+        receiver.Message += (sender, text) => got = (sender.Alias, text);
+        receiver.Incoming += _ => asked = true;
+        using var client = new LocalSendClient(() => new DeviceInfo { Alias = "other", Fingerprint = "fp-other" }, certificate);
+        var device = new Device("127.0.0.1", port, "https", "me", "Muna", "desktop", "fp-me");
+        var result = await client.Send(device, Array.Empty<string>(), _ => { }, default, "Hello — привет");
+        Assert.Equal(new SendResult(1, 0), result);
+        Assert.Equal(("other", "Hello — привет"), got);
+        Assert.False(asked);
+        receiver.Stop();
+    }
+
     [Fact]
     public async Task SenderGoneWhileAsked()
     {
@@ -257,6 +279,9 @@ public class LocalSendTests
             Assert.Null(await client.Probe("127.0.0.29", default));
             Assert.Equal(new SendResult(1, 0), await client.Send(ali, new[] { file }, _ => { }, default));
             Assert.Equal(100000, new FileInfo("/tmp/ls-group/Ali/c.txt").Length);
+            // a text: LocalSend shows it at once (204); an older receiver takes it as message.txt
+            Assert.Equal(new SendResult(1, 0), await client.Send(ali, Array.Empty<string>(), _ => { }, default, "a text"));
+            Assert.Equal("a text", File.ReadAllText("/tmp/ls-group/Ali/message-preview.txt"));
             var vali = (await client.Probe("127.0.0.23", default))!;
             Assert.Equal("Vali declined", (await Assert.ThrowsAsync<SendException>(() => client.Send(vali, new[] { file }, _ => { }, default))).Message);
         }
@@ -273,7 +298,7 @@ sealed class FakeTransport : ILocalSendTransport
 
     public Task<Device?> Probe(string ip, CancellationToken token) => Task.FromResult(Devices.GetValueOrDefault(ip));
 
-    public async Task<SendResult> Send(Device device, IReadOnlyList<string> files, Action<SendProgress> onState, CancellationToken token)
+    public async Task<SendResult> Send(Device device, IReadOnlyList<string> files, Action<SendProgress> onState, CancellationToken token, string? text = null)
     {
         onState(new SendProgress("waiting", 0, 10, 0));
         await Task.Delay(50, token);

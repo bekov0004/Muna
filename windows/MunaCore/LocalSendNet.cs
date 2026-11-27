@@ -202,6 +202,9 @@ public sealed class LocalSendReceiver
     /// Both come from the server's threads.</summary>
     public event Action<IncomingTransfer>? Incoming;
     public event Action<IncomingTransfer>? Changed;
+    /// <summary>Someone sent a text (LocalSend's text message): shown at once, nothing is uploaded.</summary>
+    public event Action<DeviceInfo, string>? Message;
+    public const int MaxText = 100_000;
 
     public LocalSendReceiver(X509Certificate2 certificate, Func<DeviceInfo> identity, Func<string> folder, int port = LocalSend.Port)
     {
@@ -348,6 +351,13 @@ public sealed class LocalSendReceiver
         var entries = (request?["files"] as JsonObject)?.Select(pair => pair.Value).ToList() ?? new();
         if (sender is null || entries.Count == 0 || entries.Count > LocalSend.MaxIncomingFiles)
             return HttpResponse.Message(400, "Invalid body");
+        // a text message: one text/plain entry whose words are in "preview"; answered 204 at once, as LocalSend does
+        if (entries.Count == 1 && entries[0]?["preview"] is JsonValue preview && preview.TryGetValue<string>(out var words)
+            && (entries[0].Str("fileType") ?? "").StartsWith("text/", StringComparison.Ordinal))
+        {
+            Message?.Invoke(sender, words.Length > MaxText ? words[..MaxText] : words);
+            return new HttpResponse(204);
+        }
         IncomingTransfer transfer;
         lock (_gate)
         {
@@ -478,7 +488,8 @@ public sealed class SendException(string message) : Exception(message);
 public interface ILocalSendTransport
 {
     Task<Device?> Probe(string ip, CancellationToken token);
-    Task<SendResult> Send(Device device, IReadOnlyList<string> files, Action<SendProgress> onState, CancellationToken token);
+    /// <summary>Sends files and, when <paramref name="text"/> is given, a text message with them (or alone).</summary>
+    Task<SendResult> Send(Device device, IReadOnlyList<string> files, Action<SendProgress> onState, CancellationToken token, string? text = null);
 }
 
 /// <summary>LocalSend over HTTPS / HTTP (shared/protocols/localsend.md).</summary>
@@ -541,14 +552,21 @@ public sealed class LocalSendClient : ILocalSendTransport, IDisposable
         catch { /* gone */ }
     }
 
-    public async Task<SendResult> Send(Device device, IReadOnlyList<string> files, Action<SendProgress> onState, CancellationToken token)
+    public async Task<SendResult> Send(Device device, IReadOnlyList<string> files, Action<SendProgress> onState, CancellationToken token, string? text = null)
     {
-        var entries = new List<(string Id, string Path, long Size)>();
+        var entries = new List<(string Id, string Path, long Size, byte[]? Text)>();
         var skipped = 0;
         foreach (var path in files)
         {
             if (!File.Exists(path)) { skipped++; continue; }
-            entries.Add(($"file{entries.Count}", path, new FileInfo(path).Length));
+            entries.Add(($"file{entries.Count}", path, new FileInfo(path).Length, null));
+        }
+        // a text goes as LocalSend's text message: a text/plain entry with its words in "preview"
+        // (a receiver that knows it answers 204; an older one takes it as message.txt)
+        if (!string.IsNullOrEmpty(text))
+        {
+            var bytes = Encoding.UTF8.GetBytes(text);
+            entries.Add(($"text{entries.Count}", "message.txt", bytes.Length, bytes));
         }
         if (entries.Count == 0) throw new SendException("Nothing to send (folders are not supported yet)");
         var total = entries.Sum(e => e.Size);
@@ -562,13 +580,15 @@ public sealed class LocalSendClient : ILocalSendTransport, IDisposable
             onState(new SendProgress("waiting", 0, total, skipped));
             var described = new JsonObject();
             foreach (var e in entries)
-                described[e.Id] = new JsonObject { ["id"] = e.Id, ["fileName"] = Path.GetFileName(e.Path), ["size"] = e.Size, ["fileType"] = "application/octet-stream" };
+                described[e.Id] = e.Text is null
+                    ? new JsonObject { ["id"] = e.Id, ["fileName"] = Path.GetFileName(e.Path), ["size"] = e.Size, ["fileType"] = "application/octet-stream" }
+                    : new JsonObject { ["id"] = e.Id, ["fileName"] = e.Path, ["size"] = e.Size, ["fileType"] = "text/plain", ["preview"] = text };
             using var prepareBody = new StringContent(new JsonObject { ["info"] = me.ToJson(), ["files"] = described }.ToJsonString(), Encoding.UTF8, "application/json");
             using var prepare = await _http.PostAsync($"{root}/prepare-upload", prepareBody, token);
             switch ((int)prepare.StatusCode)
             {
                 case 200: break;
-                case 204: return new SendResult(0, skipped);
+                case 204: return new SendResult(entries.Count, skipped);
                 case 403: throw new SendException($"{device.Alias} declined");
                 case 409 or 429: throw new SendException($"{device.Alias} is busy");
                 default: throw new SendException($"{device.Alias} answered {(int)prepare.StatusCode}");
@@ -584,7 +604,7 @@ public sealed class LocalSendClient : ILocalSendTransport, IDisposable
                 if (fileToken is null) continue;
                 var url = $"{root}/upload?sessionId={Uri.EscapeDataString(session)}&fileId={Uri.EscapeDataString(e.Id)}&token={Uri.EscapeDataString(fileToken)}";
                 var before = sent;
-                await using var stream = File.OpenRead(e.Path);
+                await using Stream stream = e.Text is null ? File.OpenRead(e.Path) : new MemoryStream(e.Text);
                 using var content = new ProgressContent(stream, e.Size, bytes => onState(new SendProgress("sending", Math.Min(before + bytes, total), total, skipped)));
                 using var upload = await _http.PostAsync(url, content, token);
                 if (upload.StatusCode != HttpStatusCode.OK) throw new SendException($"{device.Alias} stopped the transfer");

@@ -9,8 +9,8 @@ import {snippetEffect} from './snippetEffect.js';
  * not blurred but bent like through a lens at the rim (refraction), split into colours there
  * (dispersion), with a thin bright rim lit from above. The capsule's own tint lies on top.
  *
- * A clone of the desktop's background (windows are not taken: GNOME does not paint its window
- * layer into an effect) is lined up with the element and drawn through the shader; the shader also cuts it to the
+ * Copies of what is under the element (the desktop's background and each window there, as the overview's
+ * window previews copy them) are lined up with it and drawn through the shader; the shader also cuts it to the
  * element's outline (square top and round bottom corners when it hangs from the screen's edge).
  */
 const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
@@ -60,64 +60,93 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
 export const LiquidGlass = GObject.registerClass({GTypeName: 'MunaLiquidGlass'}, class LiquidGlass extends Clutter.Actor {
     _init() {
         super._init({reactive: false, clip_to_allocation: true, visible: false});
-        this._clone = new Clutter.Clone({source: Main.layoutManager._backgroundGroup});
-        this.add_child(this._clone);
+        // the scene under the glass: the desktop's background, then copies of the windows under it, bottom to top
+        this._background = new Clutter.Clone({source: Main.layoutManager._backgroundGroup});
+        this.add_child(this._background);
+        this._windows = [];   // [{source, clone}]
         this._effect = new GlassEffect();
         this.add_effect(this._effect);
-        this._radius = 32;
-        this._topRadius = 0;
     }
 
-    /** Lines the glass up with the capsule actor (its place on the screen and its size) and its outline. */
-    follow(actor, {radius, hanging}) {
-        this._radius = radius;
-        this._topRadius = hanging ? 0 : radius;
-        const [x, y] = actor.get_transformed_position();
-        const [w, h] = actor.get_transformed_size();
+    /** The windows to see through the glass, bottom to top (their window actors). */
+    setWindows(actors) {
+        if (actors.length === this._windows.length && actors.every((a, i) => this._windows[i].source === a))
+            return;
+        this._windows.forEach(w => w.clone.destroy());
+        this._windows = actors.map(source => {
+            const clone = new Clutter.Clone({source});
+            this.add_child(clone);
+            return {source, clone};
+        });
+    }
+
+    /**
+     * Puts the glass over a rectangle of the screen with the given outline.
+     * @param {{x: number, y: number, width: number, height: number}} rect  in stage pixels
+     */
+    follow(rect, {radius, hanging = false}) {
+        const {x, y, width: w, height: h} = rect;
         if (!(w > 0 && h > 0))
             return;
-        this.set_position(Math.round(x), Math.round(y));
+        const X = Math.round(x), Y = Math.round(y);
+        this.set_position(X, Y);
         this.set_size(Math.round(w), Math.round(h));
-        this._clone.set_position(-Math.round(x), -Math.round(y));
+        this._background.set_position(-X, -Y);
+        for (const {source, clone} of this._windows) {
+            const [sx, sy] = source.get_transformed_position();
+            clone.set_position(Math.round(sx) - X, Math.round(sy) - Y);
+            clone.opacity = source.get_paint_opacity();
+        }
         this._effect.setUniform('muna_w', [w]);
         this._effect.setUniform('muna_h', [h]);
         this._effect.setUniform('muna_r', [Math.min(radius, h / 2, w / 2)]);
-        this._effect.setUniform('muna_top_r', [Math.min(this._topRadius, h / 2, w / 2)]);
+        this._effect.setUniform('muna_top_r', [hanging ? 0 : Math.min(radius, h / 2, w / 2)]);
         this._effect.queue_repaint();
         this.queue_relayout();
     }
 });
 
+/** The window actors that are seen on the screen, bottom to top, that touch a rectangle. */
+function windowsUnder(rect, {below = null} = {}) {
+    const list = [];
+    for (const actor of global.get_window_actors()) {
+        if (actor === below)
+            break;
+        const window = actor.meta_window;
+        if (!actor.visible || !window || window.minimized || !window.showing_on_its_workspace?.())
+            continue;
+        if (window.get_workspace && !window.is_on_all_workspaces() && window.get_workspace() !== global.workspace_manager.get_active_workspace())
+            continue;
+        const [ax, ay] = actor.get_transformed_position();
+        const [aw, ah] = actor.get_transformed_size();
+        if (ax < rect.x + rect.width && ax + aw > rect.x && ay < rect.y + rect.height && ay + ah > rect.y)
+            list.push(actor);
+    }
+    return list;
+}
+
+/** Is it one of Muna's own windows (settings, agents, scratchpad, the phone …)? */
+function isMunaWindow(window) {
+    const id = window.get_gtk_application_id?.() ?? '';
+    return id === 'dev.muna.Muna' || (window.get_title?.() ?? '').startsWith('Muna');
+}
+
 /**
  * Puts any of Muna's elements on liquid glass while Settings → Appearance → Liquid glass is on: a glass
- * layer under it (in Muna's layer, below the element's top-level actor) that follows it every frame.
+ * layer under it that sees the windows and the desktop under it and follows it every frame. Muna's own
+ * windows get one too (they turn translucent themselves), in the window layer just under them.
  */
 export class GlassManager {
     constructor(settings) {
         this._settings = settings;
         this._entries = new Set();
+        this._windowGlasses = new Map();   // MetaWindow → LiquidGlass
         this._enabled = settings.get('liquid-glass');
         this._settingsId = settings.connect('changed', (_s, key) => {
             if (key === 'liquid-glass')
                 this._setEnabled(settings.get('liquid-glass'));
         });
         this._updateId = global.stage.connect('before-update', () => this._update());
-        this._mark();
-    }
-
-    /** "muna-liquid" on the marked actors: the stylesheet makes their backgrounds thin tints over the glass. */
-    _mark() {
-        for (const entry of this._entries ?? [])
-            this._markOne(entry);
-    }
-
-    _markOne(entry) {
-        if (!entry.mark)
-            return;
-        if (this._enabled)
-            entry.mark.add_style_class_name('muna-liquid');
-        else
-            entry.mark.remove_style_class_name('muna-liquid');
     }
 
     get enabled() {
@@ -127,12 +156,13 @@ export class GlassManager {
     /**
      * @param {Clutter.Actor} actor  the element; the glass takes its place and size on the screen
      * @param {() => {radius: number, hanging?: boolean}} shape  its outline now (px)
+     * @param {{mark?: St.Widget}} options  mark: gets "muna-liquid" while the glass is on (thin backgrounds)
      * @returns {{remove: Function}}
      */
     attach(actor, shape, {mark = null} = {}) {
         const entry = {actor, shape, glass: null, mark};
-        this._markOne(entry);
         this._entries.add(entry);
+        this._markOne(entry);
         actor.connectObject('destroy', () => this._remove(entry), this);
         return {remove: () => this._remove(entry)};
     }
@@ -145,12 +175,23 @@ export class GlassManager {
 
     _setEnabled(on) {
         this._enabled = on;
-        this._mark();
-        if (!on) {
-            for (const entry of this._entries)
+        for (const entry of this._entries) {
+            this._markOne(entry);
+            if (!on)
                 entry.glass?.hide();
         }
+        if (!on)
+            this._clearWindows();
         global.stage.queue_redraw();
+    }
+
+    _markOne(entry) {
+        if (!entry.mark)
+            return;
+        if (this._enabled)
+            entry.mark.add_style_class_name('muna-liquid');
+        else
+            entry.mark.remove_style_class_name('muna-liquid');
     }
 
     /** The element's top-level actor in Muna's layer: the glass goes just under it. */
@@ -165,6 +206,7 @@ export class GlassManager {
     _update() {
         if (!this._enabled)
             return;
+        const ui = Main.layoutManager.uiGroup;
         for (const entry of this._entries) {
             const {actor} = entry;
             const top = actor.mapped ? this._topOf(actor) : null;
@@ -174,23 +216,63 @@ export class GlassManager {
             }
             if (!entry.glass) {
                 entry.glass = new LiquidGlass();
-                Main.layoutManager.uiGroup.add_child(entry.glass);
+                ui.add_child(entry.glass);
             }
-            const ui = Main.layoutManager.uiGroup;
-            if (entry.glass.get_parent() !== ui)
-                continue;
             // under the element's top actor (inner elements: above the glass of the element they lie on)
             ui.set_child_below_sibling(entry.glass, top);
+            const [x, y] = actor.get_transformed_position();
+            const [width, height] = actor.get_transformed_size();
+            const rect = {x, y, width, height};
+            entry.glass.setWindows(windowsUnder(rect));
             entry.glass.show();
-            entry.glass.follow(actor, entry.shape());
+            entry.glass.follow(rect, entry.shape());
         }
+        this._updateWindows();
+    }
+
+    /** Muna's own windows: a glass in the window layer right under each, seeing the windows under it. */
+    _updateWindows() {
+        const seen = new Set();
+        for (const actor of global.get_window_actors()) {
+            const window = actor.meta_window;
+            if (!window || !isMunaWindow(window) || window.minimized || !actor.visible)
+                continue;
+            seen.add(window);
+            let glass = this._windowGlasses.get(window);
+            if (!glass) {
+                glass = new LiquidGlass();
+                global.window_group.add_child(glass);
+                this._windowGlasses.set(window, glass);
+            }
+            global.window_group.set_child_below_sibling(glass, actor);
+            const frame = window.get_frame_rect();
+            const rect = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
+            glass.setWindows(windowsUnder(rect, {below: actor}));
+            glass.show();
+            // a maximized window has square corners
+            glass.follow(rect, {radius: window.get_maximized?.() ? 0 : 15});
+        }
+        for (const [window, glass] of this._windowGlasses) {
+            if (!seen.has(window)) {
+                glass.destroy();
+                this._windowGlasses.delete(window);
+            }
+        }
+    }
+
+    _clearWindows() {
+        for (const glass of this._windowGlasses.values())
+            glass.destroy();
+        this._windowGlasses.clear();
     }
 
     destroy() {
         this._enabled = false;
-        this._mark();
+        for (const entry of this._entries)
+            this._markOne(entry);
         global.stage.disconnect(this._updateId);
         this._settings.disconnect(this._settingsId);
+        this._clearWindows();
         for (const entry of [...this._entries])
             this._remove(entry);
     }

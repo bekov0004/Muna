@@ -69,3 +69,21 @@ export function schemeOf(settings, Adw) {
     const choice = settings?.get_string('color-scheme') ?? 'system';
     return choice === 'light' ? Adw.ColorScheme.FORCE_LIGHT : choice === 'dark' ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.DEFAULT;
 }
+
+/**
+ * The palette for Liquid glass: the window's own surfaces become thin tints (the shell draws real glass
+ * under Muna's windows), the rest stays.
+ */
+export function glassPalette(p, dark) {
+    const tint = (hex, alpha) => {
+        const n = parseInt(hex.slice(1), 16);
+        return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+    };
+    return {
+        ...p,
+        BACKGROUND: tint(p.BACKGROUND, dark ? 0.42 : 0.5),
+        TOOLBAR: tint(p.TOOLBAR, dark ? 0.36 : 0.42),
+        SURFACE: tint(p.SURFACE, dark ? 0.4 : 0.55),
+        CARD: tint(p.CARD, dark ? 0.4 : 0.55),
+    };
+}

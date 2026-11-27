@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
-import {PAGE_TILES, SETTINGS_THEME, TILE_CYCLE, accentCss} from './theme.js';
+import {PAGE_TILES, SETTINGS_THEME, TILE_CYCLE, accentCss, glassPalette} from './theme.js';
 
 import {DEFAULT_WIDGETS, WIDGET_INFO} from './src/utils/widgetInfo.js';
 import * as R from './src/utils/reminders.js';
@@ -246,7 +246,7 @@ export class MunaPreferences {
         window.title = _('Muna');
         window.search_enabled = false;
 
-        this._installTheme();
+        this._installTheme(settings);
         // Muna's own icons (the butterfly of the top-bar button) are found by name
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
             Gio.File.new_for_uri(import.meta.url).get_parent().get_child('icons').get_path());
@@ -740,12 +740,24 @@ export class MunaPreferences {
             : choice === 'dark' ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.DEFAULT;
     }
 
-    _installTheme() {
+    _installTheme(settings = null) {
         const provider = new Gtk.CssProvider();
         const style = Adw.StyleManager.get_default();
-        const apply = () => provider.load_from_string(buildCss(SETTINGS_THEME[style.dark ? 'dark' : 'light']));
+        // Liquid glass: the window's surfaces turn into tints, the shell puts real glass under the window
+        const liquid = () => {
+            try {
+                return settings?.get_boolean('liquid-glass') ?? false;
+            } catch {
+                return false;
+            }
+        };
+        const apply = () => {
+            const palette = SETTINGS_THEME[style.dark ? 'dark' : 'light'];
+            provider.load_from_string(buildCss(liquid() ? glassPalette(palette, style.dark) : palette));
+        };
         apply();
         style.connect('notify::dark', apply);
+        settings?.connect('changed::liquid-glass', apply);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
     }

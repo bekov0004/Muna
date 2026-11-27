@@ -31,6 +31,10 @@ public final class SendSession: @unchecked Sendable {   // its state is only tou
     public private(set) var phase = Phase.pick
     public private(set) var devices: [Device] = []
     public private(set) var basket: [URL] = []
+    /// A text message that goes with the files, or alone ("" : none).
+    public private(set) var text = ""
+    private var sentText = ""
+    public var hasContent: Bool { !basket.isEmpty || !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     public private(set) var selected = Set<String>()
     public private(set) var activeGroupId: String?
     public private(set) var transfers: [Transfer] = []
@@ -72,6 +76,12 @@ public final class SendSession: @unchecked Sendable {   // its state is only tou
 
     public func clearBasket() {
         basket = []
+        onChange()
+    }
+
+    public func setText(_ value: String) {
+        text = value
+        backToPick()
         onChange()
     }
 
@@ -180,8 +190,9 @@ public final class SendSession: @unchecked Sendable {   // its state is only tou
     /// Sends the basket to every chosen device at once.
     public func send() {
         let chosen = selectedDevices
-        guard !busy, !chosen.isEmpty, !basket.isEmpty else { return }
+        guard !busy, !chosen.isEmpty, hasContent else { return }
         uris = basket
+        sentText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         start(chosen, missing: activeGroup?.presence(in: devices).missing ?? [])
     }
 
@@ -231,6 +242,7 @@ public final class SendSession: @unchecked Sendable {   // its state is only tou
                                      phase: .missing, message: "Not on the network", member: $0) }
         onChange()
         let files = uris
+        let words = sentText.isEmpty ? nil : sentText
         let transport = self.transport
         for transfer in transfers where transfer.phase == .waiting {
             guard let device = transfer.device else { continue }
@@ -238,7 +250,7 @@ public final class SendSession: @unchecked Sendable {   // its state is only tou
             tasks[id] = Task { [weak self] in
                 let outcome: Result<SendResult, Error>
                 do {
-                    let result = try await transport.send(to: device, files: files) { progress in
+                    let result = try await transport.send(to: device, files: files, text: words) { progress in
                         self?.queue.async { self?.progress(id, progress) }
                     }
                     outcome = .success(result)
@@ -294,10 +306,12 @@ public final class SendSession: @unchecked Sendable {   // its state is only tou
         let done = transfers.filter { $0.phase == .done }
         if done.count == transfers.count {
             basket.removeAll { uris.contains($0) }
+            if !sentText.isEmpty, text.trimmingCharacters(in: .whitespacesAndNewlines) == sentText { text = "" }
         }
         let files = done.map(\.count).max() ?? 0
         let skipped = done.map(\.skipped).max() ?? 0
-        let filesText = "\(files) file\(files == 1 ? "" : "s")"
+        _ = files
+        let filesText = uris.isEmpty ? "A text" : "\(uris.count) file\(uris.count == 1 ? "" : "s")\(sentText.isEmpty ? "" : " and a text")"
         var details = ""
         if transfers.count == 1, let one = transfers.first {
             message = one.phase == .done ? "Sent to \(one.name)" : one.message

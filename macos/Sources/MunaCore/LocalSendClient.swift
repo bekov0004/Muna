@@ -30,7 +30,14 @@ public struct SendError: Error, Equatable, CustomStringConvertible, Sendable {
 /// What sending needs from the network (a fake one in tests).
 public protocol LocalSendTransport: AnyObject {
     func probe(ip: String) async -> Device?
-    func send(to device: Device, files: [URL], onState: @escaping (SendProgress) -> Void) async throws -> SendResult
+    /// Sends files and, when `text` is given, a text message with them (or alone).
+    func send(to device: Device, files: [URL], text: String?, onState: @escaping (SendProgress) -> Void) async throws -> SendResult
+}
+
+public extension LocalSendTransport {
+    func send(to device: Device, files: [URL], onState: @escaping (SendProgress) -> Void) async throws -> SendResult {
+        try await send(to: device, files: files, text: nil, onState: onState)
+    }
 }
 
 /// LocalSend over HTTPS / HTTP with URLSession (shared/protocols/localsend.md).
@@ -92,8 +99,8 @@ public final class LocalSendClient: NSObject, LocalSendTransport, URLSessionData
 
     // --- sending ------------------------------------------------------------------------------
 
-    public func send(to device: Device, files: [URL], onState: @escaping (SendProgress) -> Void) async throws -> SendResult {
-        struct Entry { let id: String; let url: URL; let size: Int64; let type: String }
+    public func send(to device: Device, files: [URL], text: String?, onState: @escaping (SendProgress) -> Void) async throws -> SendResult {
+        struct Entry { let id: String; let url: URL; let size: Int64; let type: String; var preview: String? = nil }
         var entries: [Entry] = []
         var skipped = 0
         for url in files {
@@ -101,6 +108,18 @@ public final class LocalSendClient: NSObject, LocalSendTransport, URLSessionData
             guard values?.isRegularFile == true else { skipped += 1; continue }
             entries.append(Entry(id: "file\(entries.count)", url: url, size: Int64(values?.fileSize ?? 0), type: Self.mimeType(of: url)))
         }
+        // a text goes as LocalSend's text message: a text/plain entry with its words in `preview`
+        // (a receiver that knows it answers 204; an older one takes it as message.txt, uploaded from a temporary file)
+        var textFile: URL?
+        if let text, !text.isEmpty {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("muna-text-\(UUID().uuidString)")
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let url = folder.appendingPathComponent("message.txt")
+            try Data(text.utf8).write(to: url)
+            textFile = folder
+            entries.append(Entry(id: "text\(entries.count)", url: url, size: Int64(text.utf8.count), type: "text/plain", preview: text))
+        }
+        defer { if let textFile { try? FileManager.default.removeItem(at: textFile) } }
         guard !entries.isEmpty else { throw SendError("Nothing to send (folders are not supported yet)") }
         let total = entries.reduce(0) { $0 + $1.size }
         let base = "\(device.protocol)://\(device.ip):\(device.port)\(LocalSend.apiPath)"
@@ -116,13 +135,13 @@ public final class LocalSendClient: NSObject, LocalSendTransport, URLSessionData
             prepare.setValue("application/json", forHTTPHeaderField: "Content-Type")
             var described: [String: PrepareUpload.File] = [:]
             for entry in entries {
-                described[entry.id] = PrepareUpload.File(id: entry.id, fileName: entry.url.lastPathComponent, size: entry.size, fileType: entry.type)
+                described[entry.id] = PrepareUpload.File(id: entry.id, fileName: entry.url.lastPathComponent, size: entry.size, fileType: entry.type, preview: entry.preview)
             }
             prepare.httpBody = try JSONEncoder().encode(PrepareUpload(info: me, files: described))
             let (data, status) = try await perform(prepare)
             switch status {
             case 200: break
-            case 204: return SendResult(count: 0, skipped: skipped)
+            case 204: return SendResult(count: entries.count, skipped: skipped)
             case 403: throw SendError("\(device.alias) declined")
             case 409, 429: throw SendError("\(device.alias) is busy")
             default: throw SendError("\(device.alias) answered \(status)")

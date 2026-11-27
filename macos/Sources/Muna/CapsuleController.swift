@@ -151,6 +151,9 @@ final class PanelState: ObservableObject {
     @Published var clipboardQuery = ""
     @Published var copiedClip: String?
     @Published var namingGroup = false
+    /// LocalSend: writing the text to send, and its draft.
+    @Published var writingText = false
+    @Published var localSendText = ""
     @Published var groupName = ""
     @Published var groupNameError = ""
     @Published var confirmDeleteGroup: String?
@@ -347,6 +350,10 @@ final class CapsuleController {
         app.localSend.incomingPublisher.dropFirst().sink { [weak self] _ in
             self?.scheduleUpdate()
         }.store(in: &observers)
+        // a received text keeps the capsule open until it is put away
+        app.localSend.messagePublisher.dropFirst().sink { [weak self] _ in
+            self?.scheduleUpdate()
+        }.store(in: &observers)
         // an agent's question answered: the capsule may close
         app.agents.revisionPublisher.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async { self?.agentsChanged() }
@@ -476,7 +483,7 @@ final class CapsuleController {
 
     private var keepsOpen: Bool {
         (hovering && preferences.autoCollapse) || pinned || model.isEditing || model.isDropTarget
-            || app.localSend.incoming?.state == .asking || (!preferences.autoCollapse && model.isOpen)
+            || app.localSend.incoming?.state == .asking || app.localSend.message != nil || (!preferences.autoCollapse && model.isOpen)
             || (model.tab == .agent && app.agents.waiting != nil)
     }
 

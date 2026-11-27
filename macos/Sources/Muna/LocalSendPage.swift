@@ -10,6 +10,8 @@ struct LocalSendPage: View {
     var body: some View {
         if let incoming = localSend.incoming {
             IncomingCard(incoming: incoming)
+        } else if let message = localSend.message {
+            MessageCard(message: message)
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 BasketSection()
@@ -100,33 +102,142 @@ struct IncomingCard: View {
     }
 }
 
+/// A text someone sent: who, the text, Copy, and Open when it is one link.
+struct MessageCard: View {
+    let message: ReceivedText
+    @EnvironmentObject var localSend: LocalSendController
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Caption("From \(message.from)")
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "text.bubble")
+                    .font(.system(size: 24))
+                    .foregroundColor(MunaColor.accent)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(MunaColor.tile))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(message.from) sent a text").font(.system(size: 15, weight: .semibold))
+                    Text(message.text)
+                        .font(.system(size: 13))
+                        .lineLimit(5)
+                        .textSelection(.enabled)
+                }
+                Spacer()
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 18).fill(MunaColor.tile))
+            HStack(spacing: 8) {
+                Spacer()
+                if let link {
+                    Pill(label: "Open") {
+                        NSWorkspace.shared.open(link)
+                        localSend.dismissMessage()
+                    }
+                }
+                Pill(label: "Copy", accent: true) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(message.text, forType: .string)
+                    localSend.dismissMessage()
+                }
+                Pill(label: "OK") { localSend.dismissMessage() }
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// The text is one web link.
+    private var link: URL? {
+        let words = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !words.contains(" "), !words.contains("\n"), let url = URL(string: words),
+              url.scheme == "http" || url.scheme == "https" else { return nil }
+        return url
+    }
+}
+
 // --- the files to send --------------------------------------------------------------------------
 
 struct BasketSection: View {
     @EnvironmentObject var localSend: LocalSendController
     @EnvironmentObject var tray: TrayModel
+    @EnvironmentObject var ui: PanelState
 
     var body: some View {
+        if ui.writingText {
+            writing
+        } else {
+            basketView
+        }
+    }
+
+    /// Writing the text message: Return keeps it, Cancel leaves it as it was.
+    private var writing: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Caption("Text") {
+                Pill(label: "Cancel") { ui.writingText = false }
+                Pill(label: "Done", accent: true) { keepText() }
+            }
+            CapsuleField(placeholder: "Write a text to send", text: $ui.localSendText) { keepText() }
+            Text("Return keeps it; then choose who gets it. Muna and LocalSend show it at once.")
+                .font(.system(size: 11))
+                .foregroundColor(MunaColor.secondary)
+        }
+    }
+
+    private func keepText() {
+        localSend.session.setText(ui.localSendText)
+        ui.writingText = false
+    }
+
+    private func startWriting() {
+        ui.localSendText = localSend.session.text
+        ui.writingText = true
+    }
+
+    private var basketView: some View {
         let basket = localSend.session.basket
         let total = basket.reduce(Int64(0)) { $0 + Self.size(of: $1) }
-        VStack(alignment: .leading, spacing: 6) {
-            Caption(basket.isEmpty ? "Files" : "Files · \(basket.count) · \(sizeText(total))") {
+        let text = localSend.session.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let caption = basket.isEmpty ? (text.isEmpty ? "Files" : "Text")
+            : "Files · \(basket.count) · \(sizeText(total))\(text.isEmpty ? "" : " · Text")"
+        return VStack(alignment: .leading, spacing: 6) {
+            Caption(caption) {
+                Pill(label: "Text") { startWriting() }
                 if !tray.files.isEmpty {
                     Pill(label: "Add from Tray") { localSend.session.offer(tray.files) }
                 }
                 Pill(label: "Choose…") { choose() }
-                if !basket.isEmpty {
-                    Pill(label: "Clear") { localSend.session.clearBasket() }
+                if !basket.isEmpty || !text.isEmpty {
+                    Pill(label: "Clear") {
+                        localSend.session.setText("")
+                        localSend.session.clearBasket()
+                    }
                 }
             }
-            if basket.isEmpty {
-                Text("Drop files on the capsule while this page is open, or choose them")
+            if basket.isEmpty && text.isEmpty {
+                Text("Drop files on the capsule while this page is open, choose them, or write a text")
                     .font(.system(size: 11))
                     .foregroundColor(MunaColor.secondary)
                     .frame(height: 28)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
+                        if !text.isEmpty {
+                            HStack(spacing: 6) {
+                                Image(systemName: "text.cursor").font(.system(size: 11)).foregroundColor(MunaColor.secondary)
+                                Text("“\(text.split(whereSeparator: \.isWhitespace).joined(separator: " "))”")
+                                    .font(.system(size: 11, weight: .semibold)).lineLimit(1)
+                                    .frame(maxWidth: 180)
+                                Text("Text").font(.system(size: 10)).foregroundColor(MunaColor.secondary)
+                                IconButton(symbol: "xmark") { localSend.session.setText("") }
+                            }
+                            .padding(.leading, 8)
+                            .padding(.trailing, 4)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(MunaColor.tile))
+                            .contentShape(Capsule())
+                            .onTapGesture { startWriting() }
+                        }
                         ForEach(basket, id: \.self) { url in
                             HStack(spacing: 6) {
                                 FileIcon(url: url, size: 16)
@@ -208,8 +319,8 @@ struct DevicesSection: View {
                         ui.namingGroup = true
                     }
                 }
-                Pill(label: session.basket.isEmpty ? "Add files to send" : "Send to \(chosen)", accent: !session.basket.isEmpty,
-                     disabled: session.basket.isEmpty) { session.send() }
+                Pill(label: session.hasContent ? "Send to \(chosen)" : "Add files or a text", accent: session.hasContent,
+                     disabled: !session.hasContent) { session.send() }
             }
         } else {
             Caption(session.phase == .scan ? "Looking for devices…" : "Send to") {

@@ -19,11 +19,14 @@ final class LocalSendController: ObservableObject {
     /// Bumped whenever the sending side changed (the session is not observable itself).
     @Published private(set) var revision = 0
     @Published private(set) var incoming: IncomingSnapshot?
+    /// A text someone sent (LocalSend's text message), until it is put away.
+    @Published private(set) var message: ReceivedText?
     @Published private(set) var receiving = false
     @Published private(set) var receiveProblem: String?
 
     let session: SendSession
     var incomingPublisher: Published<IncomingSnapshot?>.Publisher { $incoming }
+    var messagePublisher: Published<ReceivedText?>.Publisher { $message }
     var revisionPublisher: Published<Int>.Publisher { $revision }
     /// The capsule shows a short message (a sending ended while it was closed).
     var notify: (String, String, Bool) -> Void = { _, _, _ in }
@@ -72,6 +75,12 @@ final class LocalSendController: ObservableObject {
             DispatchQueue.main.async { self?.onIncoming() }
         }
         receiver.onChange = { [weak self] transfer in self?.publish(transfer) }
+        receiver.onMessage = { [weak self] sender, text in
+            DispatchQueue.main.async {
+                self?.message = ReceivedText(from: sender.alias, text: text)
+                self?.onIncoming()
+            }
+        }
         multicast.onAnnouncement = { [weak self] info, ip in
             guard let self, info.fingerprint != fingerprint else { return }
             let scheme = info.protocol == "http" ? "http" : "https"
@@ -151,6 +160,8 @@ final class LocalSendController: ObservableObject {
     func accept() { receiverQueue.async { self.pending?.accept() } }
     func decline() { receiverQueue.async { self.pending?.decline() } }
 
+    func dismissMessage() { message = nil }
+
     /// The incoming card is put away.
     func dismissIncoming() {
         guard let incoming, incoming.state != .asking, incoming.state != .receiving else { return }
@@ -161,4 +172,10 @@ final class LocalSendController: ObservableObject {
         guard let files = incoming?.saved, !files.isEmpty else { return }
         NSWorkspace.shared.activateFileViewerSelecting(files)
     }
+}
+
+/// A text another device sent.
+struct ReceivedText: Equatable {
+    let from: String
+    let text: String
 }

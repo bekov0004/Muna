@@ -70,6 +70,9 @@ public final class LocalSendReceiver {
     public var onIncoming: (IncomingTransfer) -> Void = { _ in }
     /// A transfer moved on (state, progress).
     public var onChange: (IncomingTransfer) -> Void = { _ in }
+    /// Someone sent a text (LocalSend's text message): shown at once, nothing is uploaded.
+    public var onMessage: (DeviceInfo, String) -> Void = { _, _ in }
+    public static let maxText = 100_000
     public var askTimeout: TimeInterval = LocalSend.askTimeout
 
     public private(set) var current: IncomingTransfer?
@@ -120,6 +123,12 @@ public final class LocalSendReceiver {
         let entries = request.files.values.sorted { $0.id < $1.id }
         guard !entries.isEmpty, entries.count <= LocalSend.maxIncomingFiles else {
             respond(.message(400, "Invalid body"))
+            return nil
+        }
+        // a text message: one text/plain entry whose words are in `preview`; answered 204 at once, as LocalSend does
+        if entries.count == 1, let words = entries[0].preview, entries[0].fileType.hasPrefix("text/") {
+            respond(HTTPResponse(status: 204))
+            onMessage(request.info, String(words.prefix(Self.maxText)))
             return nil
         }
         if let current, current.state == .asking || current.state == .receiving {

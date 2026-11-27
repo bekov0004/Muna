@@ -40,6 +40,7 @@ Change this table together with the code. `parity.md` goes into every part of Li
 |---|---|---|---|---|
 | Tray | ✅ | ✅ | ✅ | |
 | LocalSend: send, several devices, groups, receive | ✅ | ✅ | ✅ | Mac ↔ Linux to be tried on real machines; Windows ↔ Linux/Mac to be tried on real machines; Windows asks once to allow the network |
+| LocalSend: send and receive texts (Text, the text chip, the received-text card with Copy and Open) | ✅ | 🟡 | 🟡 | Mac and Windows: core tested against Muna and a fake LocalSend; the views not yet seen running |
 | Clipboard history, pin, notes, search, clean links, private items, drag out | ✅ | ✅ | ✅ | Windows: private items behind Windows Hello |
 | Alerts | ✅ | ✅ | ✅ | Mac: other apps' notifications from macOS's own list (Full Disk Access); macOS lets no app read other apps' notifications: Muna's own events only; Windows: other apps' notifications (read from Windows' own notification list, with the app's name and icon, a click opens the app), Muna's own events, system alerts |
 

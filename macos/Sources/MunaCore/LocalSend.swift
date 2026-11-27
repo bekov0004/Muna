@@ -99,12 +99,15 @@ public struct PrepareUpload: Codable {
         public var fileName: String
         public var size: Int64
         public var fileType: String
+        /// A text message's words (LocalSend's "Text"); nil for a file.
+        public var preview: String?
 
-        public init(id: String, fileName: String, size: Int64, fileType: String) {
+        public init(id: String, fileName: String, size: Int64, fileType: String, preview: String? = nil) {
             self.id = id
             self.fileName = fileName
             self.size = size
             self.fileType = fileType
+            self.preview = preview
         }
     }
 

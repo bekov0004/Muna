@@ -121,6 +121,22 @@ final class ReceiverTests: XCTestCase {
         XCTAssertTrue(leftovers.isEmpty)
     }
 
+    /// LocalSend's text message: shown at once (204), no question, nothing written.
+    func testTextMessage() throws {
+        let receiver = makeReceiver()
+        var asked = false
+        var got: (String, String)?
+        receiver.onIncoming = { _ in asked = true }
+        receiver.onMessage = { sender, text in got = (sender.alias, text) }
+        let body = try JSONEncoder().encode(PrepareUpload(info: DeviceInfo(alias: "phone", fingerprint: "fp-phone"),
+            files: ["t": PrepareUpload.File(id: "t", fileName: "message.txt", size: 5, fileType: "text/plain", preview: "Hello — привет")]))
+        XCTAssertEqual(request(receiver, "POST", "/prepare-upload", body: body).status, 204)
+        XCTAssertFalse(asked)
+        XCTAssertEqual(got?.0, "phone")
+        XCTAssertEqual(got?.1, "Hello — привет")
+        XCTAssertNil(receiver.current)
+    }
+
     func testDeclineBusyAndTimeout() throws {
         let receiver = makeReceiver()
         receiver.onIncoming = { $0.decline() }
@@ -174,7 +190,7 @@ final class FakeTransport: LocalSendTransport {
 
     func probe(ip: String) async -> Device? { devices[ip] }
 
-    func send(to device: Device, files: [URL], onState: @escaping (SendProgress) -> Void) async throws -> SendResult {
+    func send(to device: Device, files: [URL], text: String?, onState: @escaping (SendProgress) -> Void) async throws -> SendResult {
         onState(SendProgress(phase: "waiting", sent: 0, total: 10, skipped: 0))
         try await Task.sleep(nanoseconds: 50_000_000)
         if declines.contains(device.alias) { throw SendError("\(device.alias) declined") }
@@ -300,6 +316,12 @@ final class ClientTests: XCTestCase {
                 XCTAssertEqual(last, 100_000)
                 let received = try? Data(contentsOf: URL(fileURLWithPath: "/tmp/ls-group/Ali/\(file.lastPathComponent)"))
                 XCTAssertEqual(received?.count, 100_000)
+            }
+            if let ali {
+                // a text: LocalSend shows it at once (204)
+                let result = try? await client.send(to: ali, files: [], text: "a text") { _ in }
+                XCTAssertEqual(result, SendResult(count: 1, skipped: 0))
+                XCTAssertEqual(try? String(contentsOfFile: "/tmp/ls-group/Ali/message-preview.txt", encoding: .utf8), "a text")
             }
             if let vali = await client.probe(ip: "127.0.0.13") {
                 do {

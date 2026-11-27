@@ -391,14 +391,14 @@ export class Muna {
         setAnimationSpeed(this._settings.get('animation-speed'));
         const radius = this._settings.get('corner-radius');
         const liquid = this._settings.get('liquid-glass');
-        // with liquid glass the capsule is only a light indigo tint over the bent desktop
-        const opacity = liquid ? Math.min(0.36, this._settings.get('background-opacity')) : this._settings.get('background-opacity');
+        // with liquid glass the capsule is the glass alone: no colour of its own
+        const opacity = liquid ? 0 : this._settings.get('background-opacity');
 
         // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
         // with a thin lilac rim; the opacity setting still applies (98 % by default).
         const background = `background-gradient-direction: vertical; ` +
             `background-gradient-start: rgba(38, 41, 84, ${opacity}); background-gradient-end: rgba(19, 20, 44, ${opacity}); ` +
-            `border-color: rgba(176, 184, 255, 0.24);`;
+            (liquid ? 'border-color: transparent;' : 'border-color: rgba(176, 184, 255, 0.24);');
 
         if (HANGING.has(this._state)) {
             // The collapsed notch is only ~36px tall: its corners are smaller than the open capsule's.

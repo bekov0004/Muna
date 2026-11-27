@@ -2562,17 +2562,18 @@
 
 /* Liquid glass (Settings → Appearance): the glass shows through thin tints */
 .muna-menu.muna-liquid .popup-menu-content {
-    background-gradient-start: rgba(38, 41, 84, 0.36);
-    background-gradient-end: rgba(19, 20, 44, 0.40);
-    background-color: rgba(30, 32, 66, 0.28);
+    background-gradient-start: transparent;
+    background-gradient-end: transparent;
+    background-color: transparent;
+    border-color: transparent;
 }
 .muna-menu.muna-liquid .muna-card,
+.muna-menu.muna-liquid .muna-menu-tabs,
 .muna-liquid .muna-widget-holder-card > * {
-    background-color: rgba(158, 166, 255, 0.06);
+    background-color: transparent;
+    border-color: transparent;
 }
-.muna-bar.muna-liquid {
-    background-color: rgba(30, 32, 66, 0.28);
-}
+.muna-liquid { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55); }
 
 /* Top bar → Muna's: the menus of GNOME's items (quick settings, keyboard, other extensions) in Muna's look */
 .muna-styled .popup-menu-content,
@@ -2588,9 +2589,10 @@
 }
 .muna-styled.muna-liquid .popup-menu-content,
 .muna-styled.muna-liquid .quick-settings {
-    background-color: rgba(30, 32, 66, 0.34);
-    background-gradient-start: rgba(38, 41, 84, 0.32);
-    background-gradient-end: rgba(19, 20, 44, 0.38);
+    background-color: transparent;
+    background-gradient-start: transparent;
+    background-gradient-end: transparent;
+    border-color: transparent;
 }
 .muna-styled .quick-toggle,
 .muna-styled .icon-button,

@@ -38,36 +38,34 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
     float muna_d = muna_box(muna_p);
     vec2 muna_n = normalize(vec2(muna_box(muna_p + vec2(1.0, 0.0)) - muna_box(muna_p - vec2(1.0, 0.0)),
                                  muna_box(muna_p + vec2(0.0, 1.0)) - muna_box(muna_p - vec2(0.0, 1.0))) + 1e-5);
-    // the bevel: a wide convex rim, flat in the middle (a thick drop of glass)
-    float muna_band = clamp(min(muna_w, muna_h) * 0.36, 12.0, 64.0);
-    float muna_e = clamp(1.0 + muna_d / muna_band, 0.0, 1.0);
-    float muna_slope = muna_e * muna_e;
-    // refraction: the picture is taken from further in where the glass slopes (a lens that magnifies)
-    vec2 muna_bend = muna_n * muna_slope * muna_band * 0.44 / muna_size;
-    // dispersion: seven wavelengths bend by different amounts and add up to a rainbow at the rim
+    // the glass as a body: flat in the middle, its rim a quarter circle that gets steep at the very edge
+    float muna_band = clamp(min(muna_w, muna_h) * 0.34, 14.0, 70.0);
+    float muna_u = clamp(1.0 + muna_d / muna_band, 0.0, 0.985);
+    float muna_z = sqrt(1.0 - muna_u * muna_u);
+    vec3 muna_normal = normalize(vec3(muna_n * muna_u, muna_z));
+    // how thick the glass is there: the light goes through that much of it
+    float muna_thick = muna_band * (0.55 + 0.6 * muna_z);
+    // real refraction (Snell's law), each colour with its own index: a rainbow where the rim is steep
     vec3 muna_rgb = vec3(0.0);
     vec3 muna_weight = vec3(0.0);
     for (int i = 0; i < 7; i++) {
         float t = float(i) / 6.0;
+        float ior = 1.44 + 0.12 * t;
+        vec3 ray = refract(vec3(0.0, 0.0, -1.0), muna_normal, 1.0 / ior);
+        vec2 shift = ray.xy / max(-ray.z, 0.2) * muna_thick;
         vec3 tint = muna_spectrum(t);
-        float k = 1.0 + (t - 0.5) * 0.9 * muna_slope;
-        muna_rgb += texture2D(cogl_sampler0, muna_uv - muna_bend * k).rgb * tint;
+        muna_rgb += texture2D(cogl_sampler0, muna_uv + shift / muna_size).rgb * tint;
         muna_weight += tint;
     }
     muna_rgb /= muna_weight;
-    // light on the glass: brighter where the bevel faces up, a lit thick bevel at the bottom,
-    // a soft shadow inside under the top edge (depth)
-    float muna_up = clamp(-muna_n.y, 0.0, 1.0);
-    float muna_down = clamp(muna_n.y, 0.0, 1.0);
-    muna_rgb += vec3(1.0) * muna_slope * muna_up * 0.10;
-    muna_rgb += vec3(1.0, 0.96, 0.92) * pow(muna_e, 6.0) * muna_down * 0.22;
-    muna_rgb *= 1.0 - pow(muna_e, 3.0) * muna_up * 0.18;
-    // Fresnel: the rim glows where it is seen at a glancing angle
-    muna_rgb += vec3(0.75, 0.8, 1.0) * pow(muna_e, 5.0) * 0.16;
-    // the rim line, lit from above and to the left
-    float muna_line = smoothstep(-2.5, -0.6, muna_d) * (1.0 - smoothstep(-0.6, 0.5, muna_d));
+    // light on the glass: a reflection where the rim faces the light (up and to the left), a lit bottom
+    // bevel, Fresnel at the steep edge, and the bright rim line
+    float muna_edge = 1.0 - muna_z;
     float muna_face = clamp(dot(muna_n, normalize(vec2(-0.6, -1.0))) * 0.5 + 0.5, 0.0, 1.0);
-    muna_rgb = mix(muna_rgb, vec3(1.0), muna_line * (0.3 + 0.6 * muna_face));
+    muna_rgb += vec3(1.0) * pow(muna_edge, 3.0) * (0.10 + 0.25 * muna_face);
+    muna_rgb += vec3(1.0, 0.97, 0.94) * pow(muna_edge, 6.0) * clamp(muna_n.y, 0.0, 1.0) * 0.25;
+    float muna_line = smoothstep(-2.2, -0.6, muna_d) * (1.0 - smoothstep(-0.6, 0.5, muna_d));
+    muna_rgb = mix(muna_rgb, vec3(1.0), muna_line * (0.25 + 0.6 * muna_face));
     float muna_inside = 1.0 - smoothstep(-0.5, 0.5, muna_d);
     cogl_color_out = vec4(muna_rgb * muna_inside, muna_inside);
 `);

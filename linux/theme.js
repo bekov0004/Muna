@@ -75,15 +75,14 @@ export function schemeOf(settings, Adw) {
  * under Muna's windows), the rest stays.
  */
 export function glassPalette(p, dark) {
-    const tint = (hex, alpha) => {
-        const n = parseInt(hex.slice(1), 16);
-        return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
-    };
+    // the glass alone: no colour of the window's own; the blocks are only a faint sheen of light
+    const sheen = dark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.22)';
     return {
         ...p,
-        BACKGROUND: tint(p.BACKGROUND, dark ? 0.42 : 0.5),
-        TOOLBAR: tint(p.TOOLBAR, dark ? 0.36 : 0.42),
-        SURFACE: tint(p.SURFACE, dark ? 0.4 : 0.55),
-        CARD: tint(p.CARD, dark ? 0.4 : 0.55),
+        BACKGROUND: 'rgba(0, 0, 0, 0)',
+        TOOLBAR: 'rgba(0, 0, 0, 0)',
+        SURFACE: sheen,
+        CARD: sheen,
+        CONTROL: dark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.3)',
     };
 }

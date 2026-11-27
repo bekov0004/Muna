@@ -412,6 +412,8 @@ export class Muna {
         }
         for (const ear of this._ears)
             ear.setGradient([38, 41, 84, opacity], [19, 20, 44, opacity]);
+        for (const ear of this._ears)
+            ear.setHidden(liquid);
 
     }
 

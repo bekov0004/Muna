@@ -1,5 +1,6 @@
 import Clutter from 'gi://Clutter';
 import St from 'gi://St';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
@@ -20,14 +21,18 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
     uniform float muna_r;
     uniform float muna_top_r;
     uniform float muna_blur;
-    float muna_box(vec2 p) {
-        // the outline as a signed distance (negative inside), in pixels
+    float muna_rbox(vec2 p, float r) {
+        // the outline as a signed distance (negative inside), in pixels, with corners of radius r
         vec2 c = vec2(muna_w, muna_h) * 0.5;
         // hanging from the screen's top edge: the upper half only has the sides (no top rim), so the field stays smooth
         if (muna_top_r < 0.5)
             p.y = max(p.y, c.y);
-        vec2 q = abs(p - c) - c + vec2(muna_r);
-        return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - muna_r;
+        r = min(r, min(c.x, c.y));
+        vec2 q = abs(p - c) - c + vec2(r);
+        return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
+    }
+    float muna_box(vec2 p) {
+        return muna_rbox(p, muna_r);
     }
     // a colour of the spectrum, t from 0 (red) to 1 (violet)
     vec3 muna_spectrum(float t) {
@@ -38,46 +43,45 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
     vec2 muna_uv = cogl_tex_coord_in[0].xy;
     vec2 muna_p = muna_uv * muna_size;
     float muna_d = muna_box(muna_p);
-    vec2 muna_n = normalize(vec2(muna_box(muna_p + vec2(1.0, 0.0)) - muna_box(muna_p - vec2(1.0, 0.0)),
-                                 muna_box(muna_p + vec2(0.0, 1.0)) - muna_box(muna_p - vec2(0.0, 1.0))) + 1e-5);
-    // the glass as a body: flat in the middle, its rim a quarter circle that gets steep at the very edge
-    float muna_band = clamp(min(muna_w, muna_h) * 0.34, 14.0, 70.0);
-    float muna_u = clamp(1.0 + muna_d / muna_band, 0.0, 0.985);
+    // small panes (buttons, chips) get a thin bevel and a quiet rim; big ones a wide lens
+    float muna_small = 1.0 - smoothstep(26.0, 60.0, min(muna_w, muna_h));
+    float muna_band = mix(clamp(min(muna_w, muna_h) * 0.34, 14.0, 60.0), min(muna_w, muna_h) * 0.3, muna_small);
+    // the lens: a smooth body whose corners are at least as round as its bevel (no crease along a corner's diagonal)
+    float muna_lr = max(muna_r, muna_band);
+    float muna_ld = muna_rbox(muna_p, muna_lr);
+    vec2 muna_n = normalize(vec2(muna_rbox(muna_p + vec2(1.0, 0.0), muna_lr) - muna_rbox(muna_p - vec2(1.0, 0.0), muna_lr),
+                                 muna_rbox(muna_p + vec2(0.0, 1.0), muna_lr) - muna_rbox(muna_p - vec2(0.0, 1.0), muna_lr)) + 1e-5);
+    float muna_u = clamp(1.0 + muna_ld / muna_band, 0.0, 0.985);
     float muna_z = sqrt(1.0 - muna_u * muna_u);
     vec3 muna_normal = normalize(vec3(muna_n * muna_u, muna_z));
-    // how thick the glass is there: the light goes through that much of it
-    float muna_thick = muna_band * (0.55 + 0.6 * muna_z);
-    // real refraction (Snell's law), each colour with its own index: a rainbow where the rim is steep
-    vec3 muna_rgb = vec3(0.0);
-    vec3 muna_weight = vec3(0.0);
-    for (int i = 0; i < 7; i++) {
-        float t = float(i) / 6.0;
-        float ior = 1.44 + 0.12 * t;
-        vec3 ray = refract(vec3(0.0, 0.0, -1.0), muna_normal, 1.0 / ior);
-        vec2 shift = ray.xy / max(-ray.z, 0.2) * muna_thick;
-        vec3 tint = muna_spectrum(t);
-        vec2 at = muna_uv + shift / muna_size;
-        // a light frost: the middle is softly blurred, the steep rim stays sharp
-        vec2 r = vec2(muna_blur * muna_z) / muna_size;
-        vec3 c = texture2D(cogl_sampler0, at).rgb * 0.12;
-        for (int k = 0; k < 8; k++) {
-            float a = float(k) * 0.785398;
-            vec2 o = vec2(cos(a), sin(a));
-            c += texture2D(cogl_sampler0, at + o * r * 0.5).rgb * 0.06;
-            c += texture2D(cogl_sampler0, at + o * r).rgb * 0.05;
-        }
-        muna_rgb += c * tint;
-        muna_weight += tint;
+    float muna_thick = muna_band * (0.55 + 0.6 * muna_z) * mix(1.0, 0.35, muna_small);
+    // refraction (Snell, index 1.5) for the middle colour, frosted in the middle of the glass
+    vec3 muna_ray = refract(vec3(0.0, 0.0, -1.0), muna_normal, 1.0 / 1.5);
+    vec2 muna_shift = muna_ray.xy / max(-muna_ray.z, 0.2) * muna_thick / muna_size;
+    vec2 muna_at = muna_uv + muna_shift;
+    vec2 muna_r = vec2(muna_blur * muna_z) / muna_size;
+    vec3 muna_rgb = texture2D(cogl_sampler0, muna_at).rgb * 0.2;
+    for (int k = 0; k < 8; k++) {
+        float a = float(k) * 0.785398 + 0.39;
+        muna_rgb += texture2D(cogl_sampler0, muna_at + vec2(cos(a), sin(a)) * muna_r).rgb * 0.1;
     }
-    muna_rgb /= muna_weight;
-    // light on the glass: a reflection where the rim faces the light (up and to the left), a lit bottom
-    // bevel, Fresnel at the steep edge, and the bright rim line
+    // dispersion at the steep rim: red bends less, blue more (a rainbow edge)
     float muna_edge = 1.0 - muna_z;
+    float muna_spread = smoothstep(0.05, 0.6, muna_edge) * (1.0 - muna_small * 0.7);
+    float muna_red = texture2D(cogl_sampler0, muna_uv + muna_shift * 0.72).r;
+    float muna_blue = texture2D(cogl_sampler0, muna_uv + muna_shift * 1.35).b;
+    muna_rgb.r = mix(muna_rgb.r, muna_red, muna_spread);
+    muna_rgb.b = mix(muna_rgb.b, muna_blue, muna_spread);
+    // the body of the glass: a light frost and a sheen from above, so it shows on a plain backdrop too
+    float muna_y = muna_uv.y;
+    muna_rgb = mix(muna_rgb, vec3(1.0), 0.07 + 0.07 * (1.0 - muna_y) * (1.0 - muna_small));
+    // light on the rim: reflection where it faces the light (up, left), a lit bottom bevel, Fresnel
     float muna_face = clamp(dot(muna_n, normalize(vec2(-0.6, -1.0))) * 0.5 + 0.5, 0.0, 1.0);
-    muna_rgb += vec3(1.0) * pow(muna_edge, 3.0) * (0.10 + 0.25 * muna_face);
-    muna_rgb += vec3(1.0, 0.97, 0.94) * pow(muna_edge, 6.0) * clamp(muna_n.y, 0.0, 1.0) * 0.25;
-    float muna_line = smoothstep(-2.2, -0.6, muna_d) * (1.0 - smoothstep(-0.6, 0.5, muna_d));
-    muna_rgb = mix(muna_rgb, vec3(1.0), muna_line * (0.25 + 0.6 * muna_face));
+    float muna_quiet = mix(1.0, 0.45, muna_small);
+    muna_rgb += vec3(1.0) * pow(muna_edge, 3.0) * (0.12 + 0.28 * muna_face) * muna_quiet;
+    muna_rgb += vec3(1.0, 0.97, 0.94) * pow(muna_edge, 6.0) * clamp(muna_n.y, 0.0, 1.0) * 0.22 * muna_quiet;
+    float muna_line = smoothstep(-2.0, -0.6, muna_d) * (1.0 - smoothstep(-0.6, 0.5, muna_d));
+    muna_rgb = mix(muna_rgb, vec3(1.0), muna_line * (0.18 + 0.5 * muna_face) * muna_quiet);
     float muna_inside = 1.0 - smoothstep(-0.5, 0.5, muna_d);
     cogl_color_out = vec4(muna_rgb * muna_inside, muna_inside);
 `);
@@ -122,13 +126,16 @@ export const LiquidGlass = GObject.registerClass({GTypeName: 'MunaLiquidGlass'},
             clone.set_position(Math.round(sx) - X, Math.round(sy) - Y);
             clone.opacity = source.get_paint_opacity();
         }
+        const key = `${X},${Y},${Math.round(w)},${Math.round(h)},${radius},${hanging}`;
+        if (key === this._key)
+            return;
+        this._key = key;
         this._effect.setUniform('muna_w', [w]);
         this._effect.setUniform('muna_h', [h]);
         this._effect.setUniform('muna_r', [Math.min(radius, h / 2, w / 2)]);
         this._effect.setUniform('muna_blur', [8.0]);
         this._effect.setUniform('muna_top_r', [hanging ? 0 : Math.min(radius, h / 2, w / 2)]);
         this._effect.queue_repaint();
-        this.queue_relayout();
     }
 });
 
@@ -196,6 +203,16 @@ export class GlassManager {
      * @returns {{remove: Function}}
      */
     attach(actor, shape, {mark = null, panes = false} = {}) {
+        if (panes) {
+            actor.connectObject('notify::mapped', () => {
+                this._scanned = 0;
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+                    this._scanned = 0;
+                    global.stage.queue_redraw();
+                    return GLib.SOURCE_REMOVE;
+                });
+            }, this);
+        }
         const entry = {actor, shape, glass: null, mark, panes, children: new Map()};
         this._entries.add(entry);
         this._markOne(entry);
@@ -283,7 +300,9 @@ export class GlassManager {
             return;
         const ui = Main.layoutManager.uiGroup;
         // new blocks inside the surfaces: looked for a few times a second, not every frame
-        if (++this._frame % 20 === 1) {
+        const now = GLib.get_monotonic_time();
+        if (now - (this._scanned ?? 0) > 250000) {
+            this._scanned = now;
             for (const entry of [...this._entries]) {
                 if (entry.panes && entry.actor.mapped)
                     this._scanPanes(entry);
@@ -301,7 +320,8 @@ export class GlassManager {
                 ui.add_child(entry.glass);
             }
             // under the element's top actor (inner elements: above the glass of the element they lie on)
-            ui.set_child_below_sibling(entry.glass, top);
+            if (entry.glass.get_next_sibling() !== top)
+                ui.set_child_below_sibling(entry.glass, top);
             const [x, y] = actor.get_transformed_position();
             const [width, height] = actor.get_transformed_size();
             const rect = {x, y, width, height};
@@ -326,7 +346,8 @@ export class GlassManager {
                 global.window_group.add_child(glass);
                 this._windowGlasses.set(window, glass);
             }
-            global.window_group.set_child_below_sibling(glass, actor);
+            if (glass.get_next_sibling() !== actor)
+                global.window_group.set_child_below_sibling(glass, actor);
             const frame = window.get_frame_rect();
             const rect = {x: frame.x, y: frame.y, width: frame.width, height: frame.height};
             glass.setWindows(windowsUnder(rect, {below: actor}));

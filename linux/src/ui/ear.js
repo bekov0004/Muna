@@ -46,8 +46,18 @@ export class Ear extends St.DrawingArea {
         this.queue_repaint();
     }
 
+    /** On liquid glass the capsule is the glass's own shape: the ears draw nothing. */
+    setHidden(hidden) {
+        this._hidden = hidden;
+        this.queue_repaint();
+    }
+
     vfunc_repaint() {
         const cr = this.get_context();
+        if (this._hidden) {
+            cr.$dispose();
+            return;
+        }
         const [width, height] = this.get_surface_size();
         const [r, g, b, a] = this._color;
         // The box minus a circle centred on its far bottom corner: what

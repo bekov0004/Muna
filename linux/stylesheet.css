@@ -2655,3 +2655,11 @@
 .muna-liquid .quick-toggle:checked, .muna-liquid .muna-button.muna-menu-tab:checked {
     background-color: rgba(90, 75, 220, 0.75);
 }
+.muna-styled .quick-toggle-arrow:checked,
+.muna-styled.muna-liquid .quick-toggle-arrow:checked,
+.muna-styled.muna-liquid .quick-toggle:checked {
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
+}

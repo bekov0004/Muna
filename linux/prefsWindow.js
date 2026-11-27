@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
-import {SETTINGS_THEME, accentCss} from './theme.js';
+import {PAGE_TILES, SETTINGS_THEME, TILE_CYCLE, accentCss} from './theme.js';
 
 import {DEFAULT_WIDGETS, WIDGET_INFO} from './src/utils/widgetInfo.js';
 import * as R from './src/utils/reminders.js';
@@ -34,12 +34,14 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .muna-sidebar searchentry:focus-within { box-shadow: 0 0 0 3px ${p.ACCENT_SOFT}; }
 .muna-sidebar list { background: none; }
 .muna-sidebar-scroll, .muna-sidebar-scroll > viewport { background: none; }
-.muna-sidebar row { background: none; border-radius: 10px; padding: 5px 8px; margin: 1px 2px; min-height: 22px; color: ${p.TEXT}; }
+.muna-sidebar row { background: none; border-radius: 15px; padding: 5px 8px; margin: 1px 2px; min-height: 30px; color: ${p.TEXT}; }
 .muna-sidebar row:hover { background-color: ${p.HOVER}; }
 .muna-sidebar row.muna-sidebar-heading, .muna-sidebar row.muna-sidebar-heading:hover { background: none; }
-.muna-sidebar row image { color: ${p.ACCENT}; }
-.muna-sidebar row:selected { background-color: ${p.ACCENT}; color: white; }
-.muna-sidebar row:selected image, .muna-sidebar row:selected label { color: white; }
+.muna-sidebar row image { color: white; }
+.muna-sidebar row:selected { background-color: ${p.ACCENT_SOFT}; box-shadow: inset 0 0 0 1px ${p.ACCENT_LINE}; color: ${p.TEXT}; }
+.muna-sidebar row:selected label { color: ${p.TEXT}; font-weight: 800; }
+.muna-sideicon { border-radius: 9px; min-width: 28px; min-height: 28px; }
+${TILE_CYCLE.map((c, i) => `.muna-sideicon.t${i} { background-image: linear-gradient(145deg, ${c[0]}, ${c[1]}); }`).join('\n')}
 .muna-sidebar .caption-heading { color: ${p.TEXT_SECONDARY}; font-size: 11px; font-weight: 600; margin: 10px 8px 3px 6px; }
 
 .muna-page { padding: 6px 26px 30px 26px; }
@@ -367,6 +369,7 @@ export class MunaPreferences {
             stack.add_named(scroller, name);
         };
         addPage('feat-search', features.search);
+        let tileIndex = 0;
         for (const [heading, entries] of sections) {
             list.append(new Gtk.ListBoxRow({
                 selectable: false,
@@ -379,9 +382,14 @@ export class MunaPreferences {
                 const row = new Gtk.ListBoxRow();
                 row._page = name;
                 row._title = title;
-                const box = new Gtk.Box({spacing: 10});
-                box.append(new Gtk.Image({icon_name: icon, pixel_size: 18}));
-                box.append(new Gtk.Label({label: title, xalign: 0}));
+                const box = new Gtk.Box({spacing: 12});
+                // the icon on its coloured tile (the design)
+                const known = Object.keys(PAGE_TILES).indexOf(title);
+                const tile = new Gtk.Box({css_classes: ['muna-sideicon', `t${known >= 0 ? known : tileIndex++ % TILE_CYCLE.length}`],
+                    valign: Gtk.Align.CENTER, halign: Gtk.Align.START, hexpand: false, width_request: 28, height_request: 28});
+                tile.append(new Gtk.Image({icon_name: icon, pixel_size: 16, hexpand: false, width_request: 28, halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
+                box.append(tile);
+                box.append(new Gtk.Label({label: title, xalign: 0, hexpand: true}));
                 row.set_child(box);
                 list.append(row);
                 rowsByName.set(name, row);

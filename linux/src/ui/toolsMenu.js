@@ -87,42 +87,27 @@ export class ToolsMenu {
         logo.add_child(mark);
         root.add_child(logo);
 
-        // The icon tabs: they keep their size; when there are more than fit, the row scrolls sideways (wheel, touchpad,
-        // and the chosen tab is brought into view), its ends fading out.
+        // The tabs as in the design (7 · Fixed version): a grid of five columns, each an icon over its short
+        // name; the chosen one is the violet fill.
         const tabsFrame = new St.Bin({style_class: 'muna-menu-tabs', x_expand: true});
-        this._tabsScroll = new St.ScrollView({
-            style_class: 'muna-menu-tabs-scroll',
-            hscrollbar_policy: St.PolicyType.EXTERNAL,
-            vscrollbar_policy: St.PolicyType.NEVER,
-            overlay_scrollbars: true,
-            x_expand: true,
-        });
-        const tabs = new St.BoxLayout({style_class: 'muna-menu-tabs-row', x_expand: true});
+        const grid = new Clutter.GridLayout({column_homogeneous: true, column_spacing: 4, row_spacing: 4});
+        const tabs = new St.Widget({layout_manager: grid, x_expand: true});
+        const SHORT = {'Keep awake': 'Awake', 'Quick toggles': 'Toggles', 'AI agents': 'Agents', 'Volume mixer': 'Sound'};
         this._widgets.forEach((widget, index) => {
-            const tab = createButton({iconName: widget.constructor.iconName, styleClass: 'muna-menu-tab', expand: true, onClick: () => this._select(index)});
-            tab.accessible_name = widget.constructor.title;
-            tabs.add_child(tab);
+            const title = widget.constructor.title ?? '';
+            const tab = new St.Button({style_class: 'muna-button muna-menu-tab', can_focus: true, reactive: true, track_hover: true,
+                button_mask: St.ButtonMask.PRIMARY ?? St.ButtonMask.ONE, x_expand: true});
+            const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-menu-tab-box',
+                x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+            box.add_child(new St.Icon({icon_name: widget.constructor.iconName, style_class: 'muna-menu-tab-icon', x_align: Clutter.ActorAlign.CENTER}));
+            box.add_child(new St.Label({text: SHORT[title] ?? title, style_class: 'muna-menu-tab-label', x_align: Clutter.ActorAlign.CENTER}));
+            tab.set_child(box);
+            tab.connect('clicked', () => this._select(index));
+            tab.accessible_name = title;
+            grid.attach(tab, index % 5, Math.floor(index / 5), 1, 1);
             this._tabs.push(tab);
         });
-        this._tabsScroll.set_child(tabs);
-        this._tabsScroll.connect('scroll-event', (_a, event) => this._scrollTabs(event));
-        // arrows at the ends while there is more that way
-        const arrow = (icon, way) => {
-            const button = new St.Button({style_class: 'muna-menu-tabs-arrow', can_focus: true, reactive: true, track_hover: true,
-                child: new St.Icon({icon_name: icon, icon_size: 14}), y_align: Clutter.ActorAlign.CENTER, visible: false});
-            button.connect('clicked', () => this._pageTabs(way));
-            return button;
-        };
-        this._tabsLeft = arrow('go-previous-symbolic', -1);
-        this._tabsRight = arrow('go-next-symbolic', 1);
-        const tabsLine = new St.BoxLayout({x_expand: true});
-        tabsLine.add_child(this._tabsLeft);
-        tabsLine.add_child(this._tabsScroll);
-        tabsLine.add_child(this._tabsRight);
-        const adjustment = this._tabsScroll.hadjustment;
-        for (const property of ['value', 'upper', 'page-size'])
-            adjustment.connect(`notify::${property}`, () => this._syncTabArrows());
-        tabsFrame.set_child(tabsLine);
+        tabsFrame.set_child(tabs);
         root.add_child(tabsFrame);
 
         const titleRow = new St.BoxLayout({x_expand: true, style_class: 'muna-menu-titlerow'});

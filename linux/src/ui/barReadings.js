@@ -11,7 +11,7 @@ import {menuDivider, valueRow} from './menuKit.js';
 import {Sparkline} from './sparkline.js';
 
 const WIDTH = 290;
-const BLUE = [0.04, 0.52, 1];
+const BLUE = [0.58, 0.65, 1];
 const CYAN = [0.35, 0.83, 0.98];
 const GREEN = [0.19, 0.82, 0.35];
 const ORANGE = [1, 0.62, 0.04];

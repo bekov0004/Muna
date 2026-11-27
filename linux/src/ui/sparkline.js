@@ -10,7 +10,7 @@ export const Sparkline = GObject.registerClass({GTypeName: 'MunaSparkline'}, cla
      * @param {{color?: number[], max?: number|null, height?: number, label?: (max: number) => string}} options
      *   color: [r, g, b] 0..1; max: fixed top of the scale, or null to fit the data
      */
-    _init({color = [0.04, 0.52, 1], max = null, height = 44, label = null} = {}) {
+    _init({color = [0.58, 0.65, 1], max = null, height = 44, label = null} = {}) {
         super._init({style_class: 'muna-sparkline', x_expand: true, height});
         this._color = color;
         this._max = max;

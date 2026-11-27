@@ -64,11 +64,11 @@ export class SystemWidget extends MonitorWidget {
         card.add_child(sectionLabel('Hardware usage', open));
         this._cpu = meterRow('CPU', {expandable: true});
         card.add_child(this._cpu.actor);
-        this._cpuGraph = this.graphBlock({color: [0.04, 0.52, 1], max: 100});
+        this._cpuGraph = this.graphBlock({color: [0.58, 0.65, 1], max: 100});
         this._cpuGraph.scale.text = '100%';
         card.add_child(this._cpuGraph.actor);
         this._gpu = meterRow('GPU', {expandable: false});
-        this._gpuGraph = this.graphBlock({color: [0.04, 0.52, 1], max: 100});
+        this._gpuGraph = this.graphBlock({color: [0.58, 0.65, 1], max: 100});
         this._gpuGraph.scale.text = '100%';
         this._gpuBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, visible: false});
         this._gpuBox.add_child(this._gpu.actor);

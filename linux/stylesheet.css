@@ -1986,10 +1986,13 @@
 /* The window of the top-bar button (the utility widgets as pages) */
 .muna-menu .popup-menu-content {
     padding: 0;
-    border-radius: 26px;
-    background-color: rgba(0, 0, 0, 0.96);
-    border: 1px solid rgba(176, 184, 255, 0.18);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    border-radius: 22px;
+    background-color: rgba(30, 32, 66, 0.98);
+    background-gradient-direction: vertical;
+    background-gradient-start: rgba(38, 41, 84, 0.98);
+    background-gradient-end: rgba(19, 20, 44, 0.98);
+    border: 1px solid rgba(176, 184, 255, 0.24);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
 }
 
 .muna-menu-item {
@@ -2001,34 +2004,34 @@
     spacing: 12px;
 }
 
-.muna-menu-tabs-row {
-    spacing: 2px;
-}
-
-.muna-menu-tabs-scroll {
-    -st-hfade-offset: 22px;
-}
-
 .muna-menu-tabs {
-    padding: 5px;
-    border-radius: 18px;
-    background-color: rgba(158, 166, 255, 0.07);
+    padding: 6px;
+    border-radius: 17px;
+    background-color: rgba(158, 166, 255, 0.12);
     border: 1px solid rgba(176, 184, 255, 0.18);
 }
 
 .muna-button.muna-menu-tab {
-    height: 40px;
-    min-width: 40px;
+    height: 46px;
     border-radius: 13px;
-    padding: 0;
+    padding: 0 2px;
     background-color: transparent;
     border: none;
     box-shadow: none;
-    color: rgba(255, 255, 255, 0.72);
+    color: rgba(255, 255, 255, 0.75);
 }
 
-.muna-menu-tab StIcon {
-    icon-size: 20px;
+.muna-menu-tab-box {
+    spacing: 4px;
+}
+
+.muna-menu-tab-icon {
+    icon-size: 16px;
+}
+
+.muna-menu-tab-label {
+    font-size: 11px;
+    font-weight: 600;
 }
 
 .muna-button.muna-menu-tab:hover {
@@ -2036,8 +2039,12 @@
 }
 
 .muna-button.muna-menu-tab:checked {
-    background-color: rgba(158, 166, 255, 0.22);
-    color: #5aa9ff;
+    color: white;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
+    box-shadow: 0 6px 14px rgba(90, 75, 220, 0.45);
 }
 
 .muna-menu-logo {
@@ -2062,8 +2069,8 @@
 
 .muna-button.muna-menu-action {
     height: 36px;
-    border-radius: 14px;
-    background-color: rgba(158, 166, 255, 0.09);
+    border-radius: 15px;
+    background-color: rgba(158, 166, 255, 0.12);
     border: 1px solid rgba(176, 184, 255, 0.18);
 }
 
@@ -2087,7 +2094,8 @@
 }
 
 .muna-menu .muna-card {
-    background-color: #151517;
+    border-radius: 17px;
+    background-color: rgba(158, 166, 255, 0.12);
     border: 1px solid rgba(176, 184, 255, 0.18);
 }
 

@@ -6,7 +6,7 @@ import {formatBytes, formatRate} from '../../services/systemService.js';
 import {menuCard, menuDivider, pillButton, sectionLabel, valueRow} from '../../ui/menuKit.js';
 import {MonitorWidget} from '../system/monitorWidget.js';
 
-const DOWN = [0.04, 0.52, 1];
+const DOWN = [0.58, 0.65, 1];
 const UP = [0.19, 0.82, 0.35];
 
 /**

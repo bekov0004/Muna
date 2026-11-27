@@ -7,7 +7,7 @@ import {menuCard, menuDivider, pillButton, sectionLabel, usageBar, valueRow} fro
 import {setChecked} from '../../ui/menuKit.js';
 import {MonitorWidget} from '../system/monitorWidget.js';
 
-const READ = [0.04, 0.52, 1];
+const READ = [0.58, 0.65, 1];
 const WRITE = [1, 0.27, 0.38];
 
 /**

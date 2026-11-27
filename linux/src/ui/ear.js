@@ -46,7 +46,7 @@ export class Ear extends St.DrawingArea {
             cr.arc(0, height, radius + 0.5, -Math.PI / 2, 0);
         else
             cr.arc(width, height, radius + 0.5, Math.PI, 1.5 * Math.PI);
-        cr.setSourceRGBA(1, 1, 1, 0.10);
+        cr.setSourceRGBA(176 / 255, 184 / 255, 1, 0.24);
         cr.setLineWidth(1);
         cr.stroke();
         cr.$dispose();

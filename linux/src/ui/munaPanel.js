@@ -151,7 +151,9 @@ export class MunaPanel extends St.BoxLayout {
             this._buildPages(layout);
         }
 
-        const half = layout.gap / 2;
+        // The design (7 · Fixed version): every widget in its own card, 8 apart; "Dividers" off: no cards.
+        const cards = layout.dividers;
+        const half = cards ? 4 : layout.gap / 2;
         this._body.style = this._mode === PanelMode.COMMAND
             ? 'padding: 0;'
             : `padding: 0 ${Math.max(layout.padding - half, 0)}px ${Math.round(layout.padding * 0.75)}px;`;
@@ -160,10 +162,11 @@ export class MunaPanel extends St.BoxLayout {
                 const holder = page.holders[i];
                 holder.set_width(px(entry.widthCss + layout.gap, scale));
                 holder.style = `padding: 0 ${half}px;`;
-                if (layout.dividers && i > 0)
-                    holder.add_style_class_name('muna-column-separated');
+                holder.remove_style_class_name('muna-column-separated');
+                if (cards)
+                    holder.add_style_class_name('muna-widget-holder-card');
                 else
-                    holder.remove_style_class_name('muna-column-separated');
+                    holder.remove_style_class_name('muna-widget-holder-card');
             });
         });
         this._updateDots();

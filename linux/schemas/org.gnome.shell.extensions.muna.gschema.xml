@@ -17,7 +17,7 @@
     </key>
 
     <key name="background-opacity" type="d">
-      <default>0.96</default>
+      <default>0.98</default>
       <range min="0.5" max="1.0"/>
       <summary>Background opacity</summary>
       <description>How opaque the capsule background is.</description>

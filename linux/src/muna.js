@@ -387,20 +387,24 @@ export class Muna {
         const radius = this._settings.get('corner-radius');
         const opacity = this._settings.get('background-opacity');
         const shadow = this._settings.get('shadow-strength');
-        const background = `rgba(0, 0, 0, ${opacity})`;
+        // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
+        // with a thin lilac rim; the opacity setting still applies (98 % by default).
+        const background = `background-gradient-direction: vertical; ` +
+            `background-gradient-start: rgba(38, 41, 84, ${opacity}); background-gradient-end: rgba(19, 20, 44, ${opacity}); ` +
+            `border-color: rgba(176, 184, 255, 0.24);`;
 
         if (HANGING.has(this._state)) {
             // The collapsed notch is only ~36px tall: its corners are smaller than the open capsule's.
             const bottom = COLLAPSED.has(this._state) ? Math.min(radius, 14) : radius;
             this._actor.style = `border-radius: 0 0 ${bottom}px ${bottom}px; ` +
-                `background-color: ${background}; border-top-width: 0; border-left-width: 1px; border-right-width: 1px; border-bottom-width: 1px; ` +
+                `${background} border-top-width: 0; border-left-width: 1px; border-right-width: 1px; border-bottom-width: 1px; ` +
                 `box-shadow: 0 14px 36px rgba(0, 0, 0, ${(0.55 * shadow).toFixed(2)});`;
         } else {
-            this._actor.style = `border-radius: ${radius}px; background-color: ${background}; ` +
+            this._actor.style = `border-radius: ${radius}px; ${background} ` +
                 `box-shadow: 0 2px 10px rgba(0, 0, 0, ${(0.4 * shadow).toFixed(2)});`;
         }
         for (const ear of this._ears)
-            ear.setColor(0, 0, 0, opacity);
+            ear.setColor(38, 41, 84, opacity);
     }
 
     /**

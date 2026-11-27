@@ -6,6 +6,7 @@ import St from 'gi://St';
 
 import {createButton} from '../ui/button.js';
 import {makeDraggable, textPayload} from '../tray/dragHandle.js';
+import {EmptyState} from '../ui/emptyState.js';
 
 const PREVIEW_CHARS = 140;
 
@@ -175,14 +176,7 @@ export class ClipboardView extends St.BoxLayout {
         });
         this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-clip-list', x_expand: true});
         this._scroll.add_child(this._list);
-        this._empty = new St.Label({
-            text: 'Copied text shows up here',
-            style_class: 'muna-todo-empty',
-            x_expand: true,
-            y_expand: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
+        this._empty = new EmptyState({iconName: 'edit-paste-symbolic', text: 'Copied text shows up here'});
         body.add_child(this._scroll);
         body.add_child(this._empty);
         this.add_child(body);

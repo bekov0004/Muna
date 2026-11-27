@@ -5,6 +5,7 @@ import St from 'gi://St';
 
 import {createButton} from '../../ui/button.js';
 import {MunaWidget} from '../widget.js';
+import {EmptyState} from '../../ui/emptyState.js';
 
 /** One note: its text, with copy and remove buttons on hover. */
 class NoteItem extends St.Widget {
@@ -88,14 +89,7 @@ export class NotesWidget extends MunaWidget {
         this._caption = new St.Label({style_class: 'muna-todo-caption'});
         root.add_child(this._caption);
 
-        this._empty = new St.Label({
-            text: 'No notes yet',
-            style_class: 'muna-todo-empty',
-            x_expand: true,
-            y_expand: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
+        this._empty = new EmptyState({iconName: 'accessories-text-editor-symbolic', text: 'No notes yet'});
         root.add_child(this._empty);
 
         this._scroll = new St.ScrollView({

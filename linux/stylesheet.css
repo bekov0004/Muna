@@ -2552,3 +2552,10 @@
 /* Empty Alerts: a bell over "No notifications" */
 .muna-notif-empty { spacing: 6px; }
 .muna-notif-empty-icon { icon-size: 22px; color: rgba(255, 255, 255, 0.36); }
+
+/* Empty places (the design, 7.3.5): an icon in a soft lilac circle over the words */
+.muna-empty { spacing: 8px; }
+.muna-empty-badge { width: 44px; height: 44px; border-radius: 22px; background-color: rgba(124, 112, 255, 0.22); }
+.muna-empty-badge-icon { icon-size: 22px; color: #c9c4ff; }
+.muna-empty-text { color: rgba(255, 255, 255, 0.52); font-size: 11px; font-weight: 600; text-align: center; }
+.muna-empty-hint { color: rgba(255, 255, 255, 0.6); font-size: 11px; text-align: center; }

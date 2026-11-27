@@ -5,6 +5,7 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {createButton} from '../ui/button.js';
+import {EmptyState} from '../ui/emptyState.js';
 
 function ago(unix) {
     if (!unix)
@@ -101,17 +102,8 @@ export class NotificationsView extends St.BoxLayout {
         header.add_child(this._clear);
         this.add_child(header);
 
-        // Empty: a bell and "No notifications" (the design)
-        this._empty = new St.BoxLayout({
-            orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'muna-notif-empty',
-            x_expand: true,
-            y_expand: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        this._empty.add_child(new St.Icon({icon_name: 'preferences-system-notifications-symbolic', style_class: 'muna-notif-empty-icon', x_align: Clutter.ActorAlign.CENTER}));
-        this._empty.add_child(new St.Label({text: 'No notifications', style_class: 'muna-todo-empty', x_align: Clutter.ActorAlign.CENTER}));
+        // Empty: a bell in a lilac circle and "No notifications" (the design)
+        this._empty = new EmptyState({iconName: 'preferences-system-notifications-symbolic', text: 'No notifications'});
         this.add_child(this._empty);
 
         this._scroll = new St.ScrollView({

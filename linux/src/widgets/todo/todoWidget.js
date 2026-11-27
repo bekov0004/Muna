@@ -3,6 +3,7 @@ import St from 'gi://St';
 
 import {MunaWidget} from '../widget.js';
 import {TodoItem} from './todoItem.js';
+import {EmptyState} from '../../ui/emptyState.js';
 
 /** A simple local task list: add, check off, remove, clear the done ones. */
 export class TodoWidget extends MunaWidget {
@@ -41,14 +42,7 @@ export class TodoWidget extends MunaWidget {
         header.add_child(this._clear);
         root.add_child(header);
 
-        this._empty = new St.Label({
-            text: 'Nothing to do',
-            style_class: 'muna-todo-empty',
-            x_expand: true,
-            y_expand: true,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-        });
+        this._empty = new EmptyState({iconName: 'object-select-symbolic', text: 'Nothing to do'});
         root.add_child(this._empty);
 
         this._scroll = new St.ScrollView({

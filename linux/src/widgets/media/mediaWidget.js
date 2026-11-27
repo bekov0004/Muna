@@ -11,6 +11,7 @@ import {currentLine} from '../../services/lyricsService.js';
 import {MunaWidget} from '../widget.js';
 import {Priority} from '../../utils/events.js';
 import {MediaActivity} from './mediaActivity.js';
+import {EmptyState} from '../../ui/emptyState.js';
 
 const TICK_MS = 500;
 
@@ -143,16 +144,7 @@ export class MediaWidget extends MunaWidget {
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'muna-media-empty',
         });
-        box.add_child(new St.Icon({
-            icon_name: 'audio-x-generic-symbolic',
-            style_class: 'muna-media-empty-icon',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
-        box.add_child(new St.Label({
-            text: 'Nothing playing',
-            style_class: 'muna-media-empty-text',
-            x_align: Clutter.ActorAlign.CENTER,
-        }));
+        box.add_child(new EmptyState({iconName: 'audio-x-generic-symbolic', text: 'Nothing playing', hint: 'Music from any app shows here'}));
         return box;
     }
 

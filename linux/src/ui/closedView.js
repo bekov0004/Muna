@@ -1,5 +1,6 @@
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {Butterfly} from './butterfly.js';
@@ -40,6 +41,10 @@ export class ClosedView extends St.Widget {
         this._time = new St.Label({style_class: 'muna-closed-time', y_align: Clutter.ActorAlign.CENTER});
         this._left.add_child(this._date);
         this._right.add_child(this._time);
+        // as in the design: the sides are equal columns around the butterfly; a long text ends in "…"
+        for (const label of [this._date, this._time])
+            label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        this.connect('notify::width', () => this._fitSides());
 
         this._camera = new St.Widget({
             style_class: 'muna-camera',
@@ -65,6 +70,18 @@ export class ClosedView extends St.Widget {
         this.add_child(this._butterfly);
         this.add_child(this._right);
         this._compact = null;
+    }
+
+    _fitSides() {
+        const node = this.get_theme_node?.();
+        const padding = node ? node.get_padding(St.Side.LEFT) + node.get_padding(St.Side.RIGHT) : 0;
+        const middle = Math.max(this._butterfly.width, 28);
+        const side = Math.max(0, Math.floor((this.width - padding - middle) / 2 - 4));
+        for (const label of [this._date, this._time]) {
+            const style = `max-width: ${side}px;`;
+            if (label.style !== style)
+                label.style = style;
+        }
     }
 
     /** Replaces the date and time with the parts of a Live Activity (or restores them). */

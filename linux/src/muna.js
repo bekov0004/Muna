@@ -397,8 +397,8 @@ export class Muna {
         // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
         // with a thin lilac rim; the opacity setting still applies (98 % by default).
         const background = `background-gradient-direction: vertical; ` +
-            `background-gradient-start: rgba(38, 41, 84, ${opacity}); background-gradient-end: rgba(19, 20, 44, ${opacity}); ` +
-            'border-color: rgba(176, 184, 255, 0.24);';
+            `background-gradient-start: rgba(20, 22, 47, ${opacity}); background-gradient-end: rgba(7, 8, 20, ${opacity}); ` +
+            'border-color: rgba(176, 184, 255, 0.19);';
 
         if (HANGING.has(this._state)) {
             // The collapsed notch is only ~36px tall: its corners are smaller than the open capsule's.
@@ -411,7 +411,7 @@ export class Muna {
                 'box-shadow: none;';
         }
         for (const ear of this._ears)
-            ear.setGradient([38, 41, 84, opacity], [19, 20, 44, opacity]);
+            ear.setGradient([20, 22, 47, opacity], [7, 8, 20, opacity]);
 
     }
 

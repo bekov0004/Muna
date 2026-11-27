@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
-import {PAGE_TILES, SETTINGS_THEME, TILE_CYCLE, accentCss, glassPalette} from './theme.js';
+import {SETTINGS_THEME, accentCss, glassPalette} from './theme.js';
 
 import {DEFAULT_WIDGETS, WIDGET_INFO} from './src/utils/widgetInfo.js';
 import * as R from './src/utils/reminders.js';
@@ -37,11 +37,11 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .muna-sidebar row { background: none; border-radius: 15px; padding: 5px 8px; margin: 1px 2px; min-height: 30px; color: ${p.TEXT}; }
 .muna-sidebar row:hover { background-color: ${p.HOVER}; }
 .muna-sidebar row.muna-sidebar-heading, .muna-sidebar row.muna-sidebar-heading:hover { background: none; }
-.muna-sidebar row image { color: white; }
+.muna-sidebar row image { color: ${p.ICON}; }
 .muna-sidebar row:selected { background-color: ${p.ACCENT_SOFT}; box-shadow: inset 0 0 0 1px ${p.ACCENT_LINE}; color: ${p.TEXT}; }
 .muna-sidebar row:selected label { color: ${p.TEXT}; font-weight: 800; }
-.muna-sideicon { border-radius: 9px; min-width: 28px; min-height: 28px; }
-${TILE_CYCLE.map((c, i) => `.muna-sideicon.t${i} { background-image: linear-gradient(145deg, ${c[0]}, ${c[1]}); }`).join('\n')}
+.muna-sideicon { min-width: 28px; min-height: 28px; }
+.muna-head-card { background-color: ${p.CARD}; border: 1px solid ${p.BORDER}; border-radius: 22px; padding: 14px 16px; margin: 10px 26px 0 26px; }
 .muna-sidebar .caption-heading { color: ${p.TEXT_SECONDARY}; font-size: 11px; font-weight: 600; margin: 10px 8px 3px 6px; }
 
 .muna-page { padding: 6px 26px 30px 26px; }
@@ -50,7 +50,7 @@ ${TILE_CYCLE.map((c, i) => `.muna-sideicon.t${i} { background-image: linear-grad
 .muna-head { padding: 10px 14px 6px 14px; }
 .muna-nav { background-color: ${p.TOOLBAR}; border-radius: 999px; padding: 2px 6px; }
 .muna-nav button { min-width: 28px; min-height: 28px; padding: 0 6px; }
-.muna-head-title { font-size: 17px; font-weight: 500; }
+.muna-head-title { font-size: 20px; font-weight: 700; }
 .muna-try { background-color: ${p.ACCENT}; color: white; border-radius: 999px; padding: 6px 16px; border: none; box-shadow: none; font-weight: 600; }
 .muna-try:hover { background-color: ${p.ACCENT}; opacity: 0.9; }
 .muna-pill { background-color: ${p.CONTROL}; color: ${p.TEXT}; border: none; box-shadow: none; border-radius: 999px; padding: 4px 14px; font-weight: 400; }
@@ -358,8 +358,6 @@ export class MunaPreferences {
         const addPage = (name, content) => {
             const page = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 8, css_classes: ['muna-page'], hexpand: true});
             const head = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, spacing: 4, css_classes: ['muna-page-head']});
-            if (INTROS[name])
-                head.append(this._dim(INTROS[name]));
             page.append(head);
             content.margin_start = content.margin_end = 0;
             content.margin_top = 8;
@@ -369,7 +367,6 @@ export class MunaPreferences {
             stack.add_named(scroller, name);
         };
         addPage('feat-search', features.search);
-        let tileIndex = 0;
         for (const [heading, entries] of sections) {
             list.append(new Gtk.ListBoxRow({
                 selectable: false,
@@ -383,9 +380,8 @@ export class MunaPreferences {
                 row._page = name;
                 row._title = title;
                 const box = new Gtk.Box({spacing: 12});
-                // the icon on its coloured tile (the design)
-                const known = Object.keys(PAGE_TILES).indexOf(title);
-                const tile = new Gtk.Box({css_classes: ['muna-sideicon', `t${known >= 0 ? known : tileIndex++ % TILE_CYCLE.length}`],
+                // the page's icon in the accent blue (the design)
+                const tile = new Gtk.Box({css_classes: ['muna-sideicon'],
                     valign: Gtk.Align.CENTER, halign: Gtk.Align.START, hexpand: false, width_request: 28, height_request: 28});
                 tile.append(new Gtk.Image({icon_name: icon, pixel_size: 16, hexpand: false, width_request: 28, halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER}));
                 box.append(tile);
@@ -395,7 +391,7 @@ export class MunaPreferences {
                 rowsByName.set(name, row);
             }
         }
-        const heading = new Gtk.Label({css_classes: ['muna-head-title'], xalign: 0, hexpand: true});
+        const heading = new Gtk.Label({css_classes: ['muna-head-title'], xalign: 0.5});
         const tryButton = new Gtk.Button({css_classes: ['muna-try'], valign: Gtk.Align.CENTER});
         const tryBox = new Gtk.Box({spacing: 6});
         tryBox.append(new Gtk.Image({icon_name: 'media-playback-start-symbolic', pixel_size: 14}));
@@ -403,7 +399,7 @@ export class MunaPreferences {
         tryButton.set_child(tryBox);
         let tryName = null;
         tryButton.connect('clicked', () => tryName && this._request(settings, tryName));
-        const header = new Gtk.Box({spacing: 12, css_classes: ['muna-head']});
+        const header = new Gtk.CenterBox({css_classes: ['muna-head', 'muna-head-card']});
         const history = [];
         let at = -1;
         let navigating = false;
@@ -430,9 +426,9 @@ export class MunaPreferences {
         const nav = new Gtk.Box({css_classes: ['muna-nav'], valign: Gtk.Align.CENTER});
         nav.append(back);
         nav.append(forward);
-        header.append(nav);
-        header.append(heading);
-        header.append(tryButton);
+        header.set_start_widget(nav);
+        header.set_center_widget(heading);
+        header.set_end_widget(tryButton);
         list.connect('row-selected', (_list, row) => {
             if (!row?._page)
                 return;

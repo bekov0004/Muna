@@ -16,6 +16,11 @@
       <description>Corner radius of the capsule in pixels.</description>
     </key>
 
+    <key name="liquid-glass" type="b">
+      <default>false</default>
+      <summary>Liquid glass</summary>
+      <description>The desktop behind the capsule is bent at its rim like through real glass (refraction, colours, a lit rim) instead of the plain indigo background.</description>
+    </key>
     <key name="background-opacity" type="d">
       <default>0.98</default>
       <range min="0.5" max="1.0"/>

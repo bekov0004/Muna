@@ -5,7 +5,8 @@ import {DEFAULT_WIDGETS, MENU_WIDGET_IDS, WIDGET_INFO} from '../utils/widgetInfo
 export const DEFAULTS = Object.freeze({
     'size-scale': 1.0,
     'corner-radius': 32,
-    'background-opacity': 0.96,
+    'background-opacity': 0.98,
+    'liquid-glass': false,
     'animation-speed': 1.0,
     'open-delay': 150,
     'close-delay': 300,

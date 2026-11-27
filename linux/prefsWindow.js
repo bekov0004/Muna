@@ -221,7 +221,7 @@ const WIDGET_ICONS = {
     companion: 'face-smile-symbolic',
 };
 
-const ALL_APPEARANCE_KEYS = ['panel-color', 'panel-opacity', 'corner-radius', 'background-opacity', 'shadow-strength',
+const ALL_APPEARANCE_KEYS = ['panel-color', 'panel-opacity', 'corner-radius', 'background-opacity', 'liquid-glass', 'shadow-strength',
     'row-height', 'content-padding', 'widget-spacing', 'show-dividers', 'capsule-butterfly', 'butterfly-flap', 'butterfly-flap-every'];
 
 /**
@@ -1562,6 +1562,8 @@ export class MunaPreferences {
         this._rule(form);
         this._row(form, _('Corner radius'), this._slider(settings, 'corner-radius', [8, 44, 1]),
             _('In pixels.'));
+        this._toggleRow(form, settings, 'liquid-glass', '', _('Liquid glass'),
+            _('The desktop behind the capsule is not blurred but bent at its rim like through real glass: refraction, colours at the edge, a lit rim.'));
         this._row(form, _('Transparency'), this._slider(settings, 'background-opacity', [0.5, 1.0, 0.02], 2),
             _('Background opacity: 1.00 is fully opaque.'));
         this._row(form, _('Shadow'), this._slider(settings, 'shadow-strength', [0, 1, 0.1], 1),

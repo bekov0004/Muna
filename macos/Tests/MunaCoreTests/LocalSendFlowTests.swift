@@ -367,6 +367,22 @@ final class ClipboardAndTrayTests: XCTestCase {
         XCTAssertEqual(history.items.count, 1)
     }
 
+    /// "+ Note" as on Linux: a pinned text on top; the same text moves up; nothing for blanks.
+    func testNotes() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("muna-note-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let history = ClipboardHistory(store: JSONStore(name: "clipboard.json", directory: folder))
+        history.add(text: "copied")
+        XCTAssertFalse(history.addNote("   "))
+        XCTAssertTrue(history.addNote("  buy milk  "))
+        history.add(text: "later")
+        XCTAssertTrue(history.addNote("copied"))
+        XCTAssertEqual(history.items.compactMap(\.text), ["copied", "later", "buy milk"])
+        XCTAssertEqual(history.items.map(\.saved), [true, false, true])
+        history.clear()
+        XCTAssertEqual(history.items.compactMap(\.text), ["copied", "buy milk"])
+    }
+
     func testTray() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("muna-tray-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

@@ -272,6 +272,27 @@ public sealed class ClipboardHistory
         Add(new ClipItem { Text = Json.Cut(text, MaxLength) });
     }
 
+    /// <summary>A note written in the clipboard section ("+ Note"): kept like a pinned item, newest first.
+    /// The same text already there moves up and is pinned. False when there is nothing to keep.</summary>
+    public bool AddNote(string text)
+    {
+        var words = Json.Cut(text.Trim(), MaxLength);
+        if (words.Length == 0) return false;
+        var item = new ClipItem { Text = words };
+        var old = Items.FindIndex(i => i.SameContent(item));
+        if (old >= 0)
+        {
+            item.Note = Items[old].Note;
+            item.IsPrivate = Items[old].IsPrivate;
+            Items.RemoveAt(old);
+        }
+        item.Saved = true;
+        Items.Insert(0, item);
+        Trim();
+        Persist();
+        return true;
+    }
+
     public void AddFiles(IEnumerable<string> uris)
     {
         var list = uris.ToList();

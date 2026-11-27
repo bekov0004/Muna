@@ -194,6 +194,13 @@ public sealed class ClipboardModel : Model
     public void TogglePinned(ClipItem item) { _history.SetSaved(item, !item.Saved); Notify(); }
     public void TogglePrivate(ClipItem item) { _history.SetPrivate(item, !item.IsPrivate); Notify(); }
     public void SetNote(ClipItem item, string note) { _history.SetNote(item, note.Trim()); Notify(); }
+    /// <summary>"+ Note": a pinned text written here.</summary>
+    public bool AddNote(string text)
+    {
+        if (!_history.AddNote(text)) return false;
+        Notify();
+        return true;
+    }
     public void Remove(ClipItem item) { _history.Remove(item); Notify(); }
     public void Clear() { _history.Clear(); Notify(); }
 }

@@ -7,7 +7,7 @@ struct ClipboardPage: View {
     @EnvironmentObject var ui: PanelState
 
     private var shown: [ClipItem] {
-        let words = ui.clipboardQuery.lowercased().split(separator: " ").map(String.init)
+        let words = ui.clipNoteMode ? [] : ui.clipboardQuery.lowercased().split(separator: " ").map(String.init)
         guard !words.isEmpty else { return clipboard.items }
         return clipboard.items.filter { item in
             let text = item.searchText.lowercased()
@@ -15,16 +15,31 @@ struct ClipboardPage: View {
         }
     }
 
+    private var placeholder: String {
+        if ui.clipNoteMode { return "Write a note, Enter saves it" }
+        return clipboard.items.isEmpty ? "Search…" : "Search \(clipboard.items.count) \(clipboard.items.count == 1 ? "item" : "items")…"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // as on Linux: the search field turns into a note field with "+ Note"
             HStack(spacing: 8) {
-                CapsuleField(placeholder: "Search what you copied", text: $ui.clipboardQuery) {}
+                CapsuleField(placeholder: placeholder, text: $ui.clipboardQuery) {
+                    if ui.clipNoteMode, clipboard.addNote(ui.clipboardQuery) {
+                        ui.clipboardQuery = ""
+                        ui.clipNoteMode = false
+                    }
+                }
+                Pill(label: "+ Note", active: ui.clipNoteMode) {
+                    ui.clipNoteMode.toggle()
+                    ui.clipboardQuery = ""
+                }
                 if clipboard.items.contains(where: { !$0.saved }) {
                     Pill(label: "Clear") { clipboard.clear() }
                 }
             }
             if shown.isEmpty {
-                Text(clipboard.items.isEmpty ? "What you copy shows up here" : "Nothing matches")
+                Text(clipboard.items.isEmpty ? "Copied text shows up here" : "Nothing found")
                     .font(.system(size: 12))
                     .foregroundColor(MunaColor.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -372,7 +372,16 @@ public static class ClipboardPage
     public static void Wire(CapsuleWindow w)
     {
         var ui = w.State;
-        ui.ClipboardSearch.Box.TextChanged += (_, _) => w.Invalidate();
+        ui.ClipboardSearch.Box.TextChanged += (_, _) => { if (!ui.ClipNoteMode) w.Invalidate(); };
+        ui.ClipboardSearch.Submitted += () =>
+        {
+            if (ui.ClipNoteMode && w.App.Clipboard.AddNote(ui.ClipboardSearch.Text))
+            {
+                ui.ClipNoteMode = false;
+                ui.ClipboardSearch.Text = "";
+                w.Invalidate();
+            }
+        };
         ui.ClipNote.Submitted += () =>
         {
             var item = w.App.Clipboard.Items.FirstOrDefault(i => i.Id == ui.NoteForClip);
@@ -386,15 +395,23 @@ public static class ClipboardPage
     {
         var clipboard = w.App.Clipboard;
         var ui = w.State;
-        ui.ClipboardSearch.Placeholder = "Search what you copied";
-        var words = ui.ClipboardSearch.Text.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        // as on Linux: the search field turns into a note field with "+ Note"
+        var count = clipboard.Items.Count;
+        ui.ClipboardSearch.Placeholder = ui.ClipNoteMode ? "Write a note, Enter saves it"
+            : count == 0 ? "Search…" : $"Search {count} {(count == 1 ? "item" : "items")}…";
+        var words = ui.ClipNoteMode ? Array.Empty<string>() : ui.ClipboardSearch.Text.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var shown = words.Length == 0 ? clipboard.Items : clipboard.Items.Where(i => words.All(i.SearchText.ToLowerInvariant().Contains)).ToList();
-        var top = Ui.Row(8, ui.ClipboardSearch.Grow());
+        var top = Ui.Row(8, ui.ClipboardSearch.Grow(), Ui.Pill("+ Note", () =>
+        {
+            ui.ClipNoteMode = !ui.ClipNoteMode;
+            ui.ClipboardSearch.Text = "";
+            w.Invalidate();
+        }, active: ui.ClipNoteMode));
         if (clipboard.Items.Any(i => !i.Saved)) top.Children.Add(Ui.Pill("Clear", clipboard.Clear));
         UIElement body;
         if (shown.Count == 0)
         {
-            body = Ui.Text(clipboard.Items.Count == 0 ? "What you copy shows up here" : "Nothing matches", 12, color: C.Secondary)
+            body = Ui.Text(count == 0 ? "Copied text shows up here" : "Nothing found", 12, color: C.Secondary)
                 .Align(HorizontalAlignment.Center, VerticalAlignment.Center);
         }
         else

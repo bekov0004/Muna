@@ -91,6 +91,24 @@ public final class ClipboardHistory {
         add(ClipItem(text: String(text.prefix(Self.maxLength))))
     }
 
+    /// A note written in the clipboard section ("+ Note"): kept like a pinned item, newest first.
+    /// The same text already there moves up and is pinned. False when there is nothing to keep.
+    @discardableResult
+    public func addNote(_ text: String) -> Bool {
+        let words = String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.maxLength))
+        guard !words.isEmpty else { return false }
+        var item = ClipItem(text: words)
+        if let index = items.firstIndex(where: { $0.sameContent(item) }) {
+            item = items.remove(at: index)
+            item.at = Int64(Date().timeIntervalSince1970 * 1000)
+        }
+        item.saved = true
+        items.insert(item, at: 0)
+        trim()
+        persist()
+        return true
+    }
+
     /// Files were copied.
     public func add(files: [URL]) {
         guard !files.isEmpty else { return }

@@ -35,6 +35,8 @@ follows [Semantic Versioning](https://semver.org/).
 - The top bar, the Muna bar and the capsule no longer go under a window that covers the whole monitor: a maximized window while the bar is hidden (a terminal, a browser, any app; it then reaches the top edge, and GNOME shows it straight to the screen, past the shell) or an app in full screen. While they are out over such a window the shell draws them again, and they stand above the windows GNOME keeps over everything (X11 popups, some games), going back to their place afterwards.
 - "Play or pause", "Next track" and "Previous track" did nothing from a touchpad gesture, a shortcut or the fingerprint reader; they now act on the player the capsule shows (a video in the browser too).
 - Settings: the scrollbar of the left list no longer lies over its rows, and its headings no longer light up under the pointer.
+- macOS, found by running it on macOS 15: Muna stood still at launch (no capsule, no menu-bar item) until the user answered macOS's question about the Downloads folder; the open panel's content touched its edges (Linux's 16-pt padding is back, the ears lie outside); a section left the previous one's faint picture behind (the window's shadow); why LocalSend receiving could not start was hidden while devices were listed.
+- macOS and Windows: the clipboard section has Linux's "+ Note" (the search field writes a pinned note) and Linux's wording; on the Mac the Tray is Linux's: the dashed "Files Tray" target when empty, Send all, small tiles with their actions on hover. "Search 1 item…" instead of "1 items" everywhere.
 
 ## [0.4.0] - 2026-11-23
 

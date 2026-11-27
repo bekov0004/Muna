@@ -193,6 +193,14 @@ final class ClipboardModel: ObservableObject {
     }
 
     /// The user's label of an item (found by the search too).
+    /// "+ Note": a pinned text written here.
+    @discardableResult
+    func addNote(_ text: String) -> Bool {
+        guard history.addNote(text) else { return false }
+        items = history.items
+        return true
+    }
+
     func setNote(_ item: ClipItem, _ note: String) {
         history.setNote(item, note.trimmingCharacters(in: .whitespacesAndNewlines))
         items = history.items

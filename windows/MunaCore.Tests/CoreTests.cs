@@ -83,6 +83,23 @@ public class DataFileTests
         Assert.Equal(new[] { "one" }, new ClipboardHistory(t.Store("clipboard.json")).Items.Select(i => i.Text));
     }
 
+    /// <summary>"+ Note" as on Linux: a pinned text on top; the same text moves up; nothing for blanks.</summary>
+    [Fact]
+    public void ClipboardNotes()
+    {
+        using var t = new TempFolder();
+        var h = new ClipboardHistory(t.Store("clipboard.json"));
+        h.AddText("copied");
+        Assert.False(h.AddNote("   "));
+        Assert.True(h.AddNote("  buy milk  "));
+        h.AddText("later");
+        Assert.True(h.AddNote("copied"));
+        Assert.Equal(new[] { "copied", "later", "buy milk" }, h.Items.Select(i => i.Text));
+        Assert.Equal(new[] { true, false, true }, h.Items.Select(i => i.Saved));
+        h.Clear();
+        Assert.Equal(new[] { "copied", "buy milk" }, h.Items.Select(i => i.Text));
+    }
+
     [Fact]
     public void Tray()
     {

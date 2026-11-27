@@ -290,7 +290,7 @@ export class ClipboardView extends St.BoxLayout {
             .filter(item => !query || (!fingerprint?.hides(item) && item.text.toLowerCase().includes(query)))
             .sort((a, b) => Number(!!b.saved) - Number(!!a.saved));
         if (!this._noteMode)
-            this._entry.hint_text = all.length === 0 ? 'Search…' : `Search ${all.length} items…`;
+            this._entry.hint_text = all.length === 0 ? 'Search…' : `Search ${all.length} ${all.length === 1 ? 'item' : 'items'}…`;
         this._clear.visible = this._service.hasUnsaved;
         this._empty.text = all.length === 0 ? 'Copied text shows up here' : 'Nothing found';
         this._empty.visible = items.length === 0;

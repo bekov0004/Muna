@@ -149,6 +149,8 @@ final class PanelState: ObservableObject {
     @Published var noteDraft = ""
     @Published var todoDraft = ""
     @Published var clipboardQuery = ""
+    /// Clipboard: the search field writes a note ("+ Note") instead.
+    @Published var clipNoteMode = false
     @Published var copiedClip: String?
     @Published var namingGroup = false
     /// LocalSend: writing the text to send, and its draft.

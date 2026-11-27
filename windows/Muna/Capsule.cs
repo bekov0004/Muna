@@ -68,6 +68,8 @@ public sealed class PanelState
     public readonly Field AgentReply = new("Answer or ask more");
     public DateTime CalendarDay = DateTime.Today;
     public bool NamingGroup;
+    /// <summary>Clipboard: the search field writes a note ("+ Note") instead.</summary>
+    public bool ClipNoteMode;
     public string GroupNameError = "";
     public string? ConfirmDeleteGroup;
     public string? NoteForClip;

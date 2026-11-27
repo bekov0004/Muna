@@ -404,7 +404,7 @@ export class Muna {
                 `box-shadow: 0 2px 10px rgba(0, 0, 0, ${(0.4 * shadow).toFixed(2)});`;
         }
         for (const ear of this._ears)
-            ear.setColor(38, 41, 84, opacity);
+            ear.setGradient([38, 41, 84, opacity], [19, 20, 44, opacity]);
     }
 
     /**
@@ -1574,7 +1574,10 @@ export class Muna {
         // turns into the curve instead of running straight up beside it.
         const border = Math.max(1, Math.round(scaled(1)));
         const x = [target.x - radius, target.x + target.width - border];
+        // the ear carries on the capsule's gradient down its own height
+        const share = target.height > 0 ? radius / target.height : 0;
         this._ears.forEach((ear, i) => {
+            ear.setShare(share);
             ear.y = geo.top;
             if (show) {
                 ear.show();

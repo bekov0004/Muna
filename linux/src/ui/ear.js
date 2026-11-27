@@ -16,10 +16,33 @@ export class Ear extends St.DrawingArea {
         super({reactive: false, visible: false, opacity: 0});
         this._side = side;
         this._color = [0, 0, 0, 0.96];
+        this._bottom = null;
+        this._share = 0;
     }
 
     setColor(r, g, b, a) {
         this._color = [r, g, b, a];
+        this._bottom = null;
+        this.queue_repaint();
+    }
+
+    /**
+     * The capsule's background is a vertical gradient: the ear paints the same one, so ear and capsule are one piece.
+     * @param {number[]} top     [r, g, b, a] at the capsule's top (0–255, alpha 0–1)
+     * @param {number[]} bottom  the same at the capsule's bottom
+     */
+    setGradient(top, bottom) {
+        this._color = top;
+        this._bottom = bottom;
+        this.queue_repaint();
+    }
+
+    /** How much of the capsule's height the ear covers (0–1): where its own gradient must end. */
+    setShare(share) {
+        const value = Math.max(0, Math.min(1, share));
+        if (Math.abs(value - this._share) < 0.001)
+            return;
+        this._share = value;
         this.queue_repaint();
     }
 
@@ -27,9 +50,19 @@ export class Ear extends St.DrawingArea {
         const cr = this.get_context();
         const [width, height] = this.get_surface_size();
         const [r, g, b, a] = this._color;
-        // The box minus a circle centred on its far bottom corner: the black
-        // that remains hugs the bar above and the capsule beside it.
-        cr.setSourceRGBA(r / 255, g / 255, b / 255, a);
+        // The box minus a circle centred on its far bottom corner: what
+        // remains hugs the bar above and the capsule beside it.
+        if (this._bottom) {
+            const [r2, g2, b2, a2] = this._bottom;
+            const t = this._share;
+            const mix = (x, y) => x + (y - x) * t;
+            const gradient = new Cairo.LinearGradient(0, 0, 0, height);
+            gradient.addColorStopRGBA(0, r / 255, g / 255, b / 255, a);
+            gradient.addColorStopRGBA(1, mix(r, r2) / 255, mix(g, g2) / 255, mix(b, b2) / 255, mix(a, a2));
+            cr.setSource(gradient);
+        } else {
+            cr.setSourceRGBA(r / 255, g / 255, b / 255, a);
+        }
         cr.setFillRule(Cairo.FillRule.EVEN_ODD);
         cr.rectangle(0, 0, width, height);
         const left = this._side === 'left';

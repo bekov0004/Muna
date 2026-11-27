@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
-import {PAGE_TILES, SETTINGS_THEME, TILE_CYCLE, accentCss, glassPalette, glassPanesCss} from './theme.js';
+import {PAGE_TILES, SETTINGS_THEME, TILE_CYCLE, accentCss, glassPalette} from './theme.js';
 
 import {DEFAULT_WIDGETS, WIDGET_INFO} from './src/utils/widgetInfo.js';
 import * as R from './src/utils/reminders.js';
@@ -753,8 +753,7 @@ export class MunaPreferences {
         };
         const apply = () => {
             const palette = SETTINGS_THEME[style.dark ? 'dark' : 'light'];
-            provider.load_from_string(buildCss(liquid() ? glassPalette(palette, style.dark) : palette) +
-                (liquid() ? glassPanesCss(style.dark) : ''));
+            provider.load_from_string(buildCss(liquid() ? glassPalette(palette, style.dark) : palette));
         };
         apply();
         style.connect('notify::dark', apply);

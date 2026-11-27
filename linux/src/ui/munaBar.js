@@ -99,7 +99,7 @@ export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaB
         let alpha = Math.min(Math.max(Number(opacity) || 0, 0), 1);
         // on liquid glass the bar is the glass alone
         if (this.has_style_class_name('muna-liquid'))
-            alpha = 0;
+            alpha = Math.min(alpha, 0.28);
         const style = `background-color: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)});`;
         if (this.style !== style)
             this.style = style;

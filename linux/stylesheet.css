@@ -2562,18 +2562,17 @@
 
 /* Liquid glass (Settings → Appearance): the glass shows through thin tints */
 .muna-menu.muna-liquid .popup-menu-content {
-    background-gradient-start: transparent;
-    background-gradient-end: transparent;
-    background-color: transparent;
-    border-color: transparent;
+    background-gradient-start: rgba(38, 41, 84, 0.36);
+    background-gradient-end: rgba(19, 20, 44, 0.40);
+    background-color: rgba(30, 32, 66, 0.28);
 }
 .muna-menu.muna-liquid .muna-card,
-.muna-menu.muna-liquid .muna-menu-tabs,
 .muna-liquid .muna-widget-holder-card > * {
-    background-color: transparent;
-    border-color: transparent;
+    background-color: rgba(158, 166, 255, 0.06);
 }
-.muna-liquid { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75); }
+.muna-bar.muna-liquid {
+    background-color: rgba(30, 32, 66, 0.28);
+}
 
 /* Top bar → Muna's: the menus of GNOME's items (quick settings, keyboard, other extensions) in Muna's look */
 .muna-styled .popup-menu-content,
@@ -2589,10 +2588,9 @@
 }
 .muna-styled.muna-liquid .popup-menu-content,
 .muna-styled.muna-liquid .quick-settings {
-    background-color: transparent;
-    background-gradient-start: transparent;
-    background-gradient-end: transparent;
-    border-color: transparent;
+    background-color: rgba(30, 32, 66, 0.34);
+    background-gradient-start: rgba(38, 41, 84, 0.32);
+    background-gradient-end: rgba(19, 20, 44, 0.38);
 }
 .muna-styled .quick-toggle,
 .muna-styled .icon-button,
@@ -2634,27 +2632,8 @@
     background-color: rgba(176, 184, 255, 0.18);
 }
 .muna-styled .quick-menu-toggle .quick-toggle-separator { background-color: rgba(255, 255, 255, 0.18); }
-/* on glass the quieter texts are brighter, so they read on any backdrop */
-.muna-liquid .muna-empty-text, .muna-liquid .muna-empty-hint,
-.muna-liquid .muna-value-label, .muna-liquid .muna-value-text,
-.muna-liquid .muna-section-label, .muna-liquid .muna-menu-title,
-.muna-liquid .muna-tray-caption, .muna-liquid .muna-lsv-title { color: rgba(255, 255, 255, 0.9); }
 
-/* on glass, every pane (cards, tabs, rows, chips, entries, buttons) is its own piece of glass: no fill of its own */
-.muna-liquid .muna-card, .muna-liquid .muna-subcard, .muna-liquid .muna-menu-tabs, .muna-liquid .muna-menu-action,
-.muna-liquid .muna-chip, .muna-liquid .muna-lsv-tile, .muna-liquid .muna-lsv-chip, .muna-liquid .muna-clip-row,
-.muna-liquid .muna-clip-entry, .muna-liquid .muna-todo-entry, .muna-liquid .muna-entry, .muna-liquid .muna-notif-item,
-.muna-liquid .muna-file-main, .muna-liquid .muna-tray-clear, .muna-liquid .muna-timer-chip, .muna-liquid .muna-disk-tile,
-.muna-liquid .muna-tile, .muna-liquid .quick-toggle, .muna-liquid .icon-button, .muna-liquid .quick-toggle-menu {
-    background-color: transparent;
-    background-gradient-start: transparent;
-    background-gradient-end: transparent;
-    border-color: transparent;
-}
-/* what is chosen or on stays a coloured fill over its glass */
-.muna-liquid .quick-toggle:checked, .muna-liquid .muna-button.muna-menu-tab:checked {
-    background-color: rgba(90, 75, 220, 0.75);
-}
+
 .muna-styled .quick-toggle-arrow:checked,
 .muna-styled.muna-liquid .quick-toggle-arrow:checked,
 .muna-styled.muna-liquid .quick-toggle:checked {

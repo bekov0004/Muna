@@ -109,21 +109,17 @@ struct MessageCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Caption("From \(message.from)")
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "text.bubble")
-                    .font(.system(size: 24))
-                    .foregroundColor(MunaColor.accent)
-                    .frame(width: 56, height: 56)
-                    .background(Circle().fill(MunaColor.tile))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(message.from) sent a text").font(.system(size: 15, weight: .semibold))
-                    Text(message.text)
-                        .font(.system(size: 13))
-                        .lineLimit(5)
-                        .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("\(message.from) sent a text").font(.system(size: 15, weight: .semibold)).lineLimit(1)
+                    Spacer()
+                    IconButton(symbol: "xmark") { localSend.dismissMessage() }
                 }
-                Spacer()
+                Text(message.text)
+                    .font(.system(size: 13))
+                    .lineLimit(5)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 18).fill(MunaColor.tile))
@@ -135,12 +131,8 @@ struct MessageCard: View {
                         localSend.dismissMessage()
                     }
                 }
-                Pill(label: "Copy", accent: true) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(message.text, forType: .string)
-                    localSend.dismissMessage()
-                }
-                Pill(label: "OK") { localSend.dismissMessage() }
+                Pill(label: localSend.messageCopied ? "Copied" : "Copy", accent: true) { localSend.copyMessage() }
+                Spacer()
             }
             Spacer(minLength: 0)
         }
@@ -149,7 +141,7 @@ struct MessageCard: View {
     /// The text is one web link.
     private var link: URL? {
         let words = message.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !words.contains(" "), !words.contains("\n"), let url = URL(string: words),
+        guard !words.contains(where: \.isWhitespace), let url = URL(string: words),
               url.scheme == "http" || url.scheme == "https" else { return nil }
         return url
     }
@@ -215,7 +207,7 @@ struct BasketSection: View {
                 }
             }
             if basket.isEmpty && text.isEmpty {
-                Text("Drop files on the capsule while this page is open, choose them, or write a text")
+                Text("Drop files on the capsule, add them from the Tray, or write a text")
                     .font(.system(size: 11))
                     .foregroundColor(MunaColor.secondary)
                     .frame(height: 28)
@@ -229,6 +221,7 @@ struct BasketSection: View {
                                     .font(.system(size: 11, weight: .semibold)).lineLimit(1)
                                     .frame(maxWidth: 180)
                                 Text("Text").font(.system(size: 10)).foregroundColor(MunaColor.secondary)
+                                IconButton(symbol: "square.and.pencil") { startWriting() }
                                 IconButton(symbol: "xmark") { localSend.session.setText("") }
                             }
                             .padding(.leading, 8)

@@ -21,6 +21,8 @@ final class LocalSendController: ObservableObject {
     @Published private(set) var incoming: IncomingSnapshot?
     /// A text someone sent (LocalSend's text message), until it is put away.
     @Published private(set) var message: ReceivedText?
+    /// The received text was copied (its Copy button says "Copied").
+    @Published private(set) var messageCopied = false
     @Published private(set) var receiving = false
     @Published private(set) var receiveProblem: String?
 
@@ -78,6 +80,7 @@ final class LocalSendController: ObservableObject {
         receiver.onMessage = { [weak self] sender, text in
             DispatchQueue.main.async {
                 self?.message = ReceivedText(from: sender.alias, text: text)
+                self?.messageCopied = false
                 self?.onIncoming()
             }
         }
@@ -161,6 +164,13 @@ final class LocalSendController: ObservableObject {
     func decline() { receiverQueue.async { self.pending?.decline() } }
 
     func dismissMessage() { message = nil }
+
+    func copyMessage() {
+        guard let message else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(message.text, forType: .string)
+        messageCopied = true
+    }
 
     /// The incoming card is put away.
     func dismissIncoming() {

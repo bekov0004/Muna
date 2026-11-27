@@ -46,15 +46,16 @@ public static class LocalSendPage
         var words = Ui.Text(text, 13, wrap: true);
         words.MaxHeight = 90;
         words.TextTrimming = TextTrimming.CharacterEllipsis;
-        var card = Ui.Box(Ui.Row(14, Ui.Box(Ui.Icon(Glyph.Edit, 22, C.Accent), C.Tile, 28).Size(56, 56),
-            Ui.Column(4, Ui.Semi($"{from} sent a text", 15), words).Grow()), C.Tile, 18, 14, 14);
+        var title = Ui.Semi($"{from} sent a text", 15);
+        title.TextTrimming = TextTrimming.CharacterEllipsis;
+        var card = Ui.Box(Ui.Column(8, Ui.Row(8, title.Grow(), Ui.IconButton(Glyph.Close, localSend.DismissMessage)), words), C.Tile, 18, 14, 14);
         var buttons = Ui.Row(8, Ui.Spacer());
         var link = text.Trim();
-        if (Uri.TryCreate(link, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https") && !link.Contains(' '))
+        if (Uri.TryCreate(link, UriKind.Absolute, out var uri) && (uri.Scheme == "http" || uri.Scheme == "https") && !link.Any(char.IsWhiteSpace))
             buttons.Children.Add(Ui.Pill("Open", () => { CapsuleViews.Launch(link); localSend.DismissMessage(); }));
-        buttons.Children.Add(Ui.Pill("Copy", () => { ClipboardModel.SetText(text); localSend.DismissMessage(); }, accent: true));
-        buttons.Children.Add(Ui.Pill("OK", localSend.DismissMessage));
-        return Ui.Column(10, Ui.Caption($"From {from}"), card, buttons);
+        buttons.Children.Add(Ui.Pill(localSend.MessageCopied ? "Copied" : "Copy", localSend.CopyMessage, accent: true));
+        buttons.Children.Add(Ui.Spacer());
+        return Ui.Column(10, card, buttons);
     }
 
     static UIElement IncomingCard(CapsuleWindow w, IncomingTransfer incoming)
@@ -138,7 +139,7 @@ public static class LocalSendPage
         UIElement content;
         if (basket.Count == 0 && text.Length == 0)
         {
-            content = Ui.Text("Drop files on the capsule while this page is open, choose them, or write a text", 11, color: C.Secondary).Size(height: 28);
+            content = Ui.Text("Drop files on the capsule, add them from the Tray, or write a text", 11, color: C.Secondary).Size(height: 28);
         }
         else
         {
@@ -149,6 +150,7 @@ public static class LocalSendPage
                 words.MaxWidth = 180;
                 words.TextTrimming = TextTrimming.CharacterEllipsis;
                 var chip = Ui.Row(6, Ui.Icon(Glyph.Edit, 12, C.Secondary), words, Ui.Text("Text", 10, color: C.Secondary),
+                                  Ui.IconButton(Glyph.Edit, () => { ui.LocalSendText.Text = session.Text; ui.WritingText = true; w.Invalidate(); }),
                                   Ui.IconButton(Glyph.Close, () => session.SetText("")));
                 row.Children.Add(Ui.Box(chip, C.Tile, 12).Size(height: 24).WithPadding(8, 0, 4, 0).OnClick(() => { ui.LocalSendText.Text = session.Text; ui.WritingText = true; w.Invalidate(); }));
             }

@@ -20,6 +20,16 @@ public sealed class LocalSendController : Model
     public event Action? IncomingAsked;
     /// <summary>A text someone sent (LocalSend's text message), until it is put away.</summary>
     public (string From, string Text)? Message { get; private set; }
+    /// The received text was copied (its Copy button says "Copied").
+    public bool MessageCopied { get; private set; }
+
+    public void CopyMessage()
+    {
+        if (Message is not { } message) return;
+        ClipboardModel.SetText(message.Text);
+        MessageCopied = true;
+        Notify();
+    }
 
     readonly X509Certificate2? _certificate;
     readonly string _fingerprint;
@@ -52,6 +62,7 @@ public sealed class LocalSendController : Model
             _receiver.Message += (sender, text) => Ui(() =>
             {
                 Message = (sender.Alias, text);
+                MessageCopied = false;
                 Notify();
                 IncomingAsked?.Invoke();
             });

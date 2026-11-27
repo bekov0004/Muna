@@ -710,17 +710,17 @@
 }
 
 .muna-tray-target:active .muna-tray-target-title {
-    color: #3d8bff;
+    color: #b4c0ff;
 }
 
 .muna-tray-target-title {
-    color: #1368c9;
+    color: #93a5ff;
     font-size: 13px;
     font-weight: 600;
 }
 
 .muna-tray-target-hint {
-    color: rgba(61, 139, 255, 0.75);
+    color: rgba(147, 165, 255, 0.75);
     font-size: 11px;
 }
 
@@ -1335,7 +1335,10 @@
 .muna-ls-bar-fill {
     height: 6px;
     border-radius: 3px;
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 .muna-button.muna-ls-cancel {
@@ -1401,7 +1404,10 @@
 }
 
 .muna-button.muna-ls-accept {
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 /* LocalSend section */
@@ -1495,7 +1501,10 @@
 }
 
 .muna-button.muna-ls-accept {
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 /* LocalSend section */
@@ -1527,18 +1536,21 @@
 }
 
 .muna-lsv-on {
-    color: white;
-    background-color: rgba(90, 75, 220, 0.6);
+    color: #57e389;
+    background-color: rgba(87, 227, 137, 0.18);
 }
 
 /* LocalSend: choosing several devices, groups, sending to all at once */
 .muna-tray-clear.muna-lsv-send {
     color: white;
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 .muna-tray-clear.muna-lsv-send:hover {
-    background-color: #6a9fff;
+    background-color: #6a58e8;
 }
 
 .muna-lsv-tile.muna-lsv-tile-selected {
@@ -1546,7 +1558,10 @@
 }
 
 .muna-lsv-tile-selected .muna-lsv-badge {
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 .muna-lsv-tile-selected .muna-lsv-badge-icon {
@@ -1562,7 +1577,10 @@
 }
 
 .muna-lsv-tile-selected .muna-lsv-badge.muna-lsv-badge-muna {
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 .muna-lsv-tile-selected .muna-lsv-badge-muna .muna-lsv-badge-icon {
@@ -1719,7 +1737,10 @@
 .muna-system-fill {
     height: 4px;
     border-radius: 2px;
-    background-color: #93a5ff;
+    background-color: #5a4bdc;
+    background-gradient-direction: vertical;
+    background-gradient-start: #6a58e8;
+    background-gradient-end: #4c3fd0;
 }
 
 .muna-system-fill:warn {
@@ -2519,3 +2540,7 @@
 .muna-bfr-done:hover { background-color: #8590ff; }
 .muna-agent-card-finger { spacing: 6px; color: #b9a6ff; font-size: 11px; font-weight: 600; padding-top: 4px; }
 .muna-private { color: #b9a6ff; font-style: italic; }
+
+/* Empty Alerts: a bell over "No notifications" */
+.muna-notif-empty { spacing: 6px; }
+.muna-notif-empty-icon { icon-size: 22px; color: rgba(255, 255, 255, 0.36); }

@@ -201,13 +201,13 @@ export class TrayView extends St.BoxLayout {
         cr.arc(x + r, y + r, r, Math.PI, 1.5 * Math.PI);
         cr.closePath();
         if (armed) {
-            cr.setSourceRGBA(0.24, 0.55, 1.0, 0.12);
+            cr.setSourceRGBA(0.58, 0.65, 1.0, 0.12);
             cr.fillPreserve();
         }
         if (armed)
-            cr.setSourceRGBA(0.24, 0.55, 1.0, 1.0);
+            cr.setSourceRGBA(0.58, 0.65, 1.0, 1.0);
         else
-            cr.setSourceRGBA(0.047, 0.353, 0.69, 0.95);
+            cr.setSourceRGBA(0.69, 0.72, 1.0, 0.45);
         cr.setLineWidth(width);
         cr.setLineCap(Cairo.LineCap.ROUND);
         cr.setLineJoin(Cairo.LineJoin.ROUND);
@@ -241,9 +241,9 @@ export class TrayView extends St.BoxLayout {
         const [w, h] = area.get_surface_size();
         const armed = this._drop.zone === 'tray' && this._drop.active;
         if (armed)
-            cr.setSourceRGBA(0.24, 0.545, 1.0, 1.0);
+            cr.setSourceRGBA(0.71, 0.75, 1.0, 1.0);
         else
-            cr.setSourceRGBA(0.075, 0.408, 0.788, 1.0);
+            cr.setSourceRGBA(0.58, 0.65, 1.0, 1.0);
         cr.scale(w / 24, h / 24);
         // The open top: a thin outline.
         cr.moveTo(3, 13);

@@ -101,14 +101,17 @@ export class NotificationsView extends St.BoxLayout {
         header.add_child(this._clear);
         this.add_child(header);
 
-        this._empty = new St.Label({
-            text: 'No notifications',
-            style_class: 'muna-todo-empty',
+        // Empty: a bell and "No notifications" (the design)
+        this._empty = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
+            style_class: 'muna-notif-empty',
             x_expand: true,
             y_expand: true,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
+        this._empty.add_child(new St.Icon({icon_name: 'preferences-system-notifications-symbolic', style_class: 'muna-notif-empty-icon', x_align: Clutter.ActorAlign.CENTER}));
+        this._empty.add_child(new St.Label({text: 'No notifications', style_class: 'muna-todo-empty', x_align: Clutter.ActorAlign.CENTER}));
         this.add_child(this._empty);
 
         this._scroll = new St.ScrollView({

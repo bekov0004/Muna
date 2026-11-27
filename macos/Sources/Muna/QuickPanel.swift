@@ -455,14 +455,11 @@ struct QuickPanelView: View {
             if let message = state.message {
                 Text(message).font(.system(size: 11)).foregroundColor(MunaColor.ok)
             }
-            HStack(spacing: 8) {
-                QuickFooterButton(symbol: "gearshape", label: "Settings", action: onSettings)
-                QuickFooterButton(symbol: "magnifyingglass", label: "Command Bar", action: onCommand)
-                QuickFooterButton(symbol: "power", label: "Quit") { NSApp.terminate(nil) }
-            }
+            // as in the design: Settings only (the Command Bar and Quit are in the icon's right-click menu)
+            QuickFooterButton(symbol: "gearshape", label: "Settings", action: onSettings)
         }
         .padding(14)
-        .frame(width: 340)
+        .frame(width: 360)
         .foregroundColor(MunaColor.text)
         .background(Color.black)
     }
@@ -533,21 +530,32 @@ struct MeterRow: View {
 struct Graph: View {
     let values: [Double]
     var top: Double? = nil
+    var color: Color = MunaColor.accent
 
     var body: some View {
         GeometryReader { proxy in
             let maximum = max(top ?? (values.max() ?? 1), 0.0001)
             let step = proxy.size.width / CGFloat(max(SystemMonitor.historyLength - 1, 1))
             let start = proxy.size.width - step * CGFloat(max(values.count - 1, 0))
+            let points = values.enumerated().map { index, value in
+                CGPoint(x: start + step * CGFloat(index), y: proxy.size.height * (1 - CGFloat(min(value / maximum, 1))))
+            }
             ZStack {
+                // the area under the line, as in the design
                 Path { path in
-                    for (index, value) in values.enumerated() {
-                        let point = CGPoint(x: start + step * CGFloat(index),
-                                            y: proxy.size.height * (1 - CGFloat(min(value / maximum, 1))))
+                    guard let first = points.first, let last = points.last else { return }
+                    path.move(to: CGPoint(x: first.x, y: proxy.size.height))
+                    points.forEach { path.addLine(to: $0) }
+                    path.addLine(to: CGPoint(x: last.x, y: proxy.size.height))
+                    path.closeSubpath()
+                }
+                .fill(color.opacity(0.18))
+                Path { path in
+                    for (index, point) in points.enumerated() {
                         if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
                     }
                 }
-                .stroke(MunaColor.accent, lineWidth: 1.5)
+                .stroke(color, lineWidth: 1.5)
             }
         }
         .frame(height: 44)
@@ -558,65 +566,116 @@ struct SystemPage: View {
     @EnvironmentObject var monitor: SystemMonitor
     @EnvironmentObject var preferences: Preferences
 
+    /// As on Linux: one block with Temperatures, Hardware usage, Memory (its pressure) and the uptime.
     var body: some View {
-        // Settings → Monitor → In the panel: which blocks are shown
+        // Settings → Monitor → In the panel: which parts are shown
         let blocks = preferences.strings("system-blocks")
         let sensors = Sensors.shared
-        VStack(spacing: 10) {
+        let memShare = Double(monitor.memoryUsed) / Double(max(monitor.memoryTotal, 1))
+        let scale = preferences.bool("graph-scale")
+        QuickBlock {
             if blocks.contains("temps"), let temperature = sensors.temperature {
-                QuickBlock {
-                    MeterRow(label: "Processor temperature", share: min(temperature / 100, 1), value: Readings.temperature(temperature))
+                SectionLabel("Temperatures")
+                HStack(spacing: 8) {
+                    TempTile(name: "CPU", symbol: "cpu", value: Readings.temperature(temperature))
                 }
+                Divider().overlay(MunaColor.divider)
+            }
+            if blocks.contains("cpu") || blocks.contains("gpu") {
+                SectionLabel("Hardware usage")
             }
             if blocks.contains("cpu") {
-                QuickBlock {
-                    MeterRow(label: "Processor", share: monitor.cpu, value: "\(Int(monitor.cpu * 100))%")
-                    Graph(values: monitor.cpuHistory, top: 1)
-                    if preferences.bool("graph-scale") { Text("100%").font(.system(size: 9)).foregroundColor(MunaColor.secondary) }
-                }
+                MeterRow(label: "CPU", share: monitor.cpu, value: "\(Int(monitor.cpu * 100))%")
+                GraphWithScale(values: monitor.cpuHistory, scale: scale)
             }
             if blocks.contains("gpu"), let gpu = sensors.gpu {
-                QuickBlock {
-                    MeterRow(label: "Graphics", share: gpu, value: "\(Int(gpu * 100))%")
-                }
+                MeterRow(label: "GPU", share: gpu, value: "\(Int(gpu * 100))%")
             }
             if blocks.contains("memory") {
-                QuickBlock {
-                    MeterRow(label: "Memory", share: Double(monitor.memoryUsed) / Double(max(monitor.memoryTotal, 1)),
-                             value: "\(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryUsed), countStyle: .memory)) / \(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryTotal), countStyle: .memory))")
-                    Graph(values: monitor.memoryHistory, top: 1)
-                    if preferences.bool("graph-scale") { Text("100%").font(.system(size: 9)).foregroundColor(MunaColor.secondary) }
+                Divider().overlay(MunaColor.divider)
+                SectionLabel("Memory")
+                HStack(spacing: 8) {
+                    Text("Pressure").font(.system(size: 12))
+                    StatusPill(text: memShare >= 0.92 ? "Critical" : memShare >= 0.8 ? "High" : "Normal",
+                               color: memShare >= 0.92 ? MunaColor.warning : memShare >= 0.8 ? Color.orange : MunaColor.ok)
+                    Spacer()
+                    Text("\(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryUsed), countStyle: .memory)) / \(ByteCountFormatter.string(fromByteCount: Int64(monitor.memoryTotal), countStyle: .memory))")
+                        .font(.system(size: 12))
                 }
+                GraphWithScale(values: monitor.memoryHistory, scale: scale, color: Color(red: 0.35, green: 0.83, blue: 0.98))
             }
-            QuickBlock {
-                if monitor.diskTotal > 0 {
-                    MeterRow(label: "Disk", share: 1 - Double(monitor.diskFree) / Double(monitor.diskTotal),
-                             value: "\(sizeText(monitor.diskFree)) free")
+            if blocks.contains("uptime") {
+                Divider().overlay(MunaColor.divider)
+                HStack(spacing: 6) {
+                    Image(systemName: "clock")
+                    Text("Up for \(Self.uptime(ProcessInfo.processInfo.systemUptime))")
                 }
-                if let battery = monitor.battery {
-                    MeterRow(label: battery.charging ? "Battery · charging" : battery.onPower ? "Battery · on power" : "Battery",
-                             share: Double(battery.percent) / 100, value: "\(battery.percent)%")
-                }
-                if let watts = sensors.watts {
-                    MeterRow(label: "Power draw", share: min(watts / 60, 1), value: String(format: "%.1f W", watts))
-                }
-                if blocks.contains("uptime") {
-                    HStack(spacing: 6) {
-                        Image(systemName: "clock")
-                        Text("Up for \(Self.uptime(ProcessInfo.processInfo.systemUptime))")
-                    }
-                    .font(.system(size: 11))
-                    .foregroundColor(MunaColor.secondary)
-                }
+                .font(.system(size: 12))
+                .foregroundColor(MunaColor.secondary)
             }
         }
         .onAppear { Sensors.shared.sample() }
     }
 
+    /// Linux's formatDuration: "2d 5h", "3h 12m", "7m".
     static func uptime(_ seconds: TimeInterval) -> String {
-        let minutes = Int(seconds / 60)
-        let (d, h, m) = (minutes / 1440, minutes / 60 % 24, minutes % 60)
-        return d > 0 ? "\(d)d \(h)h \(m)m" : "\(h)h \(m)m"
+        let total = Int(seconds)
+        let (d, h, m) = (total / 86400, total % 86400 / 3600, total % 3600 / 60)
+        if d > 0 { return "\(d)d \(h)h" }
+        if h > 0 { return "\(h)h \(m)m" }
+        return "\(m)m"
+    }
+}
+
+/// A small grey heading inside a block (Linux's sectionLabel).
+struct SectionLabel: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text).font(.system(size: 12)).foregroundColor(Color.white.opacity(0.6))
+    }
+}
+
+/// Linux's statusPill: Normal / High / Critical.
+struct StatusPill: View {
+    let text: String
+    let color: Color
+    var body: some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(color.opacity(0.2)))
+    }
+}
+
+/// Linux's bigTile: a temperature in a rounded tile.
+struct TempTile: View {
+    let name: String
+    let symbol: String
+    let value: String
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(name).font(.system(size: 11)).foregroundColor(Color.white.opacity(0.6))
+            Text(value).font(.system(size: 20, weight: .bold))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.06)))
+    }
+}
+
+/// A graph with the optional "100%" scale in its corner (Settings → Monitor → Graph scale).
+struct GraphWithScale: View {
+    let values: [Double]
+    let scale: Bool
+    var color: Color? = nil
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Graph(values: values, top: 1, color: color ?? MunaColor.accent)
+            if scale { Text("100%").font(.system(size: 9)).foregroundColor(MunaColor.secondary) }
+        }
     }
 }
 

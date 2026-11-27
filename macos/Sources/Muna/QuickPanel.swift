@@ -404,6 +404,9 @@ struct QuickPanelView: View {
     let onCommand: () -> Void
     let onAgents: () -> Void
 
+    /// 640 as in the design, less on a short screen.
+    static var height: CGFloat { min(640, (NSScreen.main?.visibleFrame.height ?? 800) - 40) }
+
     var body: some View {
         VStack(spacing: 12) {
             ButterflyImage(height: 22).padding(.top, 4)
@@ -429,7 +432,9 @@ struct QuickPanelView: View {
                 .font(.system(size: 10, weight: .heavy))
                 .foregroundColor(MunaColor.caption)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Group {
+            // as in the design: the same height for every tab, so Settings stays in its place;
+            // a long tab scrolls, a short one keeps its own height
+            ScrollView(.vertical, showsIndicators: false) { Group {
                 switch QuickPage.visible.contains(state.page) ? state.page : QuickPage.visible[0] {
                 case .system: SystemPage()
                 case .network: NetworkPage()
@@ -451,7 +456,8 @@ struct QuickPanelView: View {
                 case .input: InputPage()
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading) }
+            .frame(maxHeight: .infinity)
             if let message = state.message {
                 Text(message).font(.system(size: 11)).foregroundColor(MunaColor.ok)
             }
@@ -459,7 +465,7 @@ struct QuickPanelView: View {
             QuickFooterButton(symbol: "gearshape", label: "Settings", action: onSettings)
         }
         .padding(14)
-        .frame(width: 360)
+        .frame(width: 360, height: Self.height)
         .foregroundColor(MunaColor.text)
         .background(Color.black)
     }

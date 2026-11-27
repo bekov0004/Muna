@@ -25,6 +25,7 @@ final class SoundModel: ObservableObject {
 
     func watch() {
         refresh()
+        refreshAlertVolume()
         guard timer == nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.refresh()
@@ -96,16 +97,34 @@ final class SoundModel: ObservableObject {
     func toggleMicrophone() { setMicrophoneMuted(!microphoneMuted) }
 
     /// The volume of the alerts and system sounds (0…1; System Settings → Sound → Alert volume).
-    var alertVolume: Double {
-        var error: NSDictionary?
-        let result = NSAppleScript(source: "alert volume of (get volume settings)")?.executeAndReturnError(&error)
-        return Double(result?.int32Value ?? 100) / 100
+    /// Read and written by osascript off the main thread: AppleScript waits for its answer in a
+    /// nested event loop, and doing that while SwiftUI draws the panel crashes it.
+    @Published private(set) var alertVolume: Double = 1
+
+    func refreshAlertVolume() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let text = Self.osascript("alert volume of (get volume settings)"), let value = Double(text) else { return }
+            DispatchQueue.main.async { self?.alertVolume = min(max(value / 100, 0), 1) }
+        }
     }
 
     func setAlertVolume(_ value: Double) {
-        var error: NSDictionary?
-        _ = NSAppleScript(source: "set volume alert volume \(Int((value * 100).rounded()))")?.executeAndReturnError(&error)
-        objectWillChange.send()
+        alertVolume = value
+        let percent = Int((value * 100).rounded())
+        DispatchQueue.global(qos: .userInitiated).async { _ = Self.osascript("set volume alert volume \(percent)") }
+    }
+
+    private static func osascript(_ source: String) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", source]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        guard (try? process.run()) != nil else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// The next output, skipping the ones switched off in Settings → Output switcher.

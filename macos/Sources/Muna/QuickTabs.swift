@@ -427,7 +427,9 @@ struct TogglesPage: View {
             }
             ToggleTile(symbol: "moon", title: "Night Shift", on: NightShift.isOn) { NightShift.set(!NightShift.isOn); state.objectWillChange.send() }
             ToggleTile(symbol: "mic.slash", title: "Microphone", on: !sound.microphoneMuted) { sound.toggleMicrophone() }
-            ToggleTile(symbol: "light.max", title: "Keyboard light", on: KeyboardLight.level > 0.01) { KeyboardLight.set(KeyboardLight.level > 0.01 ? 0 : 0.6); state.objectWillChange.send() }
+            if KeyboardLight.available {
+                ToggleTile(symbol: "light.max", title: "Keyboard light", on: KeyboardLight.level > 0.01) { KeyboardLight.set(KeyboardLight.level > 0.01 ? 0 : 0.6); state.objectWillChange.send() }
+            }
             ToggleTile(symbol: "eye", title: "Hidden files", on: MacSwitches.all.first { $0.id == "hidden" }?.get() ?? false) {
                 if let item = MacSwitches.all.first(where: { $0.id == "hidden" }) { item.set(!item.get()); state.objectWillChange.send() }
             }
@@ -476,12 +478,15 @@ enum KeyboardLight {
         return kind.init()
     }()
 
-    static var available: Bool { client != nil }
+    /// Only with a backlit keyboard: without one the client answers -1.
+    static var available: Bool { client != nil && raw >= 0 }
 
-    static var level: Double {
-        guard let client else { return 0 }
+    static var level: Double { max(raw, 0) }
+
+    private static var raw: Double {
+        guard let client else { return -1 }
         let selector = NSSelectorFromString("brightnessForKeyboard:")
-        guard client.responds(to: selector), let method = class_getMethodImplementation(type(of: client), selector) else { return 0 }
+        guard client.responds(to: selector), let method = class_getMethodImplementation(type(of: client), selector) else { return -1 }
         typealias Get = @convention(c) (AnyObject, Selector, UInt64) -> Float
         return Double(unsafeBitCast(method, to: Get.self)(client, selector, 1))
     }

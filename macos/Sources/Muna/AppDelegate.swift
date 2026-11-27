@@ -331,6 +331,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSPopo
         .environmentObject(app.phone)
         .environmentObject(app.pairing)
         popover.contentViewController = NSHostingController(rootView: panel)
+        // as for the capsule: macOS keeps the shadow of what the window showed before, so the
+        // previous tab would shine through; the shadow is made again once the tab has settled
+        quickState.objectWillChange
+            .debounce(for: .seconds(0.35), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in self?.popover.contentViewController?.view.window?.invalidateShadow() }
+            .store(in: &readingsObservers)
         popover.behavior = .transient
         popover.appearance = NSAppearance(named: .darkAqua)
         popover.delegate = self

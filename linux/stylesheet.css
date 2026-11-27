@@ -2559,3 +2559,17 @@
 .muna-empty-badge-icon { icon-size: 22px; color: #c9c4ff; }
 .muna-empty-text { color: rgba(255, 255, 255, 0.52); font-size: 11px; font-weight: 600; text-align: center; }
 .muna-empty-hint { color: rgba(255, 255, 255, 0.6); font-size: 11px; text-align: center; }
+
+/* Liquid glass (Settings → Appearance): the glass shows through thin tints */
+.muna-menu.muna-liquid .popup-menu-content {
+    background-gradient-start: rgba(38, 41, 84, 0.36);
+    background-gradient-end: rgba(19, 20, 44, 0.40);
+    background-color: rgba(30, 32, 66, 0.28);
+}
+.muna-menu.muna-liquid .muna-card,
+.muna-liquid .muna-widget-holder-card > * {
+    background-color: rgba(158, 166, 255, 0.06);
+}
+.muna-bar.muna-liquid {
+    background-color: rgba(30, 32, 66, 0.28);
+}

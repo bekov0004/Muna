@@ -36,7 +36,7 @@ import {getScaleFactor, scaled} from './utils/scale.js';
 import {listOverflow} from './ui/overflow.js';
 import {SignalTracker} from './utils/signals.js';
 import {Timers} from './utils/timers.js';
-import {LiquidGlass} from './ui/liquidGlass.js';
+import {glassManager} from './ui/liquidGlass.js';
 
 // Resizing between two cards, or after a card update: calm, no overshoot.
 const COMMAND_WIDTH = 680; // css px: the capsule as the command bar
@@ -221,11 +221,7 @@ export class Muna {
         for (const ear of this._ears)
             Main.layoutManager.addChrome(ear, {trackFullscreen: false});
         // Liquid glass (Settings → Appearance): the bent desktop behind the capsule
-        this._glass = new LiquidGlass();
-        Main.layoutManager.addChrome(this._glass, {trackFullscreen: false});
-        this._glass.get_parent()?.set_child_below_sibling(this._glass, this._actor);
-        for (const property of ['x', 'y', 'width', 'height', 'translation-y', 'scale-x', 'scale-y'])
-            this._actor.connectObject(`notify::${property}`, () => this._followGlass(), this);
+        this._glass = glassManager(this._settings).attach(this._actor, () => this._glassShape(), {mark: this._actor});
 
         this._signals.connect(St.ThemeContext.get_for_stage(global.stage),
             'notify::scale-factor', () => this._relayout());
@@ -310,11 +306,8 @@ export class Muna {
             Main.layoutManager.removeChrome(ear);
             ear.destroy();
         }
-        if (this._glass) {
-            Main.layoutManager.removeChrome(this._glass);
-            this._glass.destroy();
-            this._glass = null;
-        }
+        this._glass?.remove();
+        this._glass = null;
         if (this._actor) {
             Main.layoutManager.removeChrome(this._actor);
             this._actor.destroy();
@@ -399,9 +392,8 @@ export class Muna {
         const radius = this._settings.get('corner-radius');
         const liquid = this._settings.get('liquid-glass');
         // with liquid glass the capsule is only a light indigo tint over the bent desktop
-        const opacity = liquid ? Math.min(0.28, this._settings.get('background-opacity')) : this._settings.get('background-opacity');
-        if (this._glass)
-            this._glass.visible = liquid;
+        const opacity = liquid ? Math.min(0.36, this._settings.get('background-opacity')) : this._settings.get('background-opacity');
+
         const shadow = this._settings.get('shadow-strength');
         // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
         // with a thin lilac rim; the opacity setting still applies (98 % by default).
@@ -421,17 +413,15 @@ export class Muna {
         }
         for (const ear of this._ears)
             ear.setGradient([38, 41, 84, opacity], [19, 20, 44, opacity]);
-        this._followGlass();
+
     }
 
-    /** Keeps the liquid glass lined up with the capsule while it moves and grows. */
-    _followGlass() {
-        if (!this._glass?.visible || !this._actor)
-            return;
+    /** The capsule's outline for its liquid glass. */
+    _glassShape() {
         const radius = this._settings.get('corner-radius');
         const hanging = HANGING.has(this._state);
         const bottom = hanging && COLLAPSED.has(this._state) ? Math.min(radius, 14) : radius;
-        this._glass.follow(this._actor, {radius: scaled(bottom), hanging});
+        return {radius: scaled(bottom), hanging};
     }
 
     /**

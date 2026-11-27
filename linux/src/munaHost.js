@@ -46,6 +46,7 @@ import {SignalTracker} from './utils/signals.js';
 import {MonitorDesktops} from './windows/monitorDesktops.js';
 import {BarReadings} from './ui/barReadings.js';
 import {DisplayService} from './displays/displayService.js';
+import {destroyGlassManager, glassManager} from './ui/liquidGlass.js';
 
 const SHORTCUTS = [
     ['shortcut-muna', 'muna'],
@@ -81,6 +82,7 @@ export class MunaHost {
      */
     constructor(settings, {openPreferences = () => {}, path = null} = {}) {
         this._settings = settings;
+        glassManager(settings);   // Liquid glass, before anything attaches to it
         // The settings are the window of the Muna app (its own icon and name); the Extensions app's window only when
         // the service cannot be reached.
         this._openPreferences = () => {
@@ -215,6 +217,7 @@ export class MunaHost {
     }
 
     destroy() {
+        destroyGlassManager();
         this._settings?.disconnectObject(this);
         this._removeShortcuts();
         this._edges?.destroy();
@@ -755,6 +758,7 @@ export class MunaHost {
                 continue;
             const bar = new MunaBar({monitorIndex: index, desktops: this._services.desktops, hasCapsule: () => this._capsules.has(index)});
             Main.layoutManager.addChrome(bar, {affectsStruts: true, trackFullscreen: true});
+            glassManager(this._settings).attach(bar, () => ({radius: 0}), {mark: bar});
             // under the capsules, like GNOME's bar
             bar.get_parent()?.set_child_below_sibling(bar, Main.layoutManager.panelBox);
             bar.setLook({color: this._settings.get('panel-color'), opacity: this._settings.get('panel-opacity')});

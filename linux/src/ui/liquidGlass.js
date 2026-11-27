@@ -9,8 +9,9 @@ import {snippetEffect} from './snippetEffect.js';
  * not blurred but bent like through a lens at the rim (refraction), split into colours there
  * (dispersion), with a thin bright rim lit from above. The capsule's own tint lies on top.
  *
- * A clone of the backgrounds is lined up with the capsule and drawn through the shader; the shader
- * also cuts it to the capsule's outline (square top, round bottom corners when it hangs).
+ * A clone of the desktop's background (windows are not taken: GNOME does not paint its window
+ * layer into an effect) is lined up with the element and drawn through the shader; the shader also cuts it to the
+ * element's outline (square top and round bottom corners when it hangs from the screen's edge).
  */
 const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
     uniform float muna_w;
@@ -86,3 +87,130 @@ export const LiquidGlass = GObject.registerClass({GTypeName: 'MunaLiquidGlass'},
         this.queue_relayout();
     }
 });
+
+/**
+ * Puts any of Muna's elements on liquid glass while Settings → Appearance → Liquid glass is on: a glass
+ * layer under it (in Muna's layer, below the element's top-level actor) that follows it every frame.
+ */
+export class GlassManager {
+    constructor(settings) {
+        this._settings = settings;
+        this._entries = new Set();
+        this._enabled = settings.get('liquid-glass');
+        this._settingsId = settings.connect('changed', (_s, key) => {
+            if (key === 'liquid-glass')
+                this._setEnabled(settings.get('liquid-glass'));
+        });
+        this._updateId = global.stage.connect('before-update', () => this._update());
+        this._mark();
+    }
+
+    /** "muna-liquid" on the marked actors: the stylesheet makes their backgrounds thin tints over the glass. */
+    _mark() {
+        for (const entry of this._entries ?? [])
+            this._markOne(entry);
+    }
+
+    _markOne(entry) {
+        if (!entry.mark)
+            return;
+        if (this._enabled)
+            entry.mark.add_style_class_name('muna-liquid');
+        else
+            entry.mark.remove_style_class_name('muna-liquid');
+    }
+
+    get enabled() {
+        return this._enabled;
+    }
+
+    /**
+     * @param {Clutter.Actor} actor  the element; the glass takes its place and size on the screen
+     * @param {() => {radius: number, hanging?: boolean}} shape  its outline now (px)
+     * @returns {{remove: Function}}
+     */
+    attach(actor, shape, {mark = null} = {}) {
+        const entry = {actor, shape, glass: null, mark};
+        this._markOne(entry);
+        this._entries.add(entry);
+        actor.connectObject('destroy', () => this._remove(entry), this);
+        return {remove: () => this._remove(entry)};
+    }
+
+    _remove(entry) {
+        entry.glass?.destroy();
+        entry.glass = null;
+        this._entries.delete(entry);
+    }
+
+    _setEnabled(on) {
+        this._enabled = on;
+        this._mark();
+        if (!on) {
+            for (const entry of this._entries)
+                entry.glass?.hide();
+        }
+        global.stage.queue_redraw();
+    }
+
+    /** The element's top-level actor in Muna's layer: the glass goes just under it. */
+    _topOf(actor) {
+        const ui = Main.layoutManager.uiGroup;
+        let top = actor;
+        while (top && top.get_parent() !== ui)
+            top = top.get_parent();
+        return top;
+    }
+
+    _update() {
+        if (!this._enabled)
+            return;
+        for (const entry of this._entries) {
+            const {actor} = entry;
+            const top = actor.mapped ? this._topOf(actor) : null;
+            if (!top || actor.get_paint_opacity() < 8) {
+                entry.glass?.hide();
+                continue;
+            }
+            if (!entry.glass) {
+                entry.glass = new LiquidGlass();
+                Main.layoutManager.uiGroup.add_child(entry.glass);
+            }
+            const ui = Main.layoutManager.uiGroup;
+            if (entry.glass.get_parent() !== ui)
+                continue;
+            // under the element's top actor (inner elements: above the glass of the element they lie on)
+            ui.set_child_below_sibling(entry.glass, top);
+            entry.glass.show();
+            entry.glass.follow(actor, entry.shape());
+        }
+    }
+
+    destroy() {
+        this._enabled = false;
+        this._mark();
+        global.stage.disconnect(this._updateId);
+        this._settings.disconnect(this._settingsId);
+        for (const entry of [...this._entries])
+            this._remove(entry);
+    }
+}
+
+let shared = null;
+
+/** The one glass manager of the extension (made on first use). */
+export function glassManager(settings) {
+    shared ??= new GlassManager(settings);
+    return shared;
+}
+
+/** The extension is switched off: every glass layer goes. */
+export function destroyGlassManager() {
+    shared?.destroy();
+    shared = null;
+}
+
+/** The glass manager if the capsule made it already (inner elements attach through it). */
+export function currentGlassManager() {
+    return shared;
+}

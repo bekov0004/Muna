@@ -8,6 +8,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {createButton} from './button.js';
 import {BUTTERFLY_ICON, iconFor, Logo} from './logo.js';
 import {menuCard, menuHeader} from './menuKit.js';
+import {currentGlassManager} from './liquidGlass.js';
 
 const ROLE = 'muna-tools';
 const MENU_WIDTH = 420;
@@ -74,6 +75,8 @@ export class ToolsMenu {
         this._icon = new St.Icon({gicon: iconFor(this._baseIcon), style_class: 'system-status-icon'});
         this._button.add_child(this._icon);
         this._button.menu.actor.add_style_class_name('muna-menu');
+        // Liquid glass: the window is a pane of glass
+        this._glass = currentGlassManager()?.attach(this._button.menu.box, () => ({radius: 22}), {mark: this._button.menu.actor});
 
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false, activate: false});
         item.add_style_class_name('muna-menu-item');

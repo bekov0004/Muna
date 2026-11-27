@@ -2,6 +2,7 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import {currentGlassManager} from '../ui/liquidGlass.js';
 
 /** Every action the wheel can start: id -> [title, subtitle, icon]. */
 export const RADIAL_ACTIONS = {
@@ -210,6 +211,10 @@ export function showRadialMenu(actions, run) {
     });
 
     Main.uiGroup.add_child(shade);
+    // Liquid glass: the wheel and its buttons are glass
+    const glasses = [currentGlassManager()?.attach(wheel, () => ({radius: wheel.width / 2})),
+        ...buttons.map(b => currentGlassManager()?.attach(b, () => ({radius: b.width / 2})))];
+    shade.connect('destroy', () => glasses.forEach(g => g?.remove()));
     grab = Main.pushModal(shade);
     // open: the wheel grows out of the pointer, the buttons follow one after the other
     shade.ease({opacity: 255, duration: OPEN_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});

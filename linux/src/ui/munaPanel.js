@@ -6,6 +6,7 @@ import St from 'gi://St';
 import {animDuration} from '../utils/animation.js';
 import {BUTTERFLY_ICON, iconFor} from './logo.js';
 import {createButton} from './button.js';
+import {currentGlassManager} from './liquidGlass.js';
 
 export const PanelMode = Object.freeze({MUNA: 'muna', TRAY: 'tray', LOCALSEND: 'localsend', CLIPBOARD: 'clipboard', NOTIFICATIONS: 'notifications', COMMAND: 'command'});
 const MODE_ORDER = [PanelMode.MUNA, PanelMode.TRAY, PanelMode.LOCALSEND, PanelMode.CLIPBOARD, PanelMode.NOTIFICATIONS, PanelMode.COMMAND];
@@ -167,6 +168,10 @@ export class MunaPanel extends St.BoxLayout {
                     holder.add_style_class_name('muna-widget-holder-card');
                 else
                     holder.remove_style_class_name('muna-widget-holder-card');
+                // every widget card is its own piece of glass, with its own rim (Liquid glass)
+                const view = holder.get_child();
+                if (cards && view && !view._munaGlass)
+                    view._munaGlass = currentGlassManager()?.attach(view, () => ({radius: px(18, this._scale ?? 1)}));
             });
         });
         this._updateDots();

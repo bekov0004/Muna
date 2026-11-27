@@ -76,7 +76,7 @@ export class ToolsMenu {
         this._button.add_child(this._icon);
         this._button.menu.actor.add_style_class_name('muna-menu');
         // Liquid glass: the window is a pane of glass
-        this._glass = currentGlassManager()?.attach(this._button.menu.box, () => ({radius: 22}), {mark: this._button.menu.actor});
+        this._glass = currentGlassManager()?.attach(this._button.menu.box, () => ({radius: 22}), {mark: this._button.menu.actor, panes: true});
 
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false, activate: false});
         item.add_style_class_name('muna-menu-item');

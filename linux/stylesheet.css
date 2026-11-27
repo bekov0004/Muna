@@ -2146,7 +2146,7 @@
     min-height: 32px;
     padding: 0 8px;
     border-radius: 16px;
-    background-color: #29292c;
+    background-color: rgba(158, 166, 255, 0.12);
     color: rgba(255, 255, 255, 0.90);
     font-size: 9.5pt;
 }
@@ -2639,3 +2639,19 @@
 .muna-liquid .muna-value-label, .muna-liquid .muna-value-text,
 .muna-liquid .muna-section-label, .muna-liquid .muna-menu-title,
 .muna-liquid .muna-tray-caption, .muna-liquid .muna-lsv-title { color: rgba(255, 255, 255, 0.9); }
+
+/* on glass, every pane (cards, tabs, rows, chips, entries, buttons) is its own piece of glass: no fill of its own */
+.muna-liquid .muna-card, .muna-liquid .muna-subcard, .muna-liquid .muna-menu-tabs, .muna-liquid .muna-menu-action,
+.muna-liquid .muna-chip, .muna-liquid .muna-lsv-tile, .muna-liquid .muna-lsv-chip, .muna-liquid .muna-clip-row,
+.muna-liquid .muna-clip-entry, .muna-liquid .muna-todo-entry, .muna-liquid .muna-entry, .muna-liquid .muna-notif-item,
+.muna-liquid .muna-file-main, .muna-liquid .muna-tray-clear, .muna-liquid .muna-timer-chip, .muna-liquid .muna-disk-tile,
+.muna-liquid .muna-tile, .muna-liquid .quick-toggle, .muna-liquid .icon-button, .muna-liquid .quick-toggle-menu {
+    background-color: transparent;
+    background-gradient-start: transparent;
+    background-gradient-end: transparent;
+    border-color: transparent;
+}
+/* what is chosen or on stays a coloured fill over its glass */
+.muna-liquid .quick-toggle:checked, .muna-liquid .muna-button.muna-menu-tab:checked {
+    background-color: rgba(90, 75, 220, 0.75);
+}

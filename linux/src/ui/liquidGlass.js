@@ -1,4 +1,5 @@
 import Clutter from 'gi://Clutter';
+import St from 'gi://St';
 import GObject from 'gi://GObject';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
@@ -156,10 +157,20 @@ function isMunaWindow(window) {
  * layer under it that sees the windows and the desktop under it and follows it every frame. Muna's own
  * windows get one too (they turn translucent themselves), in the window layer just under them.
  */
+/**
+ * The blocks inside Muna's surfaces that are panes of glass of their own (as every tile in the video): each
+ * gets its own rim, so the blocks stay apart instead of melting into one sheet.
+ */
+const PANES = ['muna-card', 'muna-subcard', 'muna-menu-tabs', 'muna-menu-action', 'muna-chip', 'muna-lsv-tile',
+    'muna-lsv-chip', 'muna-clip-row', 'muna-clip-entry', 'muna-todo-entry', 'muna-entry', 'muna-notif-item',
+    'muna-file-main', 'muna-tray-clear', 'muna-timer-chip', 'muna-disk-tile', 'muna-tile', 'quick-toggle',
+    'quick-slider', 'icon-button', 'quick-toggle-menu'];
+
 export class GlassManager {
     constructor(settings) {
         this._settings = settings;
         this._entries = new Set();
+        this._frame = 0;
         this._windowGlasses = new Map();   // MetaWindow → LiquidGlass
         this._enabled = settings.get('liquid-glass');
         this._settingsId = settings.connect('changed', (_s, key) => {
@@ -179,8 +190,8 @@ export class GlassManager {
      * @param {{mark?: St.Widget}} options  mark: gets "muna-liquid" while the glass is on (thin backgrounds)
      * @returns {{remove: Function}}
      */
-    attach(actor, shape, {mark = null} = {}) {
-        const entry = {actor, shape, glass: null, mark};
+    attach(actor, shape, {mark = null, panes = false} = {}) {
+        const entry = {actor, shape, glass: null, mark, panes, children: new Map()};
         this._entries.add(entry);
         this._markOne(entry);
         actor.connectObject('destroy', () => this._remove(entry), this);
@@ -190,7 +201,46 @@ export class GlassManager {
     _remove(entry) {
         entry.glass?.destroy();
         entry.glass = null;
+        for (const child of entry.children?.values() ?? [])
+            this._remove(child);
+        entry.children?.clear();
         this._entries.delete(entry);
+    }
+
+    /** The panes inside an element (blocks with a pane's style class), outer ones first. */
+    _scanPanes(entry) {
+        const found = [];
+        const walk = (actor, depth) => {
+            for (let child = actor.get_first_child(); child; child = child.get_next_sibling()) {
+                if (!child.visible)
+                    continue;
+                if (child.has_style_class_name && PANES.some(name => child.has_style_class_name(name)))
+                    found.push(child);
+                if (depth < 24)
+                    walk(child, depth + 1);
+            }
+        };
+        walk(entry.actor, 0);
+        for (const actor of found) {
+            if (entry.children.has(actor))
+                continue;
+            const shape = () => {
+                let radius = 12;
+                try {
+                    radius = actor.get_theme_node().get_border_radius(St.Corner.TOPLEFT);
+                } catch {
+                    // not styled yet
+                }
+                return {radius: Math.max(radius, 4)};
+            };
+            const child = {actor, shape, glass: null, mark: null, panes: false, children: new Map(), pane: true};
+            entry.children.set(actor, child);
+            this._entries.add(child);
+            actor.connectObject('destroy', () => {
+                entry.children.delete(actor);
+                this._remove(child);
+            }, this);
+        }
     }
 
     _setEnabled(on) {
@@ -227,6 +277,13 @@ export class GlassManager {
         if (!this._enabled)
             return;
         const ui = Main.layoutManager.uiGroup;
+        // new blocks inside the surfaces: looked for a few times a second, not every frame
+        if (++this._frame % 20 === 1) {
+            for (const entry of [...this._entries]) {
+                if (entry.panes && entry.actor.mapped)
+                    this._scanPanes(entry);
+            }
+        }
         for (const entry of this._entries) {
             const {actor} = entry;
             const top = actor.mapped ? this._topOf(actor) : null;
@@ -270,7 +327,7 @@ export class GlassManager {
             glass.setWindows(windowsUnder(rect, {below: actor}));
             glass.show();
             // a maximized window has square corners
-            glass.follow(rect, {radius: window.get_maximized?.() ? 0 : 15});
+            glass.follow(rect, {radius: window.get_maximized?.() ? 0 : 12});
         }
         for (const [window, glass] of this._windowGlasses) {
             if (!seen.has(window)) {

@@ -86,3 +86,28 @@ export function glassPalette(p, dark) {
         CONTROL: dark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.3)',
     };
 }
+
+/**
+ * Liquid glass inside Muna's windows: every block (the left list, cards, buttons, fields, drop-downs) is a pane
+ * of its own (a thin bright rim, a highlight along its top, the slight darkening of glass), so the blocks stay
+ * apart on the clear window; the texts get a soft shadow.
+ */
+export function glassPanesCss(dark) {
+    const fill = dark ? 'rgba(0, 0, 0, 0.34)' : 'rgba(255, 255, 255, 0.46)';
+    const rim = dark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.7)';
+    const top = dark ? 'rgba(255, 255, 255, 0.28)' : 'rgba(255, 255, 255, 0.9)';
+    const shadow = dark ? 'rgba(0, 0, 0, 0.65)' : 'rgba(255, 255, 255, 0.8)';
+    const panes = ['.muna-sidebar', '.s-card', '.s-preset', '.muna-nav', '.muna-pill', '.muna-caps', '.muna-tag',
+        '.muna-sidebar searchentry', '.muna-prefs entry', '.muna-prefs spinbutton', '.muna-prefs dropdown > button',
+        '.muna-prefs button:not(.flat):not(.muna-try)', '.muna-prefs .s-tile'];
+    return `
+${panes.join(', ')} {
+    background-color: ${fill};
+    border: 1px solid ${rim};
+    box-shadow: inset 0 1px 0 ${top}, inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+.muna-sidebar row:selected { background-color: rgba(90, 75, 220, 0.55); box-shadow: inset 0 0 0 1px ${rim}, inset 0 1px 0 ${top}; }
+.muna-prefs label, .muna-sidebar label, headerbar label { text-shadow: 0 1px 3px ${shadow}; }
+.muna-prefs .dim, .muna-prefs label.dim, .muna-sidebar .caption-heading { color: ${dark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)'}; }
+`;
+}

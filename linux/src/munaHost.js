@@ -797,7 +797,7 @@ export class MunaHost {
             if (!menu?.actor || !menu.box || menu.actor.has_style_class_name('muna-menu'))
                 continue;
             menu.actor.add_style_class_name('muna-styled');
-            styled.push({menu, glass: glassManager(this._settings).attach(menu.box, () => ({radius: 24}), {mark: menu.actor})});
+            styled.push({menu, glass: glassManager(this._settings).attach(menu.box, () => ({radius: 24}), {mark: menu.actor, panes: true})});
         }
         const sync = () => {
             bar.translation_y = box.translation_y;

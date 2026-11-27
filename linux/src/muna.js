@@ -221,7 +221,7 @@ export class Muna {
         for (const ear of this._ears)
             Main.layoutManager.addChrome(ear, {trackFullscreen: false});
         // Liquid glass (Settings → Appearance): the bent desktop behind the capsule
-        this._glass = glassManager(this._settings).attach(this._actor, () => this._glassShape(), {mark: this._actor});
+        this._glass = glassManager(this._settings).attach(this._actor, () => this._glassShape(), {mark: this._actor, panes: true});
 
         this._signals.connect(St.ThemeContext.get_for_stage(global.stage),
             'notify::scale-factor', () => this._relayout());

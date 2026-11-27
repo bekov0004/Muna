@@ -7,17 +7,21 @@ struct AlertsPage: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Caption(alerts.alerts.isEmpty ? "Alerts" : "Alerts · \(alerts.alerts.count)") {
+            // as on Linux: the notifications, Do Not Disturb and Clear all
+            Caption(alerts.alerts.isEmpty ? "Notifications" : "Notifications · \(alerts.alerts.count)") {
+                Pill(label: alerts.doNotDisturb ? "Do Not Disturb: on" : "Do Not Disturb: off", active: alerts.doNotDisturb) {
+                    alerts.doNotDisturb.toggle()
+                }
+                .help("While on, notifications still come here, but the capsule shows no cards for them")
                 if !alerts.alerts.isEmpty {
-                    Pill(label: "Clear") { alerts.clear() }
+                    Pill(label: "Clear all") { alerts.clear() }
                 }
             }
             if alerts.alerts.isEmpty {
-                VStack(spacing: 6) {
-                    Image(systemName: "bell").font(.system(size: 22)).foregroundColor(Color.white.opacity(0.28))
-                    Text("Nothing new").font(.system(size: 11, weight: .semibold)).foregroundColor(Color.white.opacity(0.4))
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                Text("No notifications")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.white.opacity(0.35))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 EdgeScrollView {
                     VStack(spacing: 4) {

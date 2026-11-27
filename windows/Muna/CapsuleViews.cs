@@ -558,10 +558,14 @@ public static class CapsuleViews
     static UIElement AlertsPage(CapsuleWindow w)
     {
         var alerts = w.App.Alerts;
-        var caption = Ui.Caption(alerts.Alerts.Count == 0 ? "Alerts" : $"Alerts · {alerts.Alerts.Count}",
-                                 alerts.Alerts.Count == 0 ? null : Ui.Pill("Clear", alerts.Clear));
+        // as on Linux: the notifications, Do Not Disturb and Clear all
+        var caption = Ui.Caption(alerts.Alerts.Count == 0 ? "Notifications" : $"Notifications · {alerts.Alerts.Count}",
+                                 Ui.Pill(alerts.DoNotDisturb ? "Do Not Disturb: on" : "Do Not Disturb: off",
+                                         () => alerts.DoNotDisturb = !alerts.DoNotDisturb, active: alerts.DoNotDisturb),
+                                 alerts.Alerts.Count == 0 ? null : Ui.Pill("Clear all", alerts.Clear));
         if (alerts.Alerts.Count == 0)
-            return Ui.Column(8, caption, Empty(Glyph.Bell, "Nothing new").Grow());
+            return Ui.Column(8, caption, Ui.Text("No notifications", 11, color: C.White(0.35))
+                .Align(HorizontalAlignment.Center, VerticalAlignment.Center).Grow());
         var list = Ui.Column(4);
         foreach (var alert in alerts.Alerts)
         {

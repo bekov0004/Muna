@@ -192,6 +192,8 @@ final class CapsuleManager {
     /// Something happened: a card in every closed capsule, and a line in the Alerts section.
     func tell(_ title: String, _ details: String, symbol: String, ok: Bool, seconds: Double? = nil) {
         app.alerts.add(title, details, symbol: symbol, ok: ok)
+        // Do Not Disturb: it waits in the Alerts list, the capsule stays quiet
+        guard !app.alerts.doNotDisturb else { return }
         app.companion.surprise()
         let card = CapsuleCard(title: title, details: details, symbol: symbol, ok: ok, seconds: seconds)
         controllers.forEach { $0.showCard(card) }

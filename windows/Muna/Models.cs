@@ -459,6 +459,14 @@ public sealed class AlertsModel : Model
 
     public List<Alert> Alerts { get; } = new();
 
+    /// <summary>Do Not Disturb, as on Linux: while on, what comes still goes to this list, but the
+    /// capsule shows no cards for it. (Windows keeps its own Focus to itself, so this is Muna's.)</summary>
+    public bool DoNotDisturb
+    {
+        get => Preferences.Shared.Bool("do-not-disturb");
+        set { Preferences.Shared.SetValue("do-not-disturb", value); Notify(); }
+    }
+
     public void Add(string title, string details, string glyph, bool ok)
     {
         Alerts.Insert(0, new Alert(Guid.NewGuid(), title, details, glyph, ok, DateTime.Now));

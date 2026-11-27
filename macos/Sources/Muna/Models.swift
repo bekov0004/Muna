@@ -439,6 +439,12 @@ final class AlertsModel: ObservableObject {
 
     @Published private(set) var alerts: [Alert] = []
 
+    /// Do Not Disturb, as on Linux: while on, what comes still goes to this list, but the capsule
+    /// shows no cards for it. (macOS keeps its own Focus to itself, so this is Muna's.)
+    @Published var doNotDisturb = Preferences.shared.bool("do-not-disturb") {
+        didSet { Preferences.shared.set("do-not-disturb", doNotDisturb) }
+    }
+
     func add(_ title: String, _ details: String, symbol: String, ok: Bool) {
         alerts.insert(Alert(title: title, details: details, symbol: symbol, ok: ok, at: Date()), at: 0)
         if alerts.count > 50 { alerts.removeLast(alerts.count - 50) }

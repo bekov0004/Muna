@@ -407,6 +407,8 @@ public sealed class CapsuleManager
     public void Tell(string title, string details, string glyph, bool ok, double? seconds = null)
     {
         _app.Alerts.Add(title, details, glyph, ok);
+        // Do Not Disturb: it waits in the Alerts list, the capsule stays quiet
+        if (_app.Alerts.DoNotDisturb) return;
         _app.Companion.Surprise();
         var card = new CapsuleCard(title, details, glyph, ok, seconds);
         All(c => c.ShowCard(card));

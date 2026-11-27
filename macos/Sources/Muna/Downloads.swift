@@ -31,6 +31,11 @@ final class DownloadsModel: ObservableObject {
     /// Files present at the last scan: path -> size.
     private var known: [String: Int64] = [:]
     private var started = false
+    /// Reading the folder can wait for macOS to ask the user (Downloads is a protected folder):
+    /// it never happens on the main thread, or the whole app would stand still meanwhile.
+    private let work = DispatchQueue(label: "dev.muna.downloads", qos: .utility)
+    private var scanning = false
+    private var scanAgain = false
 
     init() {
         folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
@@ -45,17 +50,27 @@ final class DownloadsModel: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
-        known = sizes()
-        let descriptor = open(folder.path, O_EVTONLY)
-        guard descriptor >= 0 else { return }
-        let watcher = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor,
-                                                                eventMask: [.write, .rename, .delete, .extend],
-                                                                queue: .main)
-        watcher.setEventHandler { [weak self] in self?.scan() }
-        watcher.setCancelHandler { close(descriptor) }
-        watcher.resume()
-        source = watcher
-        scan()
+        let folder = self.folder
+        work.async { [weak self] in
+            let first = DownloadsModel.sizes(in: folder)
+            let descriptor = open(folder.path, O_EVTONLY)
+            DispatchQueue.main.async {
+                guard let self else {
+                    if descriptor >= 0 { close(descriptor) }
+                    return
+                }
+                self.known = first
+                guard descriptor >= 0 else { return }
+                let watcher = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor,
+                                                                        eventMask: [.write, .rename, .delete, .extend],
+                                                                        queue: .main)
+                watcher.setEventHandler { [weak self] in self?.scan() }
+                watcher.setCancelHandler { close(descriptor) }
+                watcher.resume()
+                self.source = watcher
+                self.scan()
+            }
+        }
     }
 
     static func isPartial(_ url: URL) -> Bool {
@@ -80,20 +95,40 @@ final class DownloadsModel: ObservableObject {
         return total
     }
 
-    private func sizes() -> [String: Int64] {
+    private static func sizes(in folder: URL) -> [String: Int64] {
         let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
         var result: [String: Int64] = [:]
         for name in names where !name.hasPrefix(".") {
             let url = folder.appendingPathComponent(name)
-            result[url.path] = DownloadsModel.size(of: url)
+            result[url.path] = size(of: url)
         }
         return result
     }
 
-    /// Compares the folder with the last scan.
+    /// Reads the folder off the main thread, then compares it with the last scan.
     private func scan() {
+        if scanning {
+            scanAgain = true
+            return
+        }
+        scanning = true
+        let folder = self.folder
+        work.async { [weak self] in
+            let current = DownloadsModel.sizes(in: folder)
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.scanning = false
+                self.compare(current)
+                if self.scanAgain {
+                    self.scanAgain = false
+                    self.scan()
+                }
+            }
+        }
+    }
+
+    private func compare(_ current: [String: Int64]) {
         let now = Date()
-        let current = sizes()
         var nextActive: [Item] = []
         for (path, size) in current {
             let url = URL(fileURLWithPath: path)

@@ -58,6 +58,13 @@ const GlassEffect = snippetEffect('MunaLiquidGlassEffect', `
         muna_weight += tint;
     }
     muna_rgb /= muna_weight;
+    // the glass absorbs some light (no colour of its own): what is behind is darker and calmer, so the
+    // white text on the glass reads well; the rim stays bright and sharp
+    float muna_luma = dot(muna_rgb, vec3(0.299, 0.587, 0.114));
+    float muna_calm = muna_z;
+    muna_rgb = mix(muna_rgb, vec3(muna_luma), 0.12 * muna_calm);
+    muna_rgb = mix(muna_rgb, vec3(muna_luma * 0.6 + 0.08), 0.18 * muna_calm);
+    muna_rgb *= mix(1.0, 0.62, muna_calm);
     // light on the glass: a reflection where the rim faces the light (up and to the left), a lit bottom
     // bevel, Fresnel at the steep edge, and the bright rim line
     float muna_edge = 1.0 - muna_z;

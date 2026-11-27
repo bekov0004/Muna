@@ -2573,7 +2573,7 @@
     background-color: transparent;
     border-color: transparent;
 }
-.muna-liquid { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55); }
+.muna-liquid { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.75); }
 
 /* Top bar → Muna's: the menus of GNOME's items (quick settings, keyboard, other extensions) in Muna's look */
 .muna-styled .popup-menu-content,
@@ -2634,3 +2634,8 @@
     background-color: rgba(176, 184, 255, 0.18);
 }
 .muna-styled .quick-menu-toggle .quick-toggle-separator { background-color: rgba(255, 255, 255, 0.18); }
+/* on glass the quieter texts are brighter, so they read on any backdrop */
+.muna-liquid .muna-empty-text, .muna-liquid .muna-empty-hint,
+.muna-liquid .muna-value-label, .muna-liquid .muna-value-text,
+.muna-liquid .muna-section-label, .muna-liquid .muna-menu-title,
+.muna-liquid .muna-tray-caption, .muna-liquid .muna-lsv-title { color: rgba(255, 255, 255, 0.9); }

@@ -3,6 +3,8 @@ import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {BUTTERFLY_ICON, iconFor} from '../ui/logo.js';
+
 /** Every action the wheel can start: id -> [title, subtitle, icon]. */
 export const RADIAL_ACTIONS = {
     'play-pause': ['Play or pause', 'Media control', 'media-playback-start-symbolic'],
@@ -21,14 +23,32 @@ export const RADIAL_ACTIONS = {
     'cleaning': ['Cleaning mode', 'Tool', 'input-keyboard-symbolic'],
     'lock': ['Lock the screen', 'Quick toggles', 'system-lock-screen-symbolic'],
 };
+/** The short names on the buttons (the design, 7.6.2). */
+const SHORT = {'play-pause': 'Play', 'next': 'Next', 'prev': 'Previous', 'screenshot': 'Shot', 'recording': 'Record', 'color': 'Colour',
+    'downloads': 'Downloads', 'command': 'Search', 'clipboard': 'Clipboard', 'dark': 'Dark', 'night': 'Night', 'mic': 'Mic',
+    'awake': 'Awake', 'cleaning': 'Clean', 'lock': 'Lock'};
 export const RADIAL_DEFAULT = ['play-pause', 'next', 'screenshot', 'downloads', 'color', 'prev'];
 
 const RADIUS = 100;              // from the centre to the middle of a button
-const BUTTON = 56;
-const HUB = 78;
+const BUTTON = 60;
+const HUB = 56;
 const SIZE = RADIUS * 2 + BUTTON + 36;
 const OPEN_MS = 260;
-const ACCENT = 'rgba(53, 132, 228, 0.95)';
+const ACCENT = '#5a4bdc';
+// round indigo buttons (the design), the one pointed at violet
+const BUTTON_STYLE = `border-radius: ${BUTTON / 2}px; background-gradient-direction: vertical; background-color: #14162f;` +
+    ' background-gradient-start: #14162f; background-gradient-end: #070814; border: 1px solid rgba(176, 184, 255, 0.19); transition-duration: 150ms;';
+const CHOSEN_STYLE = `border-radius: ${BUTTON / 2}px; background-gradient-direction: vertical; background-color: #5a4bdc;` +
+    ' background-gradient-start: #6a58e8; background-gradient-end: #4c3fd0; border: 1px solid rgba(176, 184, 255, 0.3); box-shadow: 0 0 16px rgba(90, 75, 220, 0.55);';
+/** A button's face: the icon over its short name. */
+function buttonFace(id) {
+    const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+    box.add_child(new St.Icon({icon_name: RADIAL_ACTIONS[id][2], icon_size: 13, style: 'color: white;', x_align: Clutter.ActorAlign.CENTER}));
+    box.add_child(new St.Label({text: SHORT[id] ?? RADIAL_ACTIONS[id][0], x_align: Clutter.ActorAlign.CENTER,
+        style: 'color: white; font-size: 11px; font-weight: 700; margin-top: 3px;'}));
+    return box;
+}
+
 const ease = (actor, props) => actor.ease({duration: 180, mode: Clutter.AnimationMode.EASE_OUT_QUAD, ...props});
 
 /**
@@ -47,16 +67,15 @@ export function showRadialMenu(actions, run) {
         style: 'background-color: rgba(0, 0, 0, 0.18);', opacity: 0});
     const wheel = new St.Widget({
         x, y, width: SIZE, height: SIZE, opacity: 0, scale_x: 0.55, scale_y: 0.55,
-        style: `border-radius: ${SIZE / 2}px; background-gradient-direction: radial;` +
-            ' background-color: rgba(40, 42, 48, 0.94); background-gradient-start: rgba(40, 42, 48, 0.94); background-gradient-end: rgba(14, 15, 18, 0.96);' +
-            ' border: 1px solid rgba(255, 255, 255, 0.10); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);',
+        // no disc of its own: only the buttons and the middle (the design, 7.6.2)
+        style: '',
     });
     wheel.set_pivot_point(0.5, 0.5);
     shade.add_child(wheel);
 
     // the track the buttons sit on
     const track = new St.Widget({x: c - RADIUS, y: c - RADIUS, width: RADIUS * 2, height: RADIUS * 2,
-        style: `border-radius: ${RADIUS}px; border: 1px solid rgba(255, 255, 255, 0.06);`});
+        style: '', visible: false});
     wheel.add_child(track);
 
     // the light that follows the pointer around the middle
@@ -65,15 +84,11 @@ export function showRadialMenu(actions, run) {
     wheel.add_child(orbit);
 
     const hub = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, width: HUB, height: HUB, x: c - HUB / 2, y: c - HUB / 2,
-        style: `border-radius: ${HUB / 2}px; background-color: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.08);`});
-    const hubIcon = new St.Icon({icon_name: 'view-app-grid-symbolic', icon_size: 22, style: 'color: rgba(255,255,255,0.75);',
-        x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.END});
-    const hubLabel = new St.Label({text: '', x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.START,
-        style: 'color: white; font-size: 12px; font-weight: 600; margin-top: 4px; text-align: center; max-width: 72px;'});
-    hubLabel.clutter_text.line_wrap = true;
-    hubLabel.clutter_text.ellipsize = 3;    // Pango.EllipsizeMode.END
+        style: `border-radius: ${HUB / 2}px; background-color: #14162f; border: 1px solid rgba(176, 184, 255, 0.19);`});
+    // the logo's butterfly in the middle
+    const hubIcon = new St.Icon({gicon: iconFor(BUTTERFLY_ICON), icon_size: 22, style: 'color: #9ec9ff;',
+        x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.CENTER});
     hub.add_child(hubIcon);
-    hub.add_child(hubLabel);
     hub.set_pivot_point(0.5, 0.5);
     wheel.add_child(hub);
 
@@ -113,8 +128,8 @@ export function showRadialMenu(actions, run) {
         const button = new St.Button({
             reactive: true, can_focus: true, track_hover: true,
             width: BUTTON, height: BUTTON, x: bx, y: by,
-            style: `border-radius: ${BUTTON / 2}px; background-color: rgba(255, 255, 255, 0.10); transition-duration: 150ms;`,
-            child: new St.Icon({icon_name: RADIAL_ACTIONS[id][2], icon_size: 22, style: 'color: rgba(255,255,255,0.92);'}),
+            style: BUTTON_STYLE,
+            child: buttonFace(id),
             // fly out of the middle
             translation_x: c - BUTTON / 2 - bx, translation_y: c - BUTTON / 2 - by, scale_x: 0.3, scale_y: 0.3, opacity: 0,
         });
@@ -131,19 +146,14 @@ export function showRadialMenu(actions, run) {
         const old = buttons[selected];
         if (old) {
             ease(old, {scale_x: 1, scale_y: 1});
-            old.style = old.style.replace(/background-color: [^;]+;/, 'background-color: rgba(255, 255, 255, 0.10);').replace(/ box-shadow: [^;]+;/, '');
+            old.style = BUTTON_STYLE;
         }
         selected = i;
         const button = buttons[i];
-        if (!button) {
-            hubIcon.icon_name = 'view-app-grid-symbolic';
-            hubLabel.text = '';
+        if (!button)
             return;
-        }
-        ease(button, {scale_x: 1.16, scale_y: 1.16});
-        button.style = `${button.style.replace(/background-color: [^;]+;/, `background-color: ${ACCENT};`)} box-shadow: 0 0 16px rgba(53, 132, 228, 0.55);`;
-        hubIcon.icon_name = RADIAL_ACTIONS[list[i]][2];
-        hubLabel.text = RADIAL_ACTIONS[list[i]][0];
+        ease(button, {scale_x: 1.08, scale_y: 1.08});
+        button.style = CHOSEN_STYLE;
         // a little nod of the middle at every change
         hub.remove_all_transitions();
         hub.set_scale(0.92, 0.92);

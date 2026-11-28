@@ -193,7 +193,8 @@ export class BarReadings {
             previous = item.button.container;
             const reading = READINGS[id];
             const esc = text => GLib.markup_escape_text(String(text), -1);
-            item.label.clutter_text.set_markup(`<span size="x-small" alpha="60%">${esc(reading.label)}</span> <b>${esc(reading.bar(state))}</b>`);
+            // the design (7.4.1): the name 11 / 700 at 64 %, the value 13 / 700 white
+            item.label.clutter_text.set_markup(`<span size="8448" weight="bold" alpha="64%">${esc(reading.label)}</span> <b>${esc(reading.bar(state))}</b>`);
             if (item.button.menu.isOpen)
                 item.render();
         }

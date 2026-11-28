@@ -2801,7 +2801,7 @@
 .muna-group-head { padding: 6px 8px; border-radius: 8px; }
 .muna-qcard .muna-group-head { padding: 0; }
 .muna-group-title { color: rgba(255, 255, 255, 0.64); font-size: 11px; font-weight: bold; letter-spacing: 1px; }
-.muna-bar-readings { font-size: 12px; }
+.muna-bar-readings { font-size: 13px; }
 .muna-bar-readings-button { -natural-hpadding: 8px; -minimum-hpadding: 6px; }
 
 /* The small option lines under "Options" of Keep awake: grey icon, small text */
@@ -3072,3 +3072,11 @@
     background-gradient-start: #6a58e8;
     background-gradient-end: #4c3fd0;
 }
+
+/* Cleaning mode (the design, 7.6.2) */
+.muna-clean { spacing: 12px; }
+.muna-clean-title { color: white; font-size: 24px; font-weight: 800; padding-top: 10px; }
+.muna-clean-text { color: rgba(255, 255, 255, 0.6); font-size: 13px; }
+.muna-clean-pill { color: white; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 99px; background-color: rgba(158, 166, 255, 0.15); margin-top: 6px; }
+.muna-clean-corner { margin: 14px; }
+.muna-clean-corner .muna-clean-pill { background-color: rgba(0, 0, 0, 0.7); }

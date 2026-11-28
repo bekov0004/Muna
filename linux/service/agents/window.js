@@ -31,20 +31,21 @@ const css = p => `${accentCss(p)}
 .muna-agents viewport { background-color: transparent; }
 .muna-agents .sidebar-pane, .muna-agents .sidebar-pane headerbar { background-color: ${p.TOOLBAR}; }
 .muna-agents .navigation-sidebar { background: none; }
-.muna-agents .navigation-sidebar row { border-radius: 12px; margin: 2px 6px; }
+.muna-agents .navigation-sidebar row { border-radius: 13px; margin: 2px 10px; padding: 6px 4px; }
 .muna-agents .navigation-sidebar row:hover { background-color: ${p.HOVER}; }
 .muna-agents .navigation-sidebar row:selected { background-color: ${p.ACCENT_SOFT}; }
 .muna-agents separator { background-color: ${p.BORDER}; }
 .muna-agents entry, .muna-agents textview, .muna-agents .view { background-color: ${p.CONTROL}; color: ${p.TEXT}; border-radius: 12px; }
 .muna-agents entry { border-radius: 999px; padding: 0 14px; min-height: 36px; box-shadow: none; }
-.muna-agents entry:focus-within { box-shadow: 0 0 0 3px ${p.ACCENT_SOFT}; }
+.muna-agents entry { min-height: 40px; border-radius: 20px; }
+.muna-agents entry:focus-within { box-shadow: inset 0 0 0 1px #1283ff; }
 .muna-agents button { border-radius: 999px; }
-.muna-agents button.suggested-action { background-color: ${p.ACCENT}; color: white; }
-.muna-agents button.destructive-action { background-color: rgba(255, 69, 58, 0.16); color: #ff453a; }
+.muna-agents button.suggested-action { background-image: linear-gradient(135deg, #6a58e8, #4c3fd0); color: white; }
+.muna-agents button.destructive-action { background-color: rgba(255, 92, 92, 0.15); color: #ff5c5c; font-weight: 700; }
 .muna-agents button.flat, .muna-agents headerbar button { background-color: transparent; }
 .muna-agents button:not(.suggested-action):not(.destructive-action):not(.flat) { background-color: ${p.CONTROL}; }
-.muna-agents levelbar trough { background-color: ${p.TRACK}; border-radius: 99px; min-height: 6px; }
-.muna-agents levelbar block.filled { background-color: ${p.ACCENT}; border-radius: 99px; }
+.muna-agents levelbar trough { background-color: ${p.TRACK}; border-radius: 99px; min-height: 5px; }
+.muna-agents levelbar block.filled { background-image: linear-gradient(135deg, #6a58e8, #4c3fd0); border-radius: 99px; }
 .muna-agents preferencespage, .muna-agents preferencespage > scrolledwindow { background-color: transparent; }
 .muna-agents .boxed-list, .muna-agents list.boxed-list { background-color: ${p.SURFACE}; border-radius: 12px; }
 .muna-agents row.combo, .muna-agents row.action { background-color: ${p.SURFACE}; }
@@ -52,12 +53,12 @@ const css = p => `${accentCss(p)}
 .agent-bubble { background-color: ${p.ACCENT_SOFT}; border-radius: 16px; padding: 8px 14px; }
 .agent-text { padding: 2px 4px; }
 .agent-tool { padding: 2px 4px; }
-.agent-tool-ok { color: #30d158; }
+.agent-tool-ok { color: #57e389; }
 .agent-tool-error { color: #ff453a; }
 .agent-output { font-family: monospace; font-size: 0.85em; background-color: ${p.CONTROL}; border-radius: 10px; padding: 6px 10px; }
-.agent-result { background-color: ${p.SURFACE}; border: 1px solid rgba(48, 209, 88, 0.35); border-radius: 14px; padding: 8px 14px; }
+.agent-result { background-color: transparent; border: 1px solid rgba(87, 227, 137, 0.5); border-radius: 15px; padding: 10px 14px; font-weight: 700; }
 .agent-result-error { border-color: rgba(255, 69, 58, 0.4); }
-.agent-permission { background-color: ${p.SURFACE}; border: 1px solid rgba(255, 159, 10, 0.45); border-radius: 16px; padding: 12px 14px; }
+.agent-permission { background-color: ${p.TOOLBAR}; border: 1px solid #f2a93b; border-radius: 17px; padding: 14px; }
 .agent-note { font-size: 0.85em; }
 `;
 
@@ -113,7 +114,8 @@ export function createAgentsWindow(module) {
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 
     const window = new Adw.Window({title: 'Muna Agents', default_width: 980, default_height: 680, css_classes: ['muna-agents']});
-    const split = new Adw.NavigationSplitView({min_sidebar_width: 280, max_sidebar_width: 340});
+    // the design (7.6.1): a list of 290 on the left
+    const split = new Adw.NavigationSplitView({min_sidebar_width: 290, max_sidebar_width: 290});
 
     // --- sidebar: tasks and limits -------------------------------------------------------------------------
     const sideToolbar = new Adw.ToolbarView();

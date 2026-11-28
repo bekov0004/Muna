@@ -3,6 +3,8 @@ import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {Logo} from '../ui/logo.js';
+
 const AUTO_END_S = 60;      // it ends by itself, whatever happens
 const HOLD_ESC_MS = 3000;   // holding Escape ends it earlier
 
@@ -22,17 +24,35 @@ export function startCleaningMode({onEnd = () => {}, indicatorOnly = false} = {}
         height: global.stage.height,
         style: indicatorOnly ? '' : 'background-color: black;',
     });
-    const label = new St.Label({
-        text: 'Cleaning mode\nHold Esc for 3 seconds to finish',
-        style: indicatorOnly
-            ? 'color: white; font-size: 13px; background-color: rgba(0, 0, 0, 0.7); border-radius: 10px; padding: 8px 12px; margin: 14px;'
-            : 'color: rgba(255, 255, 255, 0.45); font-size: 22px; text-align: center;',
+    // the design (7.6.2): the butterfly, "Cleaning mode", what is locked and how to finish, with the time left;
+    // over the screen (indicatorOnly) just the last line in a corner
+    const box = new St.BoxLayout({
+        orientation: Clutter.Orientation.VERTICAL,
+        style_class: indicatorOnly ? 'muna-clean-corner' : 'muna-clean',
         x_expand: true,
         y_expand: true,
         x_align: indicatorOnly ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
         y_align: indicatorOnly ? Clutter.ActorAlign.END : Clutter.ActorAlign.CENTER,
     });
-    overlay.add_child(label);
+    if (!indicatorOnly) {
+        box.add_child(new Logo({size: 88}));
+        box.add_child(new St.Label({text: 'Cleaning mode', style_class: 'muna-clean-title', x_align: Clutter.ActorAlign.CENTER}));
+        box.add_child(new St.Label({text: 'Keyboard and pointer are locked', style_class: 'muna-clean-text', x_align: Clutter.ActorAlign.CENTER}));
+    }
+    const pill = new St.Label({style_class: 'muna-clean-pill', x_align: Clutter.ActorAlign.CENTER});
+    box.add_child(pill);
+    const startedAt = GLib.get_monotonic_time();
+    const showLeft = () => {
+        const left = Math.max(0, AUTO_END_S - Math.floor((GLib.get_monotonic_time() - startedAt) / 1e6));
+        pill.text = `Hold Esc for 3 seconds to finish · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    };
+    showLeft();
+    const tickId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+        showLeft();
+        return GLib.SOURCE_CONTINUE;
+    });
+    overlay.connect('destroy', () => GLib.source_remove(tickId));
+    overlay.add_child(box);
     Main.uiGroup.add_child(overlay);
     const grab = Main.pushModal(overlay);
 

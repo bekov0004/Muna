@@ -6,7 +6,7 @@ import St from 'gi://St';
 
 import {Priority, TYPE_ICONS} from '../utils/events.js';
 
-const PRIORITY_CLASSES = Object.values(Priority).map(p => `muna-card-${p}`);
+const PRIORITY_CLASSES = Object.values(Priority).map(p => `muna-capcard-${p}`);
 
 /**
  * Base card: icon badge, title, optional description, and a trailing area
@@ -20,39 +20,42 @@ export class MunaCard extends St.BoxLayout {
 
     constructor(card) {
         super({
-            style_class: 'muna-card',
+            style_class: 'muna-capcard',
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
         });
 
-        this._icon = new St.Icon({style_class: 'muna-card-icon'});
+        this._icon = new St.Icon({style_class: 'muna-capcard-icon'});
         this.add_child(new St.Bin({
-            style_class: 'muna-card-badge',
+            style_class: 'muna-capcard-badge',
             y_align: Clutter.ActorAlign.CENTER,
             child: this._icon,
         }));
 
         const texts = new St.BoxLayout({
             orientation: Clutter.Orientation.VERTICAL,
-            style_class: 'muna-card-texts',
+            style_class: 'muna-capcard-texts',
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
         });
-        this._title = new St.Label({style_class: 'muna-card-title'});
-        this._description = new St.Label({style_class: 'muna-card-description'});
+        this._title = new St.Label({style_class: 'muna-capcard-title'});
+        this._description = new St.Label({style_class: 'muna-capcard-description'});
         for (const label of [this._title, this._description])
             label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         texts.add_child(this._title);
         texts.add_child(this._description);
         this.add_child(texts);
 
-        this._dismiss = new St.Icon({
-            icon_name: 'window-close-symbolic',
-            style_class: 'muna-card-dismiss',
+        // ✕: dismisses the card (also when a click on the card would open something)
+        this._dismiss = new St.Button({
+            style_class: 'muna-capcard-close',
             y_align: Clutter.ActorAlign.CENTER,
+            can_focus: true,
+            child: new St.Icon({icon_name: 'window-close-symbolic', style_class: 'muna-capcard-dismiss'}),
         });
+        this._dismiss.connect('clicked', () => this.onDismiss?.());
         this._pending = new St.Label({
-            style_class: 'muna-card-pending',
+            style_class: 'muna-capcard-pending',
             y_align: Clutter.ActorAlign.CENTER,
         });
         this.add_child(this._pending);
@@ -72,7 +75,7 @@ export class MunaCard extends St.BoxLayout {
 
         for (const name of PRIORITY_CLASSES)
             this.remove_style_class_name(name);
-        this.add_style_class_name(`muna-card-${card.priority}`);
+        this.add_style_class_name(`muna-capcard-${card.priority}`);
 
         const icon = card.icon ?? TYPE_ICONS[card.type];
         if (icon.startsWith('/'))
@@ -83,7 +86,8 @@ export class MunaCard extends St.BoxLayout {
         this._title.text = card.title;
         this._description.text = card.description;
         this._description.visible = card.description !== '';
-        this._dismiss.visible = card.persistent;
+        // ✕ dismisses any card (the design, 7.2.1)
+        this._dismiss.visible = true;
     }
 
     setPending(count) {

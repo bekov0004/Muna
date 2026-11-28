@@ -1019,67 +1019,76 @@
     font-size: 11px;
 }
 
-/* Cards */
-.muna-card {
+/* Cards in the capsule (the design, 7.2.1): a badge 30, the title 14 / 600, the line 12 at 64 %, ✕ */
+.muna-capcard {
     width: 280px;
     spacing: 12px;
 }
 
-.muna-card-badge {
+.muna-capcard-badge {
     width: 30px;
     height: 30px;
     border-radius: 15px;
     background-color: rgba(158, 166, 255, 0.18);
 }
 
-.muna-card-icon {
+.muna-capcard-icon {
     icon-size: 16px;
     color: white;
 }
 
-.muna-card-texts {
+.muna-capcard-texts {
     spacing: 1px;
 }
 
-.muna-card-title {
+.muna-capcard-title {
     color: white;
     font-size: 14px;
     font-weight: 600;
 }
 
-.muna-card-description {
+.muna-capcard-description {
     color: rgba(255, 255, 255, 0.64);
     font-size: 12px;
 }
 
-.muna-card-pending {
+.muna-capcard-pending {
     color: rgba(255, 255, 255, 0.58);
     font-size: 11px;
     font-weight: 700;
 }
 
-.muna-card-dismiss {
+.muna-capcard-dismiss {
     icon-size: 12px;
     color: rgba(255, 255, 255, 0.52);
 }
 
-.muna-card-low .muna-card-badge {
+.muna-capcard-close {
+    padding: 4px;
+    border-radius: 10px;
+}
+
+.muna-capcard-close:hover {
+    background-color: rgba(158, 166, 255, 0.15);
+}
+
+.muna-capcard-low .muna-capcard-badge {
     background-color: rgba(158, 166, 255, 0.09);
 }
 
-.muna-card-low .muna-card-title {
+.muna-capcard-low .muna-capcard-title {
     color: rgba(255, 255, 255, 0.8);
 }
 
-.muna-card-high .muna-card-badge {
+.muna-capcard-high .muna-capcard-badge {
     background-color: #f2a93b;
 }
 
-.muna-card-high .muna-card-icon {
+.muna-capcard-high .muna-capcard-icon {
     color: #231500;
 }
 
-.muna-card-critical .muna-card-badge {
+.muna-capcard-critical .muna-capcard-badge {
     background-color: #e5484d;
 }
 
@@ -2934,14 +2943,14 @@
 .muna-cmd-chips { spacing: 6px; }
 .muna-cmd-chip-row { spacing: 6px; }
 .muna-cmd-chip {
-    border-radius: 12px; padding: 8px 10px; font-size: 12px; color: rgba(255, 255, 255, 0.82);
-    background-color: rgba(158, 166, 255, 0.075); border: 1px solid rgba(176, 184, 255, 0.15);
+    border-radius: 13px; padding: 5px 12px; font-size: 11px; font-weight: 700; color: white;
+    background-color: rgba(255, 255, 255, 0.1);
 }
-.muna-cmd-chip:hover { background-color: rgba(158, 166, 255, 0.15); color: white; }
+.muna-cmd-chip:hover { background-color: rgba(124, 112, 255, 0.28); color: white; }
 .muna-cmd-chip-icon { icon-size: 14px; padding-right: 7px; color: rgba(255, 255, 255, 0.66); }
 .muna-cmd-scroll { }
 .muna-cmd-list { padding: 0 2px 4px 2px; spacing: 2px; }
-.muna-cmd-group { color: rgba(255, 255, 255, 0.38); font-size: 11px; font-weight: 700; padding: 8px 10px 3px 10px; }
+.muna-cmd-group { color: rgba(255, 255, 255, 0.52); font-size: 11px; font-weight: 700; padding: 12px 12px 6px 12px; }
 .muna-cmd .muna-cmd-row { border-radius: 12px; padding: 7px 10px; }
 .muna-cmd .muna-cmd-row:hover { background-color: rgba(158, 166, 255, 0.075); }
 .muna-cmd .muna-cmd-row:checked { background-color: rgba(124, 112, 255, 0.28); }
@@ -2976,20 +2985,21 @@
 .muna-rem-item-time.off { color: rgba(255, 255, 255, 0.52); }
 .muna-rem-remove { border-radius: 99px; padding: 6px; color: rgba(255, 255, 255, 0.66); }
 .muna-rem-remove:hover { background-color: rgba(158, 166, 255, 0.128); color: white; }
+/* the butterfly's reminder card (the design, 7.2.2) */
 .muna-bfr-card {
-    background-color: rgba(10, 10, 16, 0.94); border-radius: 26px; padding: 16px 22px 14px 22px; spacing: 6px;
-    border: 1px solid rgba(160, 140, 255, 0.28); box-shadow: none;
+    background-color: rgba(7, 8, 20, 0.98); border-radius: 26px; padding: 16px 22px 14px 22px; spacing: 6px;
+    border: 1px solid rgba(179, 154, 255, 0.28); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
-.muna-bfr-time { color: #b9a6ff; font-size: 12px; font-weight: 700; }
+.muna-bfr-time { color: #b39aff; font-size: 13px; font-weight: 700; }
 .muna-bfr-text { color: white; font-size: 21px; font-weight: 700; }
 .muna-bfr-buttons { spacing: 10px; padding-top: 8px; }
 .muna-bfr-button {
-    border-radius: 99px; padding: 7px 18px; font-weight: 700; font-size: 13px; color: white;
-    background-color: rgba(158, 166, 255, 0.128);
+    border-radius: 99px; padding: 7px 18px; font-weight: 700; font-size: 14px; color: white;
+    background-color: rgba(255, 255, 255, 0.1);
 }
-.muna-bfr-button:hover { background-color: rgba(158, 166, 255, 0.232); }
-.muna-bfr-done { background-color: #6f7bff; }
-.muna-bfr-done:hover { background-color: #8590ff; }
+.muna-bfr-button:hover { background-color: rgba(255, 255, 255, 0.18); }
+.muna-bfr-done { background-color: #5a4bdc; }
+.muna-bfr-done:hover { background-color: #6a58e8; }
 .muna-agent-card-finger { spacing: 6px; color: #b9a6ff; font-size: 11px; font-weight: 600; padding-top: 4px; }
 .muna-private { color: #b9a6ff; font-style: italic; }
 

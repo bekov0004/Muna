@@ -41,7 +41,8 @@ import {Timers} from './utils/timers.js';
 const COMMAND_WIDTH = 680; // css px: the capsule as the command bar
 // How far a card's content reaches up into the band of the top bar, so the card
 // hangs only a little below the bar instead of stacking under it.
-const CARD_OVERLAP = 24;
+// the card grows below the capsule's band, which stays (the design, 7.2.1)
+const CARD_OVERLAP = 0;
 
 const RESIZE = {duration: 220, mode: Clutter.AnimationMode.EASE_OUT_CUBIC};
 
@@ -622,6 +623,7 @@ export class Muna {
         const widget = createCard(card);
         widget.opacity = 0;
         widget.setPending(this._cards.pending);
+        widget.onDismiss = () => this._cards.hideCurrent();
         this._cardLayer.add_child(widget);
         this._cardWidget = widget;
         this._cardSize = widget.getSize();
@@ -1423,7 +1425,9 @@ export class Muna {
         // has started to grow. The card layer is not faded: the cards fade themselves.
         const previousView = previous ? this._views[previous] : null;
         const nextView = this._views[state];
-        if (previousView && previousView !== nextView)
+        // a card keeps the date, the butterfly and the time above it (the design, 7.2.1)
+        this._pinClosedView(state === State.CARD);
+        if (previousView && previousView !== nextView && !(state === State.CARD && previousView === this._closedView))
             fadeOut(previousView, {duration: 90});
         if (previousView !== nextView) {
             if (isPanel && animate) {
@@ -1617,6 +1621,32 @@ export class Muna {
                 });
             }
         });
+    }
+
+    /** While a card shows, the closed view stays at the top, the band's height, above the card. */
+    _pinClosedView(on) {
+        const view = this._closedView;
+        if (on) {
+            view.y_expand = false;
+            view.y_align = Clutter.ActorAlign.START;
+            view.height = this._geometry().height;
+            if (!this._pinTop) {
+                // the closed row sits at the top of the capsule (a constraint: the layout alone centres it)
+                this._pinTop = new Clutter.BindConstraint({source: this._content, coordinate: Clutter.BindCoordinate.Y, offset: 0});
+                view.add_constraint(this._pinTop);
+            }
+            view.remove_all_transitions();
+            view.show();
+            view.opacity = 255;
+        } else if (this._pinTop) {
+            view.remove_constraint(this._pinTop);
+            this._pinTop = null;
+            view.y_expand = true;
+            view.y_align = Clutter.ActorAlign.FILL;
+            view.height = -1;
+            if (this._views[this._state] !== view)
+                fadeOut(view, {duration: 90});
+        }
     }
 
     /** Keeps the empty spot in the top bar as wide as the collapsed capsule. */

@@ -87,14 +87,14 @@ export class CommandView extends St.BoxLayout {
         this._suggestions.add_child(new St.Label({text: 'Try', style_class: 'muna-cmd-group'}));
         const chips = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-cmd-chips'});
         let line = null;
+        // chips as wide as their words, no icons (the design, 7.3.5)
         SUGGESTIONS.forEach((suggestion, i) => {
-            if (i % 4 === 0) {
-                line = new St.BoxLayout({x_expand: true, style_class: 'muna-cmd-chip-row'});
+            if (i % 5 === 0) {
+                line = new St.BoxLayout({x_align: Clutter.ActorAlign.START, style_class: 'muna-cmd-chip-row'});
                 chips.add_child(line);
             }
-            const chip = new St.Button({style_class: 'muna-cmd-chip', can_focus: false, reactive: true, track_hover: true, x_expand: true});
+            const chip = new St.Button({style_class: 'muna-cmd-chip', can_focus: false, reactive: true, track_hover: true});
             const content = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER});
-            content.add_child(new St.Icon({icon_name: suggestion.icon, style_class: 'muna-cmd-chip-icon', y_align: Clutter.ActorAlign.CENTER}));
             content.add_child(new St.Label({text: suggestion.label, y_align: Clutter.ActorAlign.CENTER}));
             chip.set_child(content);
             chip.connect('clicked', () => {

@@ -37,7 +37,9 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .muna-sidebar row { background: none; border-radius: 15px; padding: 5px 8px; margin: 1px 2px; min-height: 30px; color: ${p.TEXT}; }
 .muna-sidebar row:hover { background-color: ${p.HOVER}; }
 .muna-sidebar row.muna-sidebar-heading, .muna-sidebar row.muna-sidebar-heading:hover { background: none; }
-.muna-sidebar row image { color: ${p.ICON}; }
+/* the left list's icons are quiet line icons (the design, 7.5.1) */
+.muna-sidebar row image { color: ${p.TEXT_SECONDARY}; }
+.muna-sidebar row:selected image { color: ${p.TEXT}; }
 .muna-sidebar row:selected { background-color: ${p.ACCENT_SOFT}; box-shadow: inset 0 0 0 1px ${p.ACCENT_LINE}; color: ${p.TEXT}; }
 .muna-sidebar row:selected label { color: ${p.TEXT}; font-weight: 800; }
 .muna-sideicon { min-width: 28px; min-height: 28px; }
@@ -65,7 +67,9 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .muna-drop { min-width: 120px; }
 .mb-title { font-size: 15px; font-weight: 700; margin-top: 16px; }
 .s-card { background-color: ${p.SURFACE}; border-radius: 12px; padding: 4px 16px; margin-bottom: 6px; }
-.s-card-title { font-size: 13px; font-weight: 600; margin: 12px 0 2px 0; }
+/* a group's heading (the design, 7.5.1): 15 / 800 */
+.muna-slider-value { color: ${p.TEXT_SECONDARY}; font-size: 12px; }
+.s-card-title { font-size: 15px; font-weight: 800; margin: 14px 0 4px 0; }
 .s-row { padding: 9px 0; min-height: 26px; }
 .s-topic { padding: 0 6px; margin: 2px -6px; border-radius: 10px; font-weight: normal; }
 .s-topic:hover { background-color: ${p.HOVER}; }
@@ -182,10 +186,10 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .th-choice:checked { border-color: ${p.ACCENT}; background-color: ${p.ACCENT_SOFT}; }
 .th-picture { border-radius: 8px; }
 .th-bar { min-height: 12px; border-radius: 8px 8px 0 0; background-color: rgba(128, 128, 128, 0.25); }
-.th-system { background-image: linear-gradient(135deg, #f2f4f8 50%, #2b2b30 50%); }
+.th-system { background-image: linear-gradient(135deg, #f2f4f8 50%, #2b2f62 50%); }
 .th-light { background-color: #f2f4f8; }
-.th-dark { background-color: #2b2b30; }
-.th-label { font-weight: 600; font-size: 12px; }
+.th-dark { background-color: #2b2f62; }
+.th-label { font-weight: 700; font-size: 12px; }
 .th-choice:checked .th-label { color: ${p.ACCENT}; }
 .mb-icon-choice { border-radius: 10px; padding: 8px; border: 2px solid transparent; background-color: ${p.HOVER}; }
 .mb-icon-choice:checked { border-color: ${p.ACCENT}; background-color: ${p.ACCENT_SOFT}; }
@@ -853,10 +857,14 @@ export class MunaPreferences {
             hexpand: false,
             width_request: width,
         });
-        const spin = new Gtk.SpinButton({adjustment, digits, css_classes: ['muna-value'], width_chars: 4});
+        // the value on the left of the slider (the design, 7.5.1)
+        const value = new Gtk.Label({css_classes: ['muna-slider-value'], width_chars: 4, xalign: 1});
+        const show = () => (value.label = adjustment.value.toFixed(digits));
+        adjustment.connect('value-changed', show);
         settings.bind(key, adjustment, 'value', Gio.SettingsBindFlags.DEFAULT);
+        show();
+        box.append(value);
         box.append(scale);
-        box.append(spin);
         return box;
     }
 

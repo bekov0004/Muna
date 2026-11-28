@@ -1,10 +1,8 @@
 import Clutter from 'gi://Clutter';
-import Pango from 'gi://Pango';
 import St from 'gi://St';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import * as R from '../../utils/reminders.js';
-import {menuCard, menuChip, menuHeader, setChecked} from '../../ui/menuKit.js';
+import {chipFlow, listRow, menuNote, qCard, setChecked} from '../../ui/menuKit.js';
 import {MunaWidget} from '../widget.js';
 
 const REPEAT_LABELS = [['once', 'Once'], ['daily', 'Every day'], ['weekdays', 'Weekdays']];
@@ -35,47 +33,46 @@ export class RemindersWidget extends MunaWidget {
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-reminders muna-menu-page', x_expand: true});
 
-        const card = menuCard();
-        const timeRow = new St.BoxLayout({style_class: 'muna-card-pad muna-rem-row', x_expand: true});
-        this._time = new St.Entry({style_class: 'muna-entry muna-rem-time', hint_text: '18:30', can_focus: true});
-        this._time.clutter_text.connect('activate', () => this._text.grab_key_focus());
-        timeRow.add_child(this._time);
-        for (const [minutes, label] of SOON) {
-            timeRow.add_child(menuChip({label, onClick: () => {
-                this._time.text = inMinutes(minutes);
-                this._text.grab_key_focus();
-            }}));
-        }
-        card.add_child(timeRow);
-        const textRow = new St.BoxLayout({style_class: 'muna-card-pad', x_expand: true});
-        this._text = new St.Entry({style_class: 'muna-entry', hint_text: 'What should the butterfly tell you?', can_focus: true, x_expand: true});
+        // a new one: the words, then the time, how often, Add (the design, 7.4.4)
+        const card = qCard();
+        this._text = new St.Entry({style_class: 'muna-qentry', hint_text: 'What should the butterfly tell you?', can_focus: true, x_expand: true});
         this._text.clutter_text.connect('activate', () => this._add());
-        textRow.add_child(this._text);
-        card.add_child(textRow);
-        const repeatRow = new St.BoxLayout({style_class: 'muna-chips-row muna-card-pad', x_expand: true});
-        this._repeatChips = new Map();
-        for (const [id, label] of REPEAT_LABELS) {
-            const chip = menuChip({label, onClick: () => {
-                this._repeat = id;
-                this._syncRepeat();
-            }});
-            this._repeatChips.set(id, chip);
-            repeatRow.add_child(chip);
-        }
-        card.add_child(repeatRow);
-        const actions = new St.BoxLayout({style_class: 'muna-chips-row muna-card-pad', x_expand: true});
-        actions.add_child(menuChip({label: 'Add', icon: 'list-add-symbolic', primary: true, onClick: () => this._add()}));
-        actions.add_child(menuChip({label: 'Try it', icon: 'media-playback-start-symbolic', onClick: () => this._try()}));
-        card.add_child(actions);
-        this._note = new St.Label({style_class: 'muna-hint', visible: false});
+        card.add_child(this._text);
+        const line = new St.BoxLayout({style_class: 'muna-chips-row', x_expand: true});
+        this._time = new St.Entry({style_class: 'muna-qentry muna-rem-time', hint_text: '18:30', can_focus: true});
+        this._time.clutter_text.connect('activate', () => this._text.grab_key_focus());
+        line.add_child(this._time);
+        const repeat = chipFlow(REPEAT_LABELS.map(([id, label]) => ({id, label})), id => {
+            this._repeat = id;
+            this._syncRepeat();
+        });
+        this._repeatChips = repeat.buttons;
+        line.add_child(repeat.actor);
+        card.add_child(line);
+        const actions = chipFlow([...SOON.map(([minutes, label]) => ({id: String(minutes), label})), {id: 'add', label: 'Add'}, {id: 'try', label: 'Try it'}], id => {
+            if (id === 'add')
+                this._add();
+            else if (id === 'try')
+                this._try();
+            else {
+                this._time.text = inMinutes(Number(id));
+                this._text.grab_key_focus();
+            }
+        }, {perRow: 4});
+        actions.buttons.get('add').add_style_class_name('muna-chip-primary');
+        card.add_child(actions.actor);
+        this._note = menuNote('');
+        this._note.visible = false;
         card.add_child(this._note);
         root.add_child(card);
         this._syncRepeat();
 
-        this._listHeader = menuHeader('Coming up');
-        root.add_child(this._listHeader);
-        this._list = menuCard();
-        root.add_child(this._list);
+        // COMING UP
+        this._listCard = qCard('COMING UP');
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qcard-list', x_expand: true});
+        this._listCard.add_child(this._list);
+        this._listCard.add_child(menuNote('At the time, the butterfly flies out of the capsule with your text.'));
+        root.add_child(this._listCard);
 
         this._reminders.connectObject('changed', () => this._rebuild(), this);
         return root;
@@ -123,25 +120,18 @@ export class RemindersWidget extends MunaWidget {
             return;
         this._list.destroy_all_children();
         const list = R.sorted(this._reminders.list);
-        this._listHeader.visible = this._list.visible = list.length > 0;
+        this._listCard.visible = list.length > 0;
         for (const reminder of list) {
-            const row = new St.BoxLayout({style_class: 'muna-card-row muna-rem-item', x_expand: true});
-            const time = new St.Label({text: reminder.time, style_class: `muna-rem-item-time${reminder.enabled ? '' : ' off'}`, y_align: Clutter.ActorAlign.CENTER});
-            row.add_child(time);
-            const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
-            const text = new St.Label({text: reminder.text || 'Reminder', style_class: 'muna-card-title'});
-            text.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-            texts.add_child(text);
+            // a lilac square (dim when off: a click on the row turns it on or off), the words, when; ✕ removes it
             const when = reminder.snoozeUntil && reminder.enabled ? 'Again in a few minutes' : R.whenText(reminder);
-            texts.add_child(new St.Label({text: when, style_class: 'muna-card-subtitle'}));
-            row.add_child(texts);
-            const toggle = new PopupMenu.Switch(!!reminder.enabled);
-            const toggleButton = new St.Button({child: toggle, y_align: Clutter.ActorAlign.CENTER, reactive: true, can_focus: true});
-            toggleButton.connect('clicked', () => this._reminders.setEnabled(reminder.id, !reminder.enabled));
-            row.add_child(toggleButton);
-            const remove = new St.Button({style_class: 'muna-rem-remove', child: new St.Icon({icon_name: 'user-trash-symbolic', icon_size: 14}), y_align: Clutter.ActorAlign.CENTER, reactive: true, can_focus: true, track_hover: true});
+            const {row, value} = listRow({icon: 'alarm-symbolic', color: reminder.enabled ? '#b39aff' : 'rgba(158, 166, 255, 0.2)',
+                title: reminder.text || 'Reminder', subtitle: `${reminder.time} · ${when}`, value: '',
+                onClick: () => this._reminders.setEnabled(reminder.id, !reminder.enabled)});
+            value.visible = false;
+            const remove = new St.Button({style_class: 'muna-rem-remove', child: new St.Icon({icon_name: 'window-close-symbolic', icon_size: 12}),
+                y_align: Clutter.ActorAlign.CENTER, reactive: true, can_focus: true, track_hover: true});
             remove.connect('clicked', () => this._reminders.remove(reminder.id));
-            row.add_child(remove);
+            row.get_child().add_child(remove);
             this._list.add_child(row);
         }
     }

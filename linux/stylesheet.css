@@ -2654,6 +2654,7 @@
 }
 
 /* an entry in a card: radius 13 on lilac 9 % */
+.muna-entry,
 .muna-qentry {
     padding: 7px 12px;
     border-radius: 13px;
@@ -2665,10 +2666,12 @@
     selection-background-color: rgba(255, 255, 255, 0.3);
 }
 
+.muna-entry:focus,
 .muna-qentry:focus {
     border-color: rgba(147, 165, 255, 0.6);
 }
 
+.muna-entry StLabel.hint-text,
 .muna-qentry StLabel.hint-text {
     color: rgba(255, 255, 255, 0.52);
 }
@@ -2785,7 +2788,7 @@
 .muna-custom-eye:hover { background-color: rgba(158, 166, 255, 0.203); }
 .muna-menu-customize { padding: 4px 6px; border-radius: 8px; color: rgba(255, 255, 255, 0.64); }
 .muna-menu-customize:hover { background-color: rgba(158, 166, 255, 0.128); }
-.muna-menu-ok { padding: 4px 14px; border-radius: 10px; background-color: #0a84ff; color: white; font-weight: 600; }
+.muna-menu-ok { padding: 4px 14px; border-radius: 13px; background-color: #5a4bdc; background-gradient-direction: vertical; background-gradient-start: #6a58e8; background-gradient-end: #4c3fd0; color: white; font-size: 11px; font-weight: 700; }
 .muna-menu-reset { padding: 4px 8px; border-radius: 10px; background-color: rgba(158, 166, 255, 0.128); color: rgba(255, 255, 255, 0.8); }
 .muna-option-line { padding: 6px 14px 6px 22px; }
 .muna-labelled { padding: 6px 14px 2px 14px; spacing: 8px; }
@@ -2979,7 +2982,7 @@
 
 /* The butterfly's reminders */
 .muna-rem-row { spacing: 6px; }
-.muna-rem-time { width: 74px; font-feature-settings: "tnum"; font-weight: 700; }
+.muna-rem-time { width: 64px; padding: 4px 10px; font-feature-settings: "tnum"; font-weight: 700; }
 .muna-rem-item { spacing: 10px; padding-top: 6px; padding-bottom: 6px; }
 .muna-rem-item-time { font-size: 20px; font-weight: 800; color: white; min-width: 62px; font-feature-settings: "tnum"; }
 .muna-rem-item-time.off { color: rgba(255, 255, 255, 0.52); }

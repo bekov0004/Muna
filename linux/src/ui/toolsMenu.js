@@ -139,7 +139,7 @@ export class ToolsMenu {
         this._customize = createButton({iconName: 'emblem-system-symbolic', styleClass: 'muna-menu-customize', onClick: () => this._setCustomizing(true)});
         this._customize.accessible_name = 'Customize';
         this._reset = createButton({iconName: 'edit-undo-symbolic', styleClass: 'muna-menu-reset', onClick: () => this._widgets[this._current]?.resetLayout?.()});
-        this._ok = createButton({iconName: 'object-select-symbolic', label: 'OK', styleClass: 'muna-menu-ok', onClick: () => this._setCustomizing(false)});
+        this._ok = createButton({label: 'Done', styleClass: 'muna-menu-ok', onClick: () => this._setCustomizing(false)});
         [this._customize, this._reset, this._ok].forEach(b => titleRow.add_child(b));
         this._reset.hide();
         this._ok.hide();

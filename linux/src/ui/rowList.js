@@ -153,11 +153,16 @@ export class RowList {
             const {row} = iconRow({icon: item.icon, title: item.title, subtitle, control: item.control?.() ?? null, chevron: item.chevron ?? (!item.control && !!item.onClick), onClick: item.onClick, extra: item.extra?.() ?? null});
             return row;
         }
-        const line = new St.BoxLayout({x_expand: true, style_class: 'muna-custom-line'});
+        // customizing (the design, 7.4.3): a handle to drag, the row as it looks, an eye to hide it
+        const line = new St.BoxLayout({x_expand: true, style_class: item.color ? 'muna-custom-line muna-qlist-row' : 'muna-custom-line'});
         const handle = new St.Button({style_class: 'muna-custom-handle', reactive: true, track_hover: true,
-            child: new St.Icon({icon_name: 'open-menu-symbolic', icon_size: 14})});
+            child: new St.Icon({icon_name: 'list-drag-handle-symbolic', icon_size: 14})});
         line.add_child(handle);
-        const {row} = iconRow({icon: item.icon, title: item.title, subtitle});
+        const {row} = item.color
+            ? listRow({icon: item.icon, color: item.color, title: item.title, value: ''})
+            : iconRow({icon: item.icon, title: item.title, subtitle});
+        if (item.color)
+            row.style = 'padding: 0; background-color: transparent;';
         row.x_expand = true;
         row.reactive = false;
         line.add_child(row);

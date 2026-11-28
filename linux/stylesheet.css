@@ -2190,7 +2190,7 @@
 .muna-menu-root {
     height: 640px;
     padding: 16px 16px 14px 16px;
-    spacing: 12px;
+    spacing: 10px;
 }
 
 .muna-menu-tabs {
@@ -2200,7 +2200,12 @@
     border: 1px solid rgba(255, 255, 255, 0.09);
 }
 
+.muna-menu-tab-row {
+    spacing: 4px;
+}
+
 .muna-button.muna-menu-tab {
+    width: 58px;
     height: 46px;
     border-radius: 13px;
     padding: 0 2px;
@@ -2376,7 +2381,7 @@
 }
 
 .muna-menu-page {
-    spacing: 8px;
+    spacing: 10px;
 }
 
 .muna-card-wrap {
@@ -2914,7 +2919,7 @@
 .muna-menu .muna-sound-percent { min-width: 38px; text-align: right; font-size: 12px; }
 
 /* Arrows at the ends of the tab row while there are more tabs that way */
-.muna-menu-tabs-arrow { width: 22px; height: 40px; border-radius: 10px; color: rgba(255, 255, 255, 0.75); }
+.muna-menu-tabs-arrow { width: 20px; height: 40px; border-radius: 10px; padding: 0; background-color: transparent; color: rgba(255, 255, 255, 0.75); }
 .muna-menu-tabs-arrow:hover { background-color: rgba(255, 255, 255, 0.096); color: white; }
 
 /* A reading of the top bar (CPU, memory ...) and its small window */

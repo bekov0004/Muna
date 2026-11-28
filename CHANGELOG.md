@@ -28,6 +28,7 @@ follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Linux, LocalSend: files someone sends no longer get lost when the question's card goes away without an answer (the panel opened and closed, a click elsewhere): the question waits at the top of the LocalSend tab with Decline and Accept, and comes back on the capsule when the panel closes, until it is answered or runs out.
 - LocalSend could not start receiving on a system where Muna had no certificate yet (GNOME 51: making the certificate failed).
 - Windows, found by running it on Windows 11: the open panel's sides took 20 px each and the timer stuck out of it; the tray icon's window changed its height with every tab, so the tabs moved away from the pointer; arranging windows gave the desktop a column of its own (and per-monitor desktops could hide it); the window tab worked on the taskbar's flyout instead of your window; the Command Bar found no Store apps (Notepad, Calculator, Settings) and cut its list off; the settings jumped to the top after every switch and dropdowns were white boxes in dark mode; the reminders editor's buttons were cut off. The settings window now has Linux's appearance chooser, a search entry with a hint, thin scroll bars, and lists scroll as far as the touchpad turned.
 - macOS and Windows: the tabs of the menu-bar / tray icon's window are the ones in enabled-widgets, as on Linux (13 by default), and the capsule starts with music, calendar and mirror.

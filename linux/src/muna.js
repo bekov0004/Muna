@@ -900,6 +900,8 @@ export class Muna {
             }),
         });
         this._incoming = activity;
+        // the question also waits in the LocalSend tab, so a card closed by chance does not lose it
+        this._localSendView?.setIncoming(transfer);
         this._services.activities.peek(activity, {persistent: true, priority: Priority.CRITICAL, force: true, target: this});
     }
 
@@ -1418,6 +1420,15 @@ export class Muna {
             this._endTextInput();
             this._panelView.setOpen(false);
             this._panelView.conceal();
+            // files that still wait for an answer: the question comes back on the capsule
+            const incoming = this._incoming;
+            if (incoming?._transfer?.state === 'asking' && state !== State.CARD) {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, 400, () => {
+                    if (this._incoming === incoming && incoming._transfer?.state === 'asking' && this._state === State.CLOSED)
+                        this._services.activities.peek(incoming, {persistent: true, priority: Priority.CRITICAL, force: true, target: this});
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
         }
 
         // The old view fades out quickly. The panel's content reveals itself piece by

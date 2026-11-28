@@ -1791,6 +1791,24 @@
     background-color: #b39aff;
 }
 
+/* someone wants to send files: the question in the tab too */
+.muna-lsv-incoming {
+    padding: 10px 12px;
+    border-radius: 15px;
+    background-color: rgba(124, 112, 255, 0.18);
+    border: 1px solid rgba(160, 150, 255, 0.45);
+}
+
+.muna-lsv-incoming .muna-lsv-action {
+    margin-left: 8px;
+}
+
+.muna-lsv-incoming-title {
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+}
+
 /* the empty files place */
 .muna-lsv-empty {
     padding: 6px 0;

@@ -105,8 +105,40 @@ export class LocalSendView extends St.BoxLayout {
         return [];
     }
 
+    /** Someone wants to send files: the question also waits here (not only on the capsule's card). */
+    setIncoming(transfer) {
+        this._incoming?.disconnectObject(this);
+        this._incoming = transfer;
+        transfer?.connectObject('changed', () => this._render(), this);
+        this._render();
+    }
+
+    /** "Pixel 8 wants to send you 2 files · 4.6 MB", the names, Decline and Accept. */
+    _buildIncoming() {
+        const t = this._incoming;
+        const card = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-lsv-incoming', x_expand: true});
+        const line = new St.BoxLayout({x_expand: true});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        texts.add_child(new St.Label({text: `${t.sender.alias} wants to send you ${t.files.length} file${t.files.length === 1 ? '' : 's'} · ${sizeText(t.total)}`,
+            style_class: 'muna-lsv-incoming-title'}));
+        const names = new St.Label({text: t.files.slice(0, 3).map(f => f.name).join(', ') + (t.files.length > 3 ? ` +${t.files.length - 3}` : ''),
+            style_class: 'muna-lsv-hint'});
+        names.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        texts.add_child(names);
+        line.add_child(texts);
+        for (const [label, accept] of [['Decline', false], ['Accept', true]]) {
+            const button = new St.Button({label, style_class: `muna-lsv-action${accept ? ' muna-lsv-action-primary' : ''}`, can_focus: true, y_align: Clutter.ActorAlign.CENTER});
+            button.connect('clicked', () => (accept ? t.accept() : t.decline()));
+            line.add_child(button);
+        }
+        card.add_child(line);
+        return card;
+    }
+
     _render() {
         this.destroy_all_children();
+        if (this._incoming?.state === 'asking')
+            this.add_child(this._buildIncoming());
         if (this._writing)
             this._buildWriting();
         else

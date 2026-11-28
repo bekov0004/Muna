@@ -101,7 +101,7 @@ export class CalendarWidget extends MunaWidget {
             style_class: 'muna-widget muna-calendar',
             x_expand: true,
             y_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.FILL,   // the card fills the row's height
             reactive: true,
             track_hover: true,
         });

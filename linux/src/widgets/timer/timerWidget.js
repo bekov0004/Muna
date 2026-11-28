@@ -77,9 +77,10 @@ export class TimerWidget extends MunaWidget {
             style_class: 'muna-widget muna-timer',
             x_expand: true,
             y_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.FILL,   // the card fills the row's height
         });
 
+        root.add_child(new St.Widget({y_expand: true}));
         const display = new St.BoxLayout({
             style_class: 'muna-timer-display',
             x_align: Clutter.ActorAlign.CENTER,
@@ -132,6 +133,7 @@ export class TimerWidget extends MunaWidget {
 
         this._actions = new St.BoxLayout({style_class: 'muna-timer-actions', x_expand: true, x_align: Clutter.ActorAlign.FILL});
         root.add_child(this._actions);
+        root.add_child(new St.Widget({y_expand: true}));
 
         this._timer.connectObject('tick', () => this._update(), this);
         return root;

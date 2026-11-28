@@ -26,7 +26,7 @@ export class ShortcutsWidget extends MunaWidget {
             style_class: 'muna-widget muna-shortcuts',
             x_expand: true,
             y_expand: true,
-            y_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.FILL,   // the card fills the row's height
         });
         this._settings.connectObject('changed', (_s, key) => {
             if (key === 'shortcut-apps' || key === 'shortcut-columns')

@@ -71,7 +71,7 @@
 
 .muna-button.muna-tab:hover {
     color: white;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-button.muna-tab:active {
@@ -148,7 +148,7 @@
 
 /* A widget's card in the open panel (the holder's child) */
 .muna-widget-holder-card > * {
-    background-color: rgba(158, 166, 255, 0.075);
+    background-color: rgba(158, 166, 255, 0.06);
     border-radius: 18px;
 }
 
@@ -174,7 +174,7 @@
     width: 64px;
     height: 64px;
     border-radius: 10px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-media-art-icon {
@@ -319,7 +319,7 @@
 }
 
 .muna-cal-day:hover {
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-cal-selected {
@@ -400,7 +400,7 @@
 
 .muna-mirror-stage {
     border-radius: 999px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid rgba(176, 184, 255, 0.15);
 }
 
@@ -503,7 +503,7 @@
 .muna-button.muna-timer-chip {
     padding: 4px 10px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-timer-chip .muna-button-label {
@@ -589,7 +589,7 @@
 }
 
 .muna-todo-item:hover {
-    background-color: rgba(158, 166, 255, 0.075);
+    background-color: rgba(158, 166, 255, 0.06);
 }
 
 .muna-todo-row {
@@ -641,7 +641,7 @@
     height: 22px;
     padding: 0 10px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid transparent;
     color: white;
     font-size: 11px;
@@ -677,7 +677,7 @@
 
 .muna-notes-tab:hover {
     color: white;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-notes-tab:checked {
@@ -688,7 +688,7 @@
 /* the chosen note's text in a box; a click copies it */
 .muna-notes-body {
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-notes-body:hover {
@@ -744,7 +744,7 @@
     font-weight: 700;
     padding: 4px 10px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-tray-clear:hover {
@@ -825,7 +825,7 @@
 .muna-file-main {
     padding: 10px 6px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-file-main:hover,
@@ -1073,7 +1073,7 @@
 }
 
 .muna-capcard-low .muna-capcard-badge {
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-capcard-low .muna-capcard-title {
@@ -1105,7 +1105,7 @@
 
 .muna-shortcut:hover,
 .muna-shortcut:focus {
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-shortcut:active {
@@ -1168,7 +1168,7 @@
 
 .muna-clip {
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-clip:hover {
@@ -1254,7 +1254,7 @@
     font-weight: 700;
     padding: 5px 10px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-clip-add:hover,
@@ -1267,7 +1267,7 @@
     font-size: 12px;
     padding: 6px 12px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid transparent;
     caret-color: white;
     selection-background-color: rgba(255, 255, 255, 0.3);
@@ -1290,7 +1290,7 @@
 /* a notification (the design, 7.3.4): a card of radius 15 on lilac 9 %; urgent ones amber */
 .muna-notif {
     border-radius: 15px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-notif:hover {
@@ -1573,7 +1573,7 @@
     spacing: 6px;
     padding: 2px 5px 2px 10px;
     border-radius: 12px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-lsv-chip-icon {
@@ -1601,7 +1601,7 @@
 .muna-lsv-tile {
     padding: 3px 14px 3px 5px;
     border-radius: 15px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-lsv-tile.muna-lsv-pick {
@@ -1716,7 +1716,7 @@
 .muna-lsv-action {
     padding: 7px 16px;
     border-radius: 17px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     color: white;
     font-size: 12px;
     font-weight: 700;
@@ -1831,7 +1831,7 @@
 .muna-tool {
     border-radius: 12px;
     padding: 6px 2px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-tool:hover,
@@ -1953,7 +1953,7 @@
 .muna-button.muna-sound-output {
     border-radius: 12px;
     padding: 3px 10px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-sound-output .muna-button-label {
@@ -1965,7 +1965,7 @@
     width: 26px;
     height: 24px;
     border-radius: 12px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-button.muna-sound-mic:checked {
@@ -2035,7 +2035,7 @@
 }
 
 .muna-cmd-row:hover {
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-cmd-row:checked {
@@ -2068,7 +2068,7 @@
 .muna-input-switch {
     border-radius: 12px;
     padding: 6px 8px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-input-switch:hover {
@@ -2097,7 +2097,7 @@
 .muna-button.muna-windows-snap {
     height: 22px;
     border-radius: 11px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-win {
@@ -2106,7 +2106,7 @@
 
 .muna-win-thumb {
     border-radius: 8px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-win-thumb:hover {
@@ -2158,8 +2158,8 @@
     border-radius: 22px;
     background-color: rgba(14, 15, 34, 0.98);
     background-gradient-direction: vertical;
-    background-gradient-start: rgba(20, 22, 47, 0.98);
-    background-gradient-end: rgba(7, 8, 20, 0.98);
+    background-gradient-start: rgba(16, 17, 38, 0.98);
+    background-gradient-end: rgba(5, 6, 15, 0.98);
     border: 1px solid rgba(176, 184, 255, 0.19);
     box-shadow: none;
 }
@@ -2177,7 +2177,7 @@
 .muna-menu-tabs {
     padding: 6px;
     border-radius: 17px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid rgba(176, 184, 255, 0.15);
 }
 
@@ -2237,7 +2237,7 @@
 .muna-button.muna-menu-action {
     height: 36px;
     border-radius: 15px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid rgba(176, 184, 255, 0.15);
 }
 
@@ -2263,7 +2263,7 @@
 
 .muna-menu .muna-card {
     border-radius: 17px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid rgba(176, 184, 255, 0.15);
 }
 
@@ -2316,7 +2316,7 @@
     min-height: 24px;
     padding: 0 10px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     color: white;
     font-size: 11px;
     font-weight: 700;
@@ -2477,7 +2477,7 @@
 .muna-qhead-action {
     padding: 4px 10px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     color: white;
     font-size: 11px;
     font-weight: 700;
@@ -2552,7 +2552,7 @@
 .muna-qlist-row {
     padding: 7px 9px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-qlist-row:hover,
@@ -2599,7 +2599,7 @@
 .muna-qtile {
     padding: 9px 6px;
     border-radius: 11px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
 }
 
 .muna-qtile:hover,
@@ -2658,7 +2658,7 @@
 .muna-qentry {
     padding: 7px 12px;
     border-radius: 13px;
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     border: 1px solid transparent;
     color: white;
     font-size: 12px;
@@ -2710,7 +2710,7 @@
 .muna-value-muted { color: rgba(255, 255, 255, 0.52); font-size: 11px; }
 .muna-value-indent { padding-left: 22px; color: rgba(255, 255, 255, 0.62); }
 .muna-tile-row { padding: 2px 14px 8px 14px; spacing: 10px; }
-.muna-big-tile { background-color: rgba(158, 166, 255, 0.075); border-radius: 14px; padding: 8px 10px 10px 10px; spacing: 2px; }
+.muna-big-tile { background-color: rgba(158, 166, 255, 0.06); border-radius: 14px; padding: 8px 10px 10px 10px; spacing: 2px; }
 .muna-big-tile-head { color: rgba(255, 255, 255, 0.64); font-size: 11px; spacing: 5px; }
 .muna-big-tile-icon { icon-size: 13px; }
 .muna-big-tile-value { color: white; font-size: 20px; font-weight: 700; }
@@ -2739,7 +2739,7 @@
 .muna-pillbtn-icon { icon-size: 13px; margin-right: 6px; }
 .muna-pill-row { padding: 4px 14px; spacing: 8px; }
 .muna-disk-tiles { padding: 2px 14px 8px 14px; spacing: 8px; }
-.muna-disk-tile { background-color: rgba(158, 166, 255, 0.075); border-radius: 12px; padding: 8px 10px; }
+.muna-disk-tile { background-color: rgba(158, 166, 255, 0.06); border-radius: 12px; padding: 8px 10px; }
 .muna-disk-tile:hover { background-color: rgba(158, 166, 255, 0.143); }
 .muna-disk-tile:checked { background-color: rgba(90, 75, 220, 0.32); }
 .muna-badge { background-color: rgba(158, 166, 255, 0.128); border-radius: 8px; padding: 1px 8px; margin-left: 4px; font-size: 11px; color: rgba(255, 255, 255, 0.7); }
@@ -2770,11 +2770,11 @@
 .muna-dropdown-item:hover { background-color: rgba(158, 166, 255, 0.128); }
 .muna-dropdown-item:checked { background-color: rgba(90, 75, 220, 0.35); }
 .muna-swatches { spacing: 8px; padding: 2px 14px 8px 14px; }
-.muna-swatch { width: 18px; height: 18px; border-radius: 13px; border: 2px solid transparent; background-color: rgba(158, 166, 255, 0.075); }
+.muna-swatch { width: 18px; height: 18px; border-radius: 13px; border: 2px solid transparent; background-color: rgba(158, 166, 255, 0.06); }
 .muna-swatch:checked { border-color: #3b8ef5; }
 .muna-swatch-cell { padding: 3px; }
 .muna-swatch-none { icon-size: 14px; color: rgba(255, 255, 255, 0.58); }
-.muna-icon-choice { height: 34px; border-radius: 9px; background-color: rgba(158, 166, 255, 0.09); border: 1px solid transparent; }
+.muna-icon-choice { height: 34px; border-radius: 9px; background-color: rgba(158, 166, 255, 0.07); border: 1px solid transparent; }
 .muna-icon-choice:hover { background-color: rgba(158, 166, 255, 0.165); }
 .muna-icon-choice:checked { border-color: #5a4bdc; }
 .muna-icon-choice-icon { icon-size: 18px; color: #ff9500; }
@@ -2862,7 +2862,7 @@
 /* Windows: a picture of the screen with its windows */
 .muna-winmap-card { padding-top: 12px; }
 .muna-winmap-tabs { spacing: 6px; padding: 0; }
-.muna-winmap-tab { border-radius: 13px; padding: 5px 10px; font-size: 11px; font-weight: 700; color: white; background-color: rgba(158, 166, 255, 0.09); }
+.muna-winmap-tab { border-radius: 13px; padding: 5px 10px; font-size: 11px; font-weight: 700; color: white; background-color: rgba(158, 166, 255, 0.07); }
 .muna-winmap-tab:hover { background-color: rgba(158, 166, 255, 0.15); }
 .muna-winmap-tab:checked { background-color: rgba(90, 75, 220, 0.55); color: white; }
 .muna-winmap-tab-dot { width: 6px; height: 6px; border-radius: 3px; background-color: #5aa9ff; margin-right: 6px; }
@@ -2909,7 +2909,7 @@
 .muna-reading-sub { font-size: 12px; color: rgba(255, 255, 255, 0.64); padding-bottom: 4px; }
 .muna-reading-card { width: auto; spacing: 0; padding: 6px 0; border-radius: 16px; }
 .muna-reading-graph { padding: 4px 14px 6px 14px; }
-.muna-reading-more { border-radius: 12px; padding: 8px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.85); background-color: rgba(158, 166, 255, 0.09); border: 1px solid rgba(176, 184, 255, 0.15); }
+.muna-reading-more { border-radius: 12px; padding: 8px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.85); background-color: rgba(158, 166, 255, 0.07); border: 1px solid rgba(176, 184, 255, 0.15); }
 .muna-reading-more:hover { background-color: rgba(158, 166, 255, 0.165); color: white; }
 
 /* AI agents: tasks, questions, limits */
@@ -2925,7 +2925,7 @@
 .muna-agent-ask-text { color: #fcd34d; font-size: 11px; font-weight: 600; }
 .muna-agent-actions { spacing: 6px; padding-top: 4px; padding-bottom: 6px; }
 .muna-agent-card-icon { icon-size: 16px; color: #fbbf24; padding-right: 8px; }
-.muna-agent-card-detail { font-family: monospace; font-size: 11px; color: rgba(255, 255, 255, 0.8); background-color: rgba(158, 166, 255, 0.09); border-radius: 8px; padding: 5px 8px; margin-top: 4px; }
+.muna-agent-card-detail { font-family: monospace; font-size: 11px; color: rgba(255, 255, 255, 0.8); background-color: rgba(158, 166, 255, 0.07); border-radius: 8px; padding: 5px 8px; margin-top: 4px; }
 
 /* Command bar: the capsule turned into a big search field */
 .muna-cmd { padding: 6px 10px 8px 10px; }
@@ -2955,7 +2955,7 @@
 .muna-cmd-list { padding: 0 2px 4px 2px; spacing: 2px; }
 .muna-cmd-group { color: rgba(255, 255, 255, 0.52); font-size: 11px; font-weight: 700; padding: 12px 12px 6px 12px; }
 .muna-cmd .muna-cmd-row { border-radius: 12px; padding: 7px 10px; }
-.muna-cmd .muna-cmd-row:hover { background-color: rgba(158, 166, 255, 0.075); }
+.muna-cmd .muna-cmd-row:hover { background-color: rgba(158, 166, 255, 0.06); }
 .muna-cmd .muna-cmd-row:checked { background-color: rgba(124, 112, 255, 0.28); }
 .muna-cmd .muna-cmd-icon { icon-size: 26px; margin-right: 12px; color: rgba(255, 255, 255, 0.85); }
 .muna-cmd .muna-cmd-title { color: white; font-size: 14px; font-weight: 600; }
@@ -2990,7 +2990,7 @@
 .muna-rem-remove:hover { background-color: rgba(158, 166, 255, 0.128); color: white; }
 /* the butterfly's reminder card (the design, 7.2.2) */
 .muna-bfr-card {
-    background-color: rgba(7, 8, 20, 0.98); border-radius: 26px; padding: 16px 22px 14px 22px; spacing: 6px;
+    background-color: rgba(5, 6, 15, 0.98); border-radius: 26px; padding: 16px 22px 14px 22px; spacing: 6px;
     border: 1px solid rgba(179, 154, 255, 0.28); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
 }
 .muna-bfr-time { color: #b39aff; font-size: 13px; font-weight: 700; }
@@ -3021,8 +3021,8 @@
     box-shadow: none;
     background-color: rgba(14, 15, 34, 0.98);
     background-gradient-direction: vertical;
-    background-gradient-start: rgba(20, 22, 47, 0.98);
-    background-gradient-end: rgba(7, 8, 20, 0.98);
+    background-gradient-start: rgba(16, 17, 38, 0.98);
+    background-gradient-end: rgba(5, 6, 15, 0.98);
     border: 1px solid rgba(176, 184, 255, 0.19);
     border-radius: 24px;
     color: rgba(255, 255, 255, 0.92);
@@ -3032,7 +3032,7 @@
 .muna-styled .quick-toggle-arrow,
 .muna-styled .quick-settings-system-item .icon-button,
 .muna-styled .button {
-    background-color: rgba(158, 166, 255, 0.09);
+    background-color: rgba(158, 166, 255, 0.07);
     color: white;
 }
 .muna-styled .quick-toggle:hover,
@@ -3050,7 +3050,7 @@
     color: white;
 }
 .muna-styled .quick-toggle-menu {
-    background-color: rgba(158, 166, 255, 0.075);
+    background-color: rgba(158, 166, 255, 0.06);
     border-radius: 18px;
 }
 .muna-styled .slider {

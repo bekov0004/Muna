@@ -80,7 +80,7 @@ export class NetworkWidget extends MonitorWidget {
         this._head?.set({
             title: this._kind ? `${this._kind}${this._name ? ` · ${this._name}` : ''}` : 'Not connected',
             icon: this._kind === 'Wired' ? 'network-wired-symbolic' : this._kind ? 'network-wireless-symbolic' : 'network-offline-symbolic',
-            color: this._kind ? '#93a5ff' : 'rgba(158, 166, 255, 0.15)',
+            color: this._kind ? '#93a5ff' : 'rgba(255, 255, 255, 0.112)',
         });
     }
 

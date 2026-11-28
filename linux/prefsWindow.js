@@ -186,9 +186,9 @@ preferencespage { background-color: ${p.BACKGROUND}; }
 .th-choice:checked { border-color: ${p.ACCENT}; background-color: ${p.ACCENT_SOFT}; }
 .th-picture { border-radius: 8px; }
 .th-bar { min-height: 12px; border-radius: 8px 8px 0 0; background-color: rgba(128, 128, 128, 0.25); }
-.th-system { background-image: linear-gradient(135deg, #f2f4f8 50%, #2b2f62 50%); }
+.th-system { background-image: linear-gradient(135deg, #f2f4f8 50%, #2a2a2d 50%); }
 .th-light { background-color: #f2f4f8; }
-.th-dark { background-color: #2b2f62; }
+.th-dark { background-color: #2a2a2d; }
 .th-label { font-weight: 700; font-size: 12px; }
 .th-choice:checked .th-label { color: ${p.ACCENT}; }
 .mb-icon-choice { border-radius: 10px; padding: 8px; border: 2px solid transparent; background-color: ${p.HOVER}; }

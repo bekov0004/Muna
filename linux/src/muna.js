@@ -397,8 +397,8 @@ export class Muna {
         // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
         // with a thin lilac rim; the opacity setting still applies (98 % by default).
         const background = `background-gradient-direction: vertical; ` +
-            `background-gradient-start: rgba(16, 17, 38, ${opacity}); background-gradient-end: rgba(5, 6, 15, ${opacity}); ` +
-            'border-color: rgba(176, 184, 255, 0.19);';
+            `background-gradient-start: rgba(16, 16, 18, ${opacity}); background-gradient-end: rgba(0, 0, 0, ${opacity}); ` +
+            'border-color: rgba(255, 255, 255, 0.114);';
 
         // the shadow under it (the design: 0 2 10 black 30 %, deeper when open), scaled by Appearance → Shadow
         const strength = Math.max(0, Math.min(1, this._settings.get('shadow-strength') ?? 0.6)) / 0.6;
@@ -416,7 +416,7 @@ export class Muna {
             this._actor.style = `border-radius: ${radius}px; ${background} ${shadow}`;
         }
         for (const ear of this._ears)
-            ear.setGradient([16, 17, 38, opacity], [5, 6, 15, opacity]);
+            ear.setGradient([16, 16, 18, opacity], [0, 0, 0, opacity]);
 
     }
 

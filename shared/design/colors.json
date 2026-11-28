@@ -1,5 +1,5 @@
 {
-  "_about": "Muna's colours for every platform. 'windows': settings and other windows (linux/theme.js); 'capsule': the capsule and its panel, always dark (linux/stylesheet.css). Since the design's '7 · Fixed version': indigo glass instead of black.",
+  "_about": "Muna's colours for every platform. 'windows': settings and other windows (linux/theme.js); 'capsule': the capsule and its panel, always dark (linux/stylesheet.css). Since 2026-11-28: black with a violet accent (before: indigo).",
   "windows": {
     "light": {
       "background": "#f3f4fd",
@@ -21,28 +21,28 @@
       "icon": "#1d64e0"
     },
     "dark": {
-      "background": "#0c0d20",
-      "toolbar": "#101127",
-      "surface": "#14162f",
-      "card": "#14162f",
-      "control": "#1f2243",
-      "border": "rgba(176, 184, 255, 0.16)",
-      "hover": "rgba(255, 255, 255, 0.07)",
+      "background": "#0a0a0b",
+      "toolbar": "#0e0e10",
+      "surface": "#161618",
+      "card": "#161618",
+      "control": "#242427",
+      "border": "rgba(255, 255, 255, 0.096)",
+      "hover": "rgba(255, 255, 255, 0.06)",
       "selected": "rgba(255, 255, 255, 0.12)",
       "text": "#f5f5f7",
-      "textSecondary": "#aaadd6",
+      "textSecondary": "#a1a1a6",
       "textDisabled": "rgba(255, 255, 255, 0.28)",
       "accent": "#5a4bdc",
       "accentSoft": "rgba(90, 75, 220, 0.24)",
-      "capsule": "#050507",
-      "capsuleBlock": "#1d1d21",
-      "track": "#303360",
+      "capsule": "#161618",
+      "capsuleBlock": "#242427",
+      "track": "#2c2c2e",
       "icon": "#4c97ff"
     }
   },
   "capsule": {
-    "background": "linear #14162f → #070814, 98 %",
-    "tile": "rgba(158, 166, 255, 0.09)",
+    "background": "linear #101012 → #000000, 98 %",
+    "tile": "rgba(255, 255, 255, 0.053)",
     "tileHover": "rgba(124, 112, 255, 0.28)",
     "text": "rgba(255, 255, 255, 0.92)",
     "textSecondary": "rgba(255, 255, 255, 0.52)",
@@ -51,11 +51,11 @@
     "muna": "#b39aff",
     "ok": "#57e389",
     "warning": "#ffa348",
-    "backgroundTop": "#14162f",
-    "backgroundBottom": "#070814",
-    "rim": "rgba(176, 184, 255, 0.19)",
-    "card": "rgba(158, 166, 255, 0.075)",
+    "backgroundTop": "#101012",
+    "backgroundBottom": "#000000",
+    "rim": "rgba(255, 255, 255, 0.114)",
+    "card": "rgba(255, 255, 255, 0.045)",
     "fill": "#5a4bdc",
-    "chosen": "rgba(158, 166, 255, 0.15)"
+    "chosen": "rgba(255, 255, 255, 0.113)"
   }
 }

@@ -124,7 +124,7 @@ export class AwakeWidget extends MunaWidget {
         this._head.set(awake.active
             ? {title: 'Staying awake', subtitle: awake.forever ? 'until you turn it off' : `until ${until ?? this._until ?? ''}`,
                 color: color || '#ff9500', icon, action: {label: 'Off', onClick: () => this._actions.setAwake(0)}}
-            : {title: 'Keep awake', subtitle: 'The computer follows its normal energy rules', color: 'rgba(158, 166, 255, 0.15)', icon, action: null});
+            : {title: 'Keep awake', subtitle: 'The computer follows its normal energy rules', color: 'rgba(255, 255, 255, 0.112)', icon, action: null});
         for (const [minutes, chip] of this._chips)
             setChecked(chip, awake.active && (awake.forever ? minutes === '-1' : minutes === String(this._chipOn)));
         for (const [id, chip] of this._iconChips)

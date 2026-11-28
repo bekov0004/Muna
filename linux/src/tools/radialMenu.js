@@ -36,10 +36,10 @@ const SIZE = RADIUS * 2 + BUTTON + 36;
 const OPEN_MS = 260;
 const ACCENT = '#5a4bdc';
 // round indigo buttons (the design), the one pointed at violet
-const BUTTON_STYLE = `border-radius: ${BUTTON / 2}px; background-gradient-direction: vertical; background-color: #14162f;` +
-    ' background-gradient-start: #14162f; background-gradient-end: #070814; border: 1px solid rgba(176, 184, 255, 0.19); transition-duration: 150ms;';
+const BUTTON_STYLE = `border-radius: ${BUTTON / 2}px; background-gradient-direction: vertical; background-color: #161618;` +
+    ' background-gradient-start: #161618; background-gradient-end: #000000; border: 1px solid rgba(255, 255, 255, 0.114); transition-duration: 150ms;';
 const CHOSEN_STYLE = `border-radius: ${BUTTON / 2}px; background-gradient-direction: vertical; background-color: #5a4bdc;` +
-    ' background-gradient-start: #6a58e8; background-gradient-end: #4c3fd0; border: 1px solid rgba(176, 184, 255, 0.3); box-shadow: 0 0 16px rgba(90, 75, 220, 0.55);';
+    ' background-gradient-start: #6a58e8; background-gradient-end: #4c3fd0; border: 1px solid rgba(255, 255, 255, 0.18); box-shadow: 0 0 16px rgba(90, 75, 220, 0.55);';
 /** A button's face: the icon over its short name. */
 function buttonFace(id) {
     const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
@@ -84,7 +84,7 @@ export function showRadialMenu(actions, run) {
     wheel.add_child(orbit);
 
     const hub = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, width: HUB, height: HUB, x: c - HUB / 2, y: c - HUB / 2,
-        style: `border-radius: ${HUB / 2}px; background-color: #14162f; border: 1px solid rgba(176, 184, 255, 0.19);`});
+        style: `border-radius: ${HUB / 2}px; background-color: #161618; border: 1px solid rgba(255, 255, 255, 0.114);`});
     // the logo's butterfly in the middle
     const hubIcon = new St.Icon({gicon: iconFor(BUTTERFLY_ICON), icon_size: 22, style: 'color: #9ec9ff;',
         x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.CENTER});

@@ -124,7 +124,7 @@ export class RemindersWidget extends MunaWidget {
         for (const reminder of list) {
             // a lilac square (dim when off: a click on the row turns it on or off), the words, when; ✕ removes it
             const when = reminder.snoozeUntil && reminder.enabled ? 'Again in a few minutes' : R.whenText(reminder);
-            const {row, value} = listRow({icon: 'alarm-symbolic', color: reminder.enabled ? '#b39aff' : 'rgba(158, 166, 255, 0.2)',
+            const {row, value} = listRow({icon: 'alarm-symbolic', color: reminder.enabled ? '#b39aff' : 'rgba(255, 255, 255, 0.15)',
                 title: reminder.text || 'Reminder', subtitle: `${reminder.time} · ${when}`, value: '',
                 onClick: () => this._reminders.setEnabled(reminder.id, !reminder.enabled)});
             value.visible = false;

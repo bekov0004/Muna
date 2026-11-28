@@ -11,3 +11,6 @@ macos/build/
 CLAUDE.md
 **/CLAUDE.md
 .claude/
+
+# the design, kept locally (design/index.html)
+design/

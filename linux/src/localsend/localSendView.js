@@ -344,7 +344,7 @@ export class LocalSendView extends St.BoxLayout {
             const here = s.groupPresence(group).found.length;
             const active = s.activeGroupId === group.id;
             const chip = new St.Button({
-                style_class: `muna-lsv-tile muna-lsv-group${active ? ' muna-lsv-tile-selected' : ''}`,
+                style_class: `muna-lsv-tile muna-lsv-pick muna-lsv-group${active ? ' muna-lsv-tile-selected' : ''}`,
                 can_focus: true,
                 accessible_name: `Group ${group.name}`,
             });
@@ -361,7 +361,7 @@ export class LocalSendView extends St.BoxLayout {
             const selected = s.isSelected(device);
             const muna = isMuna(device);
             const tile = new St.Button({
-                style_class: `muna-lsv-tile${selected ? ' muna-lsv-tile-selected' : ''}`,
+                style_class: `muna-lsv-tile muna-lsv-pick${selected ? ' muna-lsv-tile-selected' : ''}`,
                 can_focus: true,
                 accessible_name: device.alias,
             });

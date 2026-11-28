@@ -670,7 +670,15 @@
 
 .muna-todo-entry:focus {
     background-color: rgba(255, 255, 255, 0.135);
-    border-color: rgba(255, 255, 255, 0.35);
+    border-color: rgba(147, 165, 255, 0.6);
+}
+
+/* no GNOME focus ring (the system's accent) on Muna's entries: their own rim shows the focus */
+.muna-todo-entry:focus,
+.muna-entry:focus,
+.muna-qentry:focus,
+.muna-clip-entry:focus {
+    box-shadow: none;
 }
 
 .muna-todo-entry StLabel.hint-text {
@@ -1829,7 +1837,9 @@
 }
 
 .muna-lsv-entry {
-    height: 26px;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 13px;
     font-size: 12px;
 }
 

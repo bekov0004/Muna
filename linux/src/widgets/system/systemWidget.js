@@ -1,15 +1,16 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import {formatBytes, formatTemperature} from '../../services/systemService.js';
 import {EventType, Priority} from '../../utils/events.js';
-import {bigTile, menuCard, menuDivider, meterRow, sectionLabel, statusPill, valueRow} from '../../ui/menuKit.js';
+import {dotRow, menuHead, menuNote, qCard, qMeter} from '../../ui/menuKit.js';
 import {MonitorWidget, formatDuration} from './monitorWidget.js';
 
 /**
- * The computer at a glance: the temperature, the processor and the memory with a graph of the last
- * minutes, and how long it has been on. The numbers come from the Muna service, which also raises
+ * The computer at a glance (the design, 7.4.4): the temperatures, the processor (its busiest programs under
+ * it) with a graph of the last minutes, the graphics card, the memory and how long it has been on. The numbers come from the Muna service, which also raises
  * the alerts (a busy processor, heat, a full disk or memory, a low battery); the alerts show as cards.
  */
 export class SystemWidget extends MonitorWidget {
@@ -43,70 +44,32 @@ export class SystemWidget extends MonitorWidget {
 
     createPage() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-system muna-menu-page', x_expand: true});
-        const card = menuCard();
-        card.add_style_class_name('muna-bigcard');
+        // the temperature, the processor with its graph, the graphics card (the design, 7.4.4)
+        const card = qCard();
         root.add_child(card);
-
-        this._tempBlock = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        this._tempBlock.add_child(sectionLabel('Temperatures'));
-        const tiles = new St.BoxLayout({style_class: 'muna-tile-row', x_expand: true});
-        this._tempA = bigTile('CPU', 'computer-symbolic');
-        this._tempB = bigTile('Disk', 'drive-harddisk-symbolic');
-        tiles.add_child(this._tempA.actor);
-        tiles.add_child(this._tempB.actor);
-        this._tempBlock.add_child(tiles);
-        this._tempBlock.add_child(menuDivider());
-        card.add_child(this._tempBlock);
-
-        const open = new St.Button({style_class: 'muna-icon-link', reactive: true, can_focus: true, track_hover: true,
-            child: new St.Icon({icon_name: 'adw-external-link-symbolic', icon_size: 12})});
-        open.connect('clicked', () => this._openMonitor());
-        card.add_child(sectionLabel('Hardware usage', open));
-        this._cpu = meterRow('CPU', {expandable: true});
+        this._head = menuHead({icon: 'computer-symbolic', color: '#93a5ff', title: 'CPU', subtitle: 'Temperatures',
+            action: {label: 'Monitor', onClick: () => this._openMonitor()}});
+        card.add_child(this._head.actor);
+        this._cpu = qMeter('CPU', {expandable: true});
         card.add_child(this._cpu.actor);
         this._cpuGraph = this.graphBlock({color: [0.58, 0.65, 1], max: 100});
         this._cpuGraph.scale.text = '100%';
         card.add_child(this._cpuGraph.actor);
-        this._gpu = meterRow('GPU', {expandable: false});
-        this._gpuGraph = this.graphBlock({color: [0.58, 0.65, 1], max: 100});
-        this._gpuGraph.scale.text = '100%';
-        this._gpuBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, visible: false});
-        this._gpuBox.add_child(this._gpu.actor);
-        this._gpuBox.add_child(this._gpuGraph.actor);
-        card.add_child(this._gpuBox);
-        card.add_child(menuDivider());
+        this._gpu = qMeter('GPU');
+        this._gpu.actor.visible = false;
+        card.add_child(this._gpu.actor);
 
-        this._memBlock = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        const memCard = this._memBlock;
-        memCard.add_child(sectionLabel('Memory'));
-        this._pressure = statusPill('Normal');
-        const pressure = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true});
-        pressure.add_child(new St.Label({text: 'Pressure', style_class: 'muna-value-label', y_align: Clutter.ActorAlign.CENTER}));
-        pressure.add_child(this._pressure.actor);
-        this._memTotal = new St.Label({text: '', style_class: 'muna-value-text', x_expand: true, x_align: Clutter.ActorAlign.END, y_align: Clutter.ActorAlign.CENTER});
-        pressure.add_child(this._memTotal);
-        memCard.add_child(pressure);
-        this._cached = valueRow('Cached files');
-        this._buffers = valueRow('Buffers');
-        this._swap = valueRow('Swap used');
-        [this._cached, this._buffers, this._swap].forEach(r => {
-            r.label.add_style_class_name('muna-value-indent');
-            memCard.add_child(r.actor);
-        });
-        this._memGraph = this.graphBlock({color: [0.35, 0.83, 0.98], max: 100});
-        this._memGraph.scale.text = '100%';
-        memCard.add_child(this._memGraph.actor);
-
-        card.add_child(this._memBlock);
-
-        this._upBlock = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        this._upBlock.add_child(menuDivider());
-        const up = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true});
-        up.add_child(new St.Icon({icon_name: 'preferences-system-time-symbolic', style_class: 'muna-meter-icon'}));
-        this._uptime = new St.Label({text: '', style_class: 'muna-value-label', y_align: Clutter.ActorAlign.CENTER});
-        up.add_child(this._uptime);
-        this._upBlock.add_child(up);
-        card.add_child(this._upBlock);
+        // memory: its pressure, how full it is, how long the computer has been on
+        this._memBlock = qCard();
+        root.add_child(this._memBlock);
+        this._pressure = dotRow('Pressure', 'Normal', '#57e389');
+        this._memBlock.add_child(this._pressure.actor);
+        this._mem = qMeter('Memory');
+        this._memBlock.add_child(this._mem.actor);
+        this._swap = dotRow('Swap used');
+        this._memBlock.add_child(this._swap.actor);
+        this._up = dotRow('Up for');
+        this._memBlock.add_child(this._up.actor);
         return root;
     }
 
@@ -119,41 +82,29 @@ export class SystemWidget extends MonitorWidget {
         const disk = s.disks?.find(d => d.temp !== null)?.temp ?? null;
         const unit = this._settings?.get('temp-unit') ?? 'C';
         const blocks = new Set(this._settings?.get('system-blocks') ?? []);
-        this._tempBlock.visible = blocks.has('temps');
+        // the head: the processor's temperature (or the graphics card's, the disk's)
+        const temps = [['CPU', s.temp], ['GPU', s.gpu?.temp ?? null], ['Disk', disk]].filter(([, t]) => t != null);
+        this._head.actor.visible = blocks.has('temps') || !blocks.has('cpu');
+        this._head.set(temps.length
+            ? {title: temps.map(([n, t]) => `${n} ${formatTemperature(t, unit)}`).slice(0, 2).join(' · '), subtitle: 'Temperatures'}
+            : {title: 'System', subtitle: 'This computer gives no temperatures'});
         this._cpu.actor.visible = this._cpuGraph.actor.visible = blocks.has('cpu');
-        this._memBlock.visible = blocks.has('memory');
-        this._upBlock.visible = blocks.has('uptime');
-        const scale = !!this._settings?.get('graph-scale');
-        [this._cpuGraph, this._gpuGraph, this._memGraph].forEach(g => (g.scale.visible = scale));
-        this._tempA.set(formatTemperature(s.temp, unit));
-        if (s.gpu?.temp != null) {
-            this._tempB.actor.get_first_child().get_last_child().text = 'GPU';
-            this._tempB.set(formatTemperature(s.gpu.temp, unit));
-        } else {
-            this._tempB.actor.get_first_child().get_last_child().text = 'Disk';
-            this._tempB.set(formatTemperature(disk, unit));
-        }
-        // a temperature the computer does not give is left out, not shown as "n/a"
-        this._tempA.actor.visible = s.temp != null;
-        this._tempB.actor.visible = s.gpu?.temp != null || disk != null;
-        this._tempBlock.visible = blocks.has('temps') && (this._tempA.actor.visible || this._tempB.actor.visible);
-        this._cpu.set(s.cpu, s.cpu >= 90);
+        this._memBlock.visible = blocks.has('memory') || blocks.has('uptime');
+        this._mem.actor.visible = this._pressure.actor.visible = this._swap.actor.visible = blocks.has('memory');
+        this._up.actor.visible = blocks.has('uptime') && !!s.uptime;
+        this._cpuGraph.scale.visible = !!this._settings?.get('graph-scale');
+        this._cpu.set(s.cpu / 100, `${Math.round(s.cpu)} %`, s.cpu >= 90);
         this._cpuGraph.graph.setValues(s.history.cpu);
         this._fillApps(s.apps ?? []);
-        this._gpuBox.visible = s.gpu?.busy != null;
-        if (s.gpu?.busy != null) {
-            this._gpu.set(s.gpu.busy, s.gpu.busy >= 90);
-            this._gpuHistory = [...(this._gpuHistory ?? []), s.gpu.busy].slice(-60);
-            this._gpuGraph.graph.setValues(this._gpuHistory);
-        }
+        this._gpu.actor.visible = s.gpu?.busy != null;
+        if (s.gpu?.busy != null)
+            this._gpu.set(s.gpu.busy / 100, `${Math.round(s.gpu.busy)} %`, s.gpu.busy >= 90);
         const level = s.mem.percent >= 92 ? 'bad' : s.mem.percent >= 80 ? 'warn' : 'good';
-        this._pressure.set(level === 'good' ? 'Normal' : level === 'warn' ? 'High' : 'Critical', level);
-        this._memTotal.text = `${formatBytes(s.mem.used)} / ${formatBytes(s.mem.total)}`;
-        this._cached.set(formatBytes(Math.max(0, s.mem.cached)));
-        this._buffers.set(formatBytes(s.mem.buffers));
+        this._pressure.set(level === 'good' ? 'Normal' : level === 'warn' ? 'High' : 'Critical');
+        this._pressure.setColor(level === 'good' ? '#57e389' : level === 'warn' ? '#f2a93b' : '#ff6b6b');
+        this._mem.set(s.mem.percent / 100, `${formatBytes(s.mem.used)} / ${formatBytes(s.mem.total)}`, level === 'bad');
         this._swap.set(formatBytes(s.swapBytes?.used ?? 0));
-        this._memGraph.graph.setValues(s.history.mem);
-        this._uptime.text = s.uptime ? `Up for ${formatDuration(s.uptime)}` : '';
+        this._up.set(s.uptime ? formatDuration(s.uptime) : '');
     }
 
     /** The programs using the processor most, under the CPU line. */
@@ -163,12 +114,9 @@ export class SystemWidget extends MonitorWidget {
             return;
         this._appsKey = key;
         this._cpu.detail.destroy_all_children();
-        apps.forEach(app => {
-            const row = valueRow(app.name, `${app.cpu}%`);
-            row.label.add_style_class_name('muna-value-indent');
-            this._cpu.detail.add_child(row.actor);
-        });
+        const cores = Math.max(1, GLib.get_num_processors());
+        apps.forEach(app => this._cpu.detail.add_child(dotRow(app.name, `${Math.round(app.cpu / cores)} %`).actor));
         if (apps.length === 0)
-            this._cpu.detail.add_child(new St.Label({text: 'Nothing busy right now.', style_class: 'muna-monitor-note'}));
+            this._cpu.detail.add_child(menuNote('Nothing busy right now.'));
     }
 }

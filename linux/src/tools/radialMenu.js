@@ -2,7 +2,6 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {currentGlassManager} from '../ui/liquidGlass.js';
 
 /** Every action the wheel can start: id -> [title, subtitle, icon]. */
 export const RADIAL_ACTIONS = {
@@ -70,7 +69,7 @@ export function showRadialMenu(actions, run) {
     const hubIcon = new St.Icon({icon_name: 'view-app-grid-symbolic', icon_size: 22, style: 'color: rgba(255,255,255,0.75);',
         x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.END});
     const hubLabel = new St.Label({text: '', x_align: Clutter.ActorAlign.CENTER, y_expand: true, y_align: Clutter.ActorAlign.START,
-        style: 'color: white; font-size: 9pt; font-weight: 600; margin-top: 4px; text-align: center; max-width: 72px;'});
+        style: 'color: white; font-size: 12px; font-weight: 600; margin-top: 4px; text-align: center; max-width: 72px;'});
     hubLabel.clutter_text.line_wrap = true;
     hubLabel.clutter_text.ellipsize = 3;    // Pango.EllipsizeMode.END
     hub.add_child(hubIcon);
@@ -211,10 +210,6 @@ export function showRadialMenu(actions, run) {
     });
 
     Main.uiGroup.add_child(shade);
-    // Liquid glass: the wheel and its buttons are glass
-    const glasses = [currentGlassManager()?.attach(wheel, () => ({radius: wheel.width / 2})),
-        ...buttons.map(b => currentGlassManager()?.attach(b, () => ({radius: b.width / 2})))];
-    shade.connect('destroy', () => glasses.forEach(g => g?.remove()));
     grab = Main.pushModal(shade);
     // open: the wheel grows out of the pointer, the buttons follow one after the other
     shade.ease({opacity: 255, duration: OPEN_MS, mode: Clutter.AnimationMode.EASE_OUT_QUAD});

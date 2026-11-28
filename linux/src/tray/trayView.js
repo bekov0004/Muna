@@ -4,6 +4,8 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {FileItem} from './fileItem.js';
+import {EmptyState} from '../ui/emptyState.js';
+import {DashedFrame} from '../ui/dashedFrame.js';
 
 /**
  * The Tray: the second mode of the capsule. A row of the files you put aside
@@ -45,7 +47,7 @@ export class TrayView extends St.BoxLayout {
         header.add_child(this._clear);
         this.add_child(header);
 
-        // Files, or the empty / drop invitation, in the same area.
+        // Files, the empty place, or the drop targets while dragging, in the same area.
         const area = new St.Widget({
             layout_manager: new Clutter.BinLayout(),
             x_expand: true,
@@ -63,6 +65,17 @@ export class TrayView extends St.BoxLayout {
         });
         this._row = new St.BoxLayout({style_class: 'muna-tray-row', y_expand: true});
         this._scroll.add_child(this._row);
+        // after the files, a dashed tile says where more come from (the design, 7.3.4)
+        // (x_expand set: the frame's expand must not spread to the row)
+        this._more = new St.Widget({style_class: 'muna-tray-more', layout_manager: new Clutter.BinLayout(), x_expand: false, y_expand: true});
+        this._more.add_child(new DashedFrame({radius: 13, width: 1, rgba: [0.69, 0.72, 1, 0.3]}));
+        this._more.add_child(new St.Label({
+            text: 'Drop files on the capsule',
+            style_class: 'muna-tray-more-text',
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
+        this._more.get_last_child().clutter_text.line_wrap = true;
         // The wheel scrolls the row sideways.
         this._scroll.connect('scroll-event', (_actor, event) => this._onScroll(event));
         area.add_child(this._scroll);
@@ -122,6 +135,7 @@ export class TrayView extends St.BoxLayout {
         rune.connect('repaint', area => this._paintLocalSendMark(area));
         btBox.add_child(rune);
         btBox.add_child(new St.Label({text: 'LocalSend', style_class: 'muna-tray-localsend-title'}));
+        btBox.add_child(new St.Label({text: 'Drop here to send them', style_class: 'muna-tray-target-hint'}));
         this._localsend.add_child(btBox);
 
         const targets = new St.BoxLayout({x_expand: true, y_expand: true, style_class: 'muna-tray-targets'});
@@ -131,12 +145,22 @@ export class TrayView extends St.BoxLayout {
         this._targets = targets;
         area.add_child(targets);
 
+        this._empty = new EmptyState({iconName: 'muna-tray-symbolic', text: 'Drop files on the capsule to keep them here'});
+        area.add_child(this._empty);
+
         this._files.connectObject('changed', () => this._rebuild(), this);
+        // its size is only right once it is styled on screen: ask again then
+        this.connect('notify::mapped', () => {
+            if (this.mapped)
+                this.onContentChanged?.();
+        });
         this._rebuild();
     }
 
     destroy() {
         this._files.disconnectObject(this);
+        if (!this._more.get_parent())
+            this._more.destroy();
         super.destroy();
     }
 
@@ -275,6 +299,8 @@ export class TrayView extends St.BoxLayout {
 
     _rebuild() {
         const items = this._files.items;
+        if (this._more.get_parent())
+            this._row.remove_child(this._more);
         this._row.destroy_all_children();
         for (const item of items) {
             this._row.add_child(new FileItem({
@@ -287,6 +313,7 @@ export class TrayView extends St.BoxLayout {
                 drag: this._drag,
             }));
         }
+        this._row.add_child(this._more);
         this._update();
     }
 
@@ -300,14 +327,14 @@ export class TrayView extends St.BoxLayout {
         // While dragging, only the drop targets are shown: no caption, no files.
         this._header.visible = !active;
 
-        // The target shows when there is nothing in the tray, or while dragging.
-        const showTarget = active || count === 0;
+        // The drop targets show only while dragging; an empty tray says what it is for.
+        const showTarget = active;
         this._target.visible = showTarget;
+        this._empty.visible = count === 0 && !active;
         this._scroll.visible = count > 0 && !active;
         if (showTarget) {
             this._targetTitle.text = 'Files Tray';
-            // empty: say what it is for
-            this._targetHint.text = active ? '' : 'Drop files here to keep them at hand';
+            this._targetHint.text = 'Drop files here to keep them at hand';
         }
         if (armed && active)
             this._target.add_style_pseudo_class('active');
@@ -321,6 +348,7 @@ export class TrayView extends St.BoxLayout {
         this._targetHint.visible = this._targetHint.text !== '';
         this._outline.queue_repaint();
         this._targetIcon.queue_repaint();
+        this.onContentChanged?.();
     }
 
     _onScroll(event) {

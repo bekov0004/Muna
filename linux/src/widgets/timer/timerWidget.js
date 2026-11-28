@@ -98,14 +98,17 @@ export class TimerWidget extends MunaWidget {
             style_class: 'muna-timer-time',
             y_align: Clutter.ActorAlign.CENTER,
         });
-        for (const actor of [this._minus, this._time, this._plus])
+        for (const actor of [this._minus, this._time, this._plus]) {
+            actor.y_align = Clutter.ActorAlign.CENTER;
             display.add_child(actor);
+        }
         root.add_child(display);
 
+        // running: a short amber bar under the time (the design, 7.3.3)
         this._bar = new St.Widget({
             style_class: 'muna-timer-bar',
             layout_manager: new Clutter.BinLayout(),
-            x_expand: true,
+            x_align: Clutter.ActorAlign.CENTER,
         });
         this._fill = new St.Widget({
             style_class: 'muna-timer-fill',
@@ -116,19 +119,18 @@ export class TimerWidget extends MunaWidget {
         this._bar.connect('notify::width', () => this._update());
         root.add_child(this._bar);
 
-        this._presets = new St.BoxLayout({style_class: 'muna-timer-presets', x_expand: true});
+        this._presets = new St.BoxLayout({style_class: 'muna-timer-presets', x_align: Clutter.ActorAlign.CENTER});
         for (const minutes of PRESETS) {
             const chip = createButton({
                 label: `${minutes}m`,
                 styleClass: 'muna-timer-chip',
-                expand: true,
                 onClick: () => this._timer.setDuration(minutes * MINUTE),
             });
             this._presets.add_child(chip);
         }
         root.add_child(this._presets);
 
-        this._actions = new St.BoxLayout({style_class: 'muna-timer-actions', x_expand: true});
+        this._actions = new St.BoxLayout({style_class: 'muna-timer-actions', x_expand: true, x_align: Clutter.ActorAlign.FILL});
         root.add_child(this._actions);
 
         this._timer.connectObject('tick', () => this._update(), this);
@@ -152,11 +154,14 @@ export class TimerWidget extends MunaWidget {
             return;
         const state = this._timer.state;
         const remaining = this._timer.remaining;
-        this._time.text = state === TimerState.DONE ? 'DONE' : formatRemaining(remaining);
-        if (state === TimerState.DONE)
-            this._time.add_style_pseudo_class('done');
-        else
-            this._time.remove_style_pseudo_class('done');
+        this._time.text = state === TimerState.DONE ? 'Done' : formatRemaining(remaining);
+        // done: "Done" in amber; running or paused: the time in amber
+        for (const [pseudo, on] of [['done', state === TimerState.DONE], ['running', state === TimerState.RUNNING || state === TimerState.PAUSED]]) {
+            if (on)
+                this._time.add_style_pseudo_class(pseudo);
+            else
+                this._time.remove_style_pseudo_class(pseudo);
+        }
 
         const idle = state === TimerState.IDLE;
         this._minus.visible = this._plus.visible = idle;
@@ -169,28 +174,33 @@ export class TimerWidget extends MunaWidget {
             ? Math.round(this._bar.width * Math.min(Math.max(fraction, 0), 1)) : 0);
 
         this._actions.destroy_all_children();
-        const add = (label, iconName, handler, primary = false) => this._actions.add_child(createButton({
+        // idle: a wide white Start; otherwise small chips in the middle (the design, 7.3.3)
+        this._actions.x_align = idle ? Clutter.ActorAlign.FILL : Clutter.ActorAlign.CENTER;
+        const add = (label, handler, kind = 'chip', iconName = null) => this._actions.add_child(createButton({
             label,
             iconName,
-            styleClass: `muna-timer-action${primary ? ' muna-timer-primary' : ''}`,
-            expand: true,
+            styleClass: kind === 'start' ? 'muna-timer-action muna-timer-primary'
+                : kind === 'white' ? 'muna-timer-chip muna-timer-primary' : 'muna-timer-chip muna-timer-run',
+            expand: kind === 'start',
             onClick: handler,
         }));
         switch (state) {
         case TimerState.IDLE:
-            add('Start', 'media-playback-start-symbolic', () => this._timer.start(), true);
+            add('Start', () => this._timer.start(), 'start', 'media-playback-start-symbolic');
             break;
         case TimerState.RUNNING:
-            add('Pause', 'media-playback-pause-symbolic', () => this._timer.pause(), true);
-            add('Reset', 'view-refresh-symbolic', () => this._timer.reset());
+            add('Pause', () => this._timer.pause());
+            add('Reset', () => this._timer.reset());
             break;
         case TimerState.PAUSED:
-            add('Resume', 'media-playback-start-symbolic', () => this._timer.resume(), true);
-            add('Reset', 'view-refresh-symbolic', () => this._timer.reset());
+            add('Resume', () => this._timer.resume());
+            add('Reset', () => this._timer.reset());
             break;
         case TimerState.DONE:
-            add('+1 min', 'list-add-symbolic', () => this._timer.addTime(MINUTE), true);
-            add('Reset', 'view-refresh-symbolic', () => this._timer.reset());
+            add('Again', () => {
+                this._timer.reset();
+                this._timer.start();
+            }, 'white');
             break;
         }
     }

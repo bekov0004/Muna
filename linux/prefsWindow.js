@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Gtk from 'gi://Gtk';
 import {gettext as _} from './prefsText.js';
-import {SETTINGS_THEME, accentCss, glassPalette} from './theme.js';
+import {SETTINGS_THEME, accentCss} from './theme.js';
 
 import {DEFAULT_WIDGETS, WIDGET_INFO} from './src/utils/widgetInfo.js';
 import * as R from './src/utils/reminders.js';
@@ -221,7 +221,7 @@ const WIDGET_ICONS = {
     companion: 'face-smile-symbolic',
 };
 
-const ALL_APPEARANCE_KEYS = ['panel-color', 'panel-opacity', 'corner-radius', 'background-opacity', 'liquid-glass', 'shadow-strength',
+const ALL_APPEARANCE_KEYS = ['panel-color', 'panel-opacity', 'corner-radius', 'background-opacity', 'shadow-strength',
     'row-height', 'content-padding', 'widget-spacing', 'show-dividers', 'capsule-butterfly', 'butterfly-flap', 'butterfly-flap-every'];
 
 /**
@@ -246,7 +246,7 @@ export class MunaPreferences {
         window.title = _('Muna');
         window.search_enabled = false;
 
-        this._installTheme(settings);
+        this._installTheme();
         // Muna's own icons (the butterfly of the top-bar button) are found by name
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
             Gio.File.new_for_uri(import.meta.url).get_parent().get_child('icons').get_path());
@@ -330,7 +330,8 @@ export class MunaPreferences {
             mic: 'mic', radial: 'radial', output: 'output', sound: 'page-sound', tools: 'page-awake',
         };
 
-        const sidebar = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['muna-sidebar'], width_request: 236});
+        // the left list keeps its width (the design: 290); its rows' labels must not widen it
+        const sidebar = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['muna-sidebar'], width_request: 290, hexpand: false});
         const search = new Gtk.SearchEntry({placeholder_text: _('Search'), hexpand: true});
         sidebar.append(search);
         // margin_end: room on the right for the scrollbar, so it does not lie over the rows
@@ -362,7 +363,8 @@ export class MunaPreferences {
             content.margin_start = content.margin_end = 0;
             content.margin_top = 8;
             page.append(content);
-            const clamp = new Adw.Clamp({maximum_size: 1000, tightening_threshold: 760, child: page, valign: Gtk.Align.START, hexpand: true});
+            // the page is a column in the middle (the design: about 780 wide)
+            const clamp = new Adw.Clamp({maximum_size: 780, tightening_threshold: 600, child: page, valign: Gtk.Align.START, hexpand: true});
             const scroller = new Gtk.ScrolledWindow({child: clamp, hscrollbar_policy: Gtk.PolicyType.NEVER, vexpand: true, hexpand: true});
             stack.add_named(scroller, name);
         };
@@ -463,7 +465,7 @@ export class MunaPreferences {
 
         const layout = new Gtk.Box({orientation: Gtk.Orientation.HORIZONTAL, vexpand: true, hexpand: true});
         const right = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, hexpand: true});
-        right.append(header);
+        right.append(new Adw.Clamp({maximum_size: 780, tightening_threshold: 600, child: header, hexpand: true}));
         right.append(stack);
         layout.append(sidebar);
         layout.append(right);
@@ -660,7 +662,7 @@ export class MunaPreferences {
             [_('Everything'), _('Every tool and widget.'), WIDGET_IDS],
             [_('Essentials'), _('Windows, quick toggles, focus, system and sound, with music, calendar and mirror.'),
                 ['media', 'calendar', 'mirror', 'awake', 'sound', 'system', 'utilities', 'toggles', 'windows']],
-            [_('Light island'), _('Only music and calendar; the tools window is empty.'), ['media', 'calendar']],
+            [_('Light capsule'), _('Only music and calendar; the Quick panel is empty.'), ['media', 'calendar']],
         ];
         const summary = new Gtk.Box({orientation: Gtk.Orientation.VERTICAL, css_classes: ['s-card'], margin_bottom: 6});
         const count = new Gtk.Label({xalign: 0, css_classes: ['s-row-title'], margin_top: 10, margin_bottom: 2});
@@ -736,24 +738,12 @@ export class MunaPreferences {
             : choice === 'dark' ? Adw.ColorScheme.FORCE_DARK : Adw.ColorScheme.DEFAULT;
     }
 
-    _installTheme(settings = null) {
+    _installTheme() {
         const provider = new Gtk.CssProvider();
         const style = Adw.StyleManager.get_default();
-        // Liquid glass: the window's surfaces turn into tints, the shell puts real glass under the window
-        const liquid = () => {
-            try {
-                return settings?.get_boolean('liquid-glass') ?? false;
-            } catch {
-                return false;
-            }
-        };
-        const apply = () => {
-            const palette = SETTINGS_THEME[style.dark ? 'dark' : 'light'];
-            provider.load_from_string(buildCss(liquid() ? glassPalette(palette, style.dark) : palette));
-        };
+        const apply = () => provider.load_from_string(buildCss(SETTINGS_THEME[style.dark ? 'dark' : 'light']));
         apply();
         style.connect('notify::dark', apply);
-        settings?.connect('changed::liquid-glass', apply);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
     }
@@ -1028,7 +1018,7 @@ export class MunaPreferences {
         const HIDE = [['never', _('Never')], ['intellihide', _('When a window touches it')], ['always', _('Always')]];
         form.append(new Gtk.Label({label: _('Top bar'), css_classes: ['s-card-title'], xalign: 0, margin_start: 4}));
         this._row(form, _('Top bar'), this._dropdown(settings, 'top-bar-style', [['gnome', _('GNOME\'s')], ['muna', _('Muna\'s')]]),
-            _('Muna\'s: the Muna bar takes the place of GNOME\'s on the main monitor, with every item of GNOME\'s bar (quick settings, keyboard layout, other extensions …) and their menus; on liquid glass when that is on.'));
+            _('Muna\'s: the Muna bar takes the place of GNOME\'s on the main monitor, with every item of GNOME\'s bar (quick settings, keyboard layout, other extensions …) and their menus.'));
         this._row(form, _('Hide the top bar'), this._dropdown(settings, 'topbar-hide', HIDE),
             _('Hidden, it comes out when you push the pointer against the top edge of the screen, also over an app in full screen. The capsule hides and comes out with it.'));
         this._toggleRow(form, settings, 'muna-bar', '', _('Muna bar on the other monitors'),
@@ -1572,10 +1562,10 @@ export class MunaPreferences {
         this._rule(form);
         this._row(form, _('Corner radius'), this._slider(settings, 'corner-radius', [8, 44, 1]),
             _('In pixels.'));
-        this._toggleRow(form, settings, 'liquid-glass', '', _('Liquid glass'),
-            _('The desktop behind the capsule is not blurred but bent at its rim like through real glass: refraction, colours at the edge, a lit rim.'));
         this._row(form, _('Transparency'), this._slider(settings, 'background-opacity', [0.5, 1.0, 0.02], 2),
             _('Background opacity: 1.00 is fully opaque.'));
+        this._row(form, _('Shadow'), this._slider(settings, 'shadow-strength', [0, 1, 0.05], 2),
+            _('0 turns the shadow off.'));
 
         this._rule(form);
         const picker = new Gtk.ColorDialogButton({dialog: new Gtk.ColorDialog({with_alpha: false})});

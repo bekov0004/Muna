@@ -23,12 +23,7 @@
       </choices>
       <default>'gnome'</default>
       <summary>Top bar</summary>
-      <description>gnome: GNOME's own top bar. muna: Muna's bar takes its place on the primary monitor, with every item of GNOME's bar (and liquid glass when that is on).</description>
-    </key>
-    <key name="liquid-glass" type="b">
-      <default>false</default>
-      <summary>Liquid glass</summary>
-      <description>The desktop behind the capsule is bent at its rim like through real glass (refraction, colours, a lit rim) instead of the plain indigo background.</description>
+      <description>gnome: GNOME's own top bar. muna: Muna's bar takes its place on the primary monitor, with every item of GNOME's bar.</description>
     </key>
     <key name="background-opacity" type="d">
       <default>0.98</default>
@@ -794,7 +789,7 @@
     </key>
 
     <key name="awake-icon" type="s">
-      <default>'weather-clear-night-symbolic'</default>
+      <default>'muna-cup-symbolic'</default>
       <summary>Keep awake: icon</summary>
       <description>The icon of the top-bar button while the computer is kept awake.</description>
     </key>

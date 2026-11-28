@@ -21,8 +21,8 @@ const local = date => GLib.DateTime.new_local(date.getFullYear(), date.getMonth(
     date.getDate(), 0, 0, 0);
 
 /**
- * A compact, glanceable calendar: the month, a strip of days around the
- * selected one (today is accented), and the events of that day.
+ * A compact, glanceable calendar: the month, the week (Monday to Sunday) of the
+ * selected day (today is accented), and the events of that day.
  */
 export class CalendarWidget extends MunaWidget {
     static id = 'calendar';
@@ -38,7 +38,7 @@ export class CalendarWidget extends MunaWidget {
         this._announced = new Set();
         this._now = new Date();
         this._selected = startOfDay(this._now); // the day whose events are shown
-        this._center = this._selected;          // the middle of the strip
+        this._center = this._selected;          // a day of the week the strip shows
         this._ui = context.ui;
         this._big = new CalendarBigActivity({
             calendar: this._calendar,
@@ -207,7 +207,8 @@ export class CalendarWidget extends MunaWidget {
     _rebuild() {
         if (!this._view)
             return;
-        const first = addDays(this._center, -Math.floor(DAYS_SHOWN / 2));
+        // the week of the strip, Monday to Sunday
+        const first = addDays(this._center, 1 - (this._center.getDay() || 7));
         const last = addDays(first, DAYS_SHOWN);
         // Events for the strip, plus the next two weeks for "next up".
         this._calendar.setRange('view', startOfDay(this._now) < first ? startOfDay(this._now) : first,

@@ -32,7 +32,7 @@ export class FileService extends Signals.EventEmitter {
         module.connect('connected', () => this.load());
     }
 
-    /** [{uri, name, icon (Gio.Icon), thumbnail (Gio.Icon|null), isDirectory}] */
+    /** [{uri, name, icon (Gio.Icon), thumbnail (Gio.Icon|null), isDirectory, size (bytes)}] */
     get items() {
         return this._items;
     }
@@ -44,6 +44,7 @@ export class FileService extends Signals.EventEmitter {
             icon: this._icon(item.icon),
             thumbnail: item.thumbnail ? new Gio.FileIcon({file: Gio.File.new_for_path(item.thumbnail)}) : null,
             isDirectory: item.isDirectory,
+            size: item.size ?? 0,
         }));
         this.emit('changed');
     }

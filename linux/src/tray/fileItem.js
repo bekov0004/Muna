@@ -1,4 +1,5 @@
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
@@ -30,7 +31,7 @@ export class FileItem extends St.Widget {
             y_expand: true,
             can_focus: true,
         });
-        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER});
+        const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-file-box', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
         box.add_child(new St.Icon({
             gicon: item.thumbnail ?? item.icon,
             style_class: 'muna-file-icon',
@@ -40,6 +41,12 @@ export class FileItem extends St.Widget {
         name.clutter_text.ellipsize = Pango.EllipsizeMode.MIDDLE;
         name.x_align = Clutter.ActorAlign.CENTER;
         box.add_child(name);
+        // under the name: its size, or "folder" (the design, 7.3.4)
+        box.add_child(new St.Label({
+            text: item.isDirectory ? 'folder' : GLib.format_size(item.size ?? 0),
+            style_class: 'muna-file-size',
+            x_align: Clutter.ActorAlign.CENTER,
+        }));
         main.set_child(box);
         main.connect('clicked', () => onOpen(item.uri));
         this.add_child(main);

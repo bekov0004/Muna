@@ -5,7 +5,7 @@ import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {ToolActions} from '../../tools/toolActions.js';
-import {menuCard} from '../../ui/menuKit.js';
+import {menuNote, qCard} from '../../ui/menuKit.js';
 import {RowList} from '../../ui/rowList.js';
 import {MunaWidget} from '../widget.js';
 
@@ -45,6 +45,7 @@ export class TogglesWidget extends MunaWidget {
 
     _switch(id, getter, setter) {
         return {
+            getter,
             control: () => {
                 const toggle = new PopupMenu.Switch(!!getter());
                 this._switches.set(id, {toggle, getter});
@@ -59,9 +60,14 @@ export class TogglesWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-toggles muna-menu-page', x_expand: true});
-        const card = menuCard();
-        card.add_style_class_name('muna-bigcard');
+        // the design (7.4.5): tiles in three columns, a switch that is on violet; the line under them says
+        // what the tile under the pointer does
+        const card = qCard();
         root.add_child(card);
+        const tiles = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        card.add_child(tiles);
+        const note = menuNote('Point at a tile to see what it does.');
+        card.add_child(note);
         const a = this._actions;
         const items = [
             {id: 'theme', icon: 'weather-clear-night-symbolic', title: this._actions.dark ? 'Switch to light mode' : 'Switch to dark mode', desc: 'Changes the colour scheme of the whole desktop', onClick: () => {
@@ -70,8 +76,10 @@ export class TogglesWidget extends MunaWidget {
                 this._list.render();
             }},
             {id: 'night', icon: 'night-light-symbolic', title: 'Night light', desc: 'Warmer colours in the evening', ...this._switch('night', () => a.night, () => a.toggleNight())},
-            {id: 'kbdlight', icon: 'keyboard-brightness-symbolic', title: 'Keyboard light', desc: 'Turns the light of the keyboard on or off', ...this._switch('kbd', () => this._kbdOn, on => this._setKbd(on))},
             {id: 'mic', icon: 'microphone-sensitivity-muted-symbolic', title: 'Mute microphone', desc: 'Mutes or unmutes the microphone for every app', onClick: () => a.toggleMic()},
+            {id: 'kbdlight', icon: 'keyboard-brightness-symbolic', title: 'Keyboard light', desc: 'Turns the light of the keyboard on or off', ...this._switch('kbd', () => this._kbdOn, on => this._setKbd(on))},
+            ...(this._files ? [{id: 'hidden', icon: 'view-reveal-symbolic', title: 'Show hidden files', subtitle: 'The file manager shows files that start with a dot', desc: 'The file manager shows files that start with a dot',
+                ...this._switch('hidden', () => this._files.get_boolean('show-hidden'), on => this._files.set_boolean('show-hidden', on))}] : []),
             {id: 'trash', icon: 'user-trash-symbolic', title: 'Empty the Trash', desc: 'Asks twice: the files in it are gone for good', onClick: () => a.emptyTrash(text => {
                 const item = this._list.items.find(i => i.id === 'trash');
                 item.title = text === 'Empty trash' ? 'Empty the Trash' : 'Sure? Press again';
@@ -79,14 +87,12 @@ export class TogglesWidget extends MunaWidget {
             })},
             {id: 'eject', icon: 'media-eject-symbolic', title: 'Eject all disks', desc: 'Unmounts every USB drive and card', onClick: () => a.ejectAll()},
         ];
-        if (this._files)
-            items.push({id: 'hidden', icon: 'view-reveal-symbolic', title: 'Show hidden files', subtitle: 'The file manager shows files that start with a dot', desc: 'The file manager shows files that start with a dot',
-                ...this._switch('hidden', () => this._files.get_boolean('show-hidden'), on => this._files.set_boolean('show-hidden', on))});
         items.push(
             {id: 'lock', icon: 'system-lock-screen-symbolic', title: 'Lock the screen', desc: 'Locks the session right now', onClick: () => a.lock()},
             {id: 'screenoff', icon: 'video-display-symbolic', title: 'Turn off the display', desc: 'The screen goes dark until you touch the keyboard or the mouse', onClick: () => a.screenOff()},
             {id: 'saver', icon: 'preferences-desktop-screensaver-symbolic', title: 'Start the screen saver', desc: 'Blanks and locks the screen', onClick: () => a.screensaver()});
-        this._list = new RowList({page: 'toggles', settings: this._settings, card, items});
+        this._list = new RowList({page: 'toggles', settings: this._settings, card: tiles, items, grid: 3, note});
+        this._list._noteDefault = note.text;
         a.watch(this, () => this._sync());
         this._files?.connectObject('changed::show-hidden', () => this._sync(), this);
         return root;
@@ -110,6 +116,7 @@ export class TogglesWidget extends MunaWidget {
 
     _sync() {
         this._switches.forEach(({toggle, getter}) => (toggle.state = !!getter()));
+        this._list?.syncTiles();
     }
 
     onPageShown() {

@@ -2,12 +2,11 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {HorizontalSlider} from '../../ui/horizontalSlider.js';
 import {dropAt, placeSide, SIDES, sideOf} from '../../displays/arrange.js';
 import {ArrangeMap} from '../../displays/arrangeMap.js';
-import {checkRow, collapsible, iconRow, menuCard, menuChip, menuChips, menuDivider, menuHeader, setChecked} from '../../ui/menuKit.js';
+import {chipFlow, menuNote, qCard, setChecked, switchRow} from '../../ui/menuKit.js';
 import {MunaWidget} from '../widget.js';
 
 const POWER_SCHEMA = 'org.gnome.settings-daemon.plugins.power';
@@ -44,56 +43,11 @@ export class DisplaysWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-displays muna-menu-page', x_expand: true});
-        const card = menuCard();
-        card.add_style_class_name('muna-bigcard');
+        // the monitors: how they stand and the brightness of each (the design, 7.4.4)
+        const card = qCard();
         root.add_child(card);
 
-        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        card.add_child(this._list);
-
-        this._kbdBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, visible: false});
-        this._kbdBox.add_child(menuDivider());
-        this._kbd = this._sliderRow('input-keyboard-symbolic', 'Keyboard light', value => this._setKeyboard(value));
-        this._kbdBox.add_child(this._kbd.actor);
-        card.add_child(this._kbdBox);
-        this._firstDivider = menuDivider();
-        card.add_child(this._firstDivider);
-
-        const switches = [
-            ['Night light', 'weather-clear-night-symbolic', () => this._color?.get_boolean('night-light-enabled'), on => this._color?.set_boolean('night-light-enabled', on)],
-            ['Automatic brightness', 'display-brightness-symbolic', () => this._power?.get_boolean('ambient-enabled'), on => this._power?.set_boolean('ambient-enabled', on)],
-        ];
-        this._switches = [];
-        for (const [title, icon, get, set] of switches) {
-            if ((title === 'Night light' && !this._color) || (title !== 'Night light' && !this._power))
-                continue;
-            const toggle = new PopupMenu.Switch(false);
-            const {row} = iconRow({icon, title, control: toggle, onClick: () => set(!toggle.state)});
-            row.add_style_class_name('muna-option-line');
-            card.add_child(row);
-            const divider = menuDivider();
-            card.add_child(divider);
-            this._switches.push({toggle, get});
-            // automatic brightness needs a light sensor: without one the switch would do nothing
-            if (title === 'Automatic brightness') {
-                row.visible = divider.visible = false;
-                this._whenLightSensor(() => (row.visible = divider.visible = true));
-            }
-        }
-        this._color?.connectObject('changed::night-light-enabled', () => this._sync(), this);
-        this._power?.connectObject('changed', () => this._sync(), this);
-
-        const options = collapsible('Options', {open: false});
-        card.add_child(options.actor);
-        if (this._power) {
-            this._dim = checkRow({title: 'Dim the screen when inactive', subtitle: 'The screen gets darker after a while without activity.', state: this._power.get_boolean('idle-dim'), onToggle: on => this._power.set_boolean('idle-dim', on)});
-            options.body.add_child(this._dim.row);
-        }
-
-        this._arrangeBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        this._arrangeBox.add_child(menuHeader('Arrangement'));
-        const arrange = menuCard();
-        this._arrangeBox.add_child(arrange);
+        this._arrangeBox = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qcard-list', x_expand: true});
         this._map = new ArrangeMap({
             onSelect: id => {
                 this._selected = id;
@@ -101,30 +55,53 @@ export class DisplaysWidget extends MunaWidget {
             },
             onDrop: (id, x, y) => this._drop(id, x, y),
         });
-        const mapWrap = new St.BoxLayout({style_class: 'muna-card-pad', x_expand: true});
-        mapWrap.add_child(this._map);
-        arrange.add_child(mapWrap);
-        this._which = new St.Label({style_class: 'muna-arrange-which', x_expand: true});
-        arrange.add_child(this._which);
-        const sides = SIDES.map(side => ({id: side, label: SIDE_LABELS[side], icon: SIDE_ICONS[side]}));
-        const {actor: sideChips, buttons: sideButtons} = menuChips(sides, side => this._placeSide(side), {perRow: 4});
+        this._arrangeBox.add_child(this._map);
+        this._which = new St.Label({style_class: 'muna-qnote', x_expand: true});
+        this._arrangeBox.add_child(this._which);
+        const sides = SIDES.map(side => ({id: side, label: SIDE_LABELS[side]}));
+        const {actor: sideChips, buttons: sideButtons} = chipFlow(sides, side => this._placeSide(side), {perRow: 4});
         this._sideButtons = sideButtons;
-        const sideWrap = new St.BoxLayout({style_class: 'muna-card-pad', x_expand: true});
-        sideWrap.add_child(sideChips);
-        arrange.add_child(sideWrap);
-        this._mainChip = menuChip({label: 'Make it the main monitor', icon: 'starred-symbolic', onClick: () => this._makeMain()});
-        const mainRow = new St.BoxLayout({style_class: 'muna-chips-row muna-card-pad', x_expand: true});
-        mainRow.add_child(this._mainChip);
-        arrange.add_child(mainRow);
-        arrange.add_child(menuDivider());
-        this._modes = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-card-pad'});
-        arrange.add_child(this._modes);
-        this._arrangeNote = new St.Label({style_class: 'muna-hint', visible: false});
+        this._arrangeBox.add_child(sideChips);
+        this._modes = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        this._arrangeBox.add_child(this._modes);
+        this._arrangeNote = new St.Label({style_class: 'muna-qnote', visible: false});
         this._arrangeNote.clutter_text.line_wrap = true;
-        arrange.add_child(this._arrangeNote);
-        root.add_child(this._arrangeBox);
+        this._arrangeBox.add_child(this._arrangeNote);
+        card.add_child(this._arrangeBox);
 
-        this._firstDivider.visible = false;
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qcard-list', x_expand: true});
+        card.add_child(this._list);
+
+        // night light, automatic brightness, dimming, the keyboard's light
+        const more = qCard();
+        root.add_child(more);
+        this._switches = [];
+        if (this._color) {
+            const night = switchRow({title: 'Night light', subtitle: 'Warmer colours in the evening',
+                onToggle: on => this._color?.set_boolean('night-light-enabled', on)});
+            more.add_child(night.row);
+            this._switches.push({row: night, get: () => this._color?.get_boolean('night-light-enabled')});
+        }
+        if (this._power) {
+            // automatic brightness needs a light sensor: without one the switch would do nothing
+            const auto = switchRow({title: 'Automatic brightness', subtitle: 'The light sensor sets the brightness',
+                onToggle: on => this._power?.set_boolean('ambient-enabled', on)});
+            auto.row.visible = false;
+            this._whenLightSensor(() => (auto.row.visible = true));
+            more.add_child(auto.row);
+            this._switches.push({row: auto, get: () => this._power?.get_boolean('ambient-enabled')});
+            const dim = switchRow({title: 'Dim the screen when inactive', subtitle: 'The screen gets darker after a while without activity.',
+                onToggle: on => this._power?.set_boolean('idle-dim', on)});
+            more.add_child(dim.row);
+            this._switches.push({row: dim, get: () => this._power?.get_boolean('idle-dim')});
+        }
+        this._color?.connectObject('changed::night-light-enabled', () => this._sync(), this);
+        this._power?.connectObject('changed', () => this._sync(), this);
+        this._kbd = this._sliderRow('Keyboard light', value => this._setKeyboard(value));
+        this._kbd.actor.visible = false;
+        this._kbdBox = this._kbd.actor;
+        more.add_child(this._kbd.actor);
+
         this._connectKeyboard();
         this._stopWatching = this._displays?.watch(() => this._syncDisplays()) ?? null;
         this._syncDisplays();
@@ -150,36 +127,30 @@ export class DisplaysWidget extends MunaWidget {
         return this.context.services?.displays ?? null;
     }
 
-    /** A named slider with the percent on the right (and a note under it). */
-    _sliderRow(icon, name, onChange, note = '') {
-        const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        const head = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true});
-        head.add_child(new St.Icon({icon_name: icon, style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER}));
-        head.add_child(new St.Label({text: name, style_class: 'muna-value-label muna-value-strong', x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
-        const percent = new St.Label({text: '', style_class: 'muna-value-muted', y_align: Clutter.ActorAlign.CENTER});
+    /** A named slider with the percent on the right (and a note under it), as the design's meters. */
+    _sliderRow(name, onChange, note = '') {
+        const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qmeter', x_expand: true});
+        const head = new St.BoxLayout({x_expand: true});
+        head.add_child(new St.Label({text: name, style_class: 'muna-qmeter-name', x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
+        const percent = new St.Label({text: '', style_class: 'muna-qmeter-value', y_align: Clutter.ActorAlign.CENTER});
         head.add_child(percent);
         actor.add_child(head);
         const slider = new HorizontalSlider({min: 0, max: 100, value: 50, onChange: value => {
-            percent.text = `${Math.round(value)}%`;
+            percent.text = `${Math.round(value)} %`;
             onChange(Math.round(value));
         }});
-        const wrap = new St.BoxLayout({style_class: 'muna-slider-row', x_expand: true});
-        wrap.add_child(slider);
-        actor.add_child(wrap);
-        if (note) {
-            const label = new St.Label({text: note, style_class: 'muna-hint'});
-            label.clutter_text.line_wrap = true;
-            actor.add_child(label);
-        }
+        slider.add_style_class_name('muna-qslider');
+        actor.add_child(slider);
+        if (note)
+            actor.add_child(menuNote(note));
         return {actor, slider, set: value => {
             slider.value = value;
-            percent.text = `${Math.round(value)}%`;
+            percent.text = `${Math.round(value)} %`;
         }};
     }
 
     _sync() {
-        this._switches?.forEach(({toggle, get}) => (toggle.state = !!get()));
-        this._dim?.set(this._power?.get_boolean('idle-dim') ?? false);
+        this._switches?.forEach(({row, get}) => row.set(!!get()));
     }
 
     // --- the monitors ------------------------------------------------------------------------------------------
@@ -199,11 +170,9 @@ export class DisplaysWidget extends MunaWidget {
             this._brightnessKey = key;
             this._list.destroy_all_children();
             this._rows = new Map();
-            entries.forEach((entry, i) => {
-                if (i > 0)
-                    this._list.add_child(menuDivider());
+            entries.forEach(entry => {
                 const note = entry.kind === 'muna' ? 'This monitor has no brightness control of its own: Muna dims the picture.' : '';
-                const row = this._sliderRow(entry.builtin ? 'computer-symbolic' : 'video-display-symbolic', entry.name, percent => {
+                const row = this._sliderRow(entry.builtin ? 'Built-in screen' : entry.name, percent => {
                     this._displays?.brightness().find(e => e.connector === entry.connector)?.set(Math.max(entry.min ?? 0, percent));
                 }, note);
                 this._list.add_child(row.actor);
@@ -212,7 +181,7 @@ export class DisplaysWidget extends MunaWidget {
         }
         for (const entry of entries)
             this._rows.get(entry.connector)?.set(entry.value);
-        this._firstDivider.visible = entries.length > 0;
+        this._list.visible = entries.length > 0;
     }
 
     _syncArrangement() {
@@ -235,17 +204,16 @@ export class DisplaysWidget extends MunaWidget {
             setChecked(button, id === side);
             button.reactive = rects.length > 1;
         }
-        this._mainChip.visible = !!selected && !selected.primary;
-
-        // Join, mirror, or only one monitor on.
+        // Make it the main monitor, join, mirror, or only one monitor on.
         this._modes.destroy_all_children();
         const mode = displays.mode;
         const items = [
-            {id: 'join', label: 'Join', icon: 'view-dual-symbolic'},
-            {id: 'mirror', label: 'Mirror', icon: 'view-mirror-symbolic'},
-            ...displays.state.monitors.map(m => ({id: `only:${m.connector}`, label: `Only ${displays.nameOf(m.connector)}`, icon: m.builtin ? 'computer-symbolic' : 'video-display-symbolic'})),
+            ...(selected && !selected.primary ? [{id: 'main', label: 'Make it the main monitor'}] : []),
+            {id: 'join', label: 'Join'},
+            {id: 'mirror', label: 'Mirror'},
+            ...displays.state.monitors.map(m => ({id: `only:${m.connector}`, label: `Only ${displays.nameOf(m.connector)}`})),
         ];
-        const {actor, buttons} = menuChips(items, id => this._setMode(id), {perRow: 2});
+        const {actor, buttons} = chipFlow(items, id => (id === 'main' ? this._makeMain() : this._setMode(id)), {perRow: 3});
         buttons.forEach((button, id) => setChecked(button, id === mode));
         this._modes.add_child(actor);
     }

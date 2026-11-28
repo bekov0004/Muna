@@ -4,10 +4,12 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {MunaWidget} from '../widget.js';
+import {EmptyState} from '../../ui/emptyState.js';
+import {DashedFrame} from '../../ui/dashedFrame.js';
 
 const ROWS = 2;
 
-/** Quick launchers: the apps you picked in the settings, two rows per column. */
+/** Quick launchers: the apps you picked in the settings, as a row of app tiles (the design, 7.3.3). */
 export class ShortcutsWidget extends MunaWidget {
     static id = 'shortcuts';
     static title = 'Shortcuts';
@@ -56,77 +58,64 @@ export class ShortcutsWidget extends MunaWidget {
         if (!this._root)
             return;
         this._root.destroy_all_children();
+        // 1 column: two apps side by side, 2 columns: four (the design: a row of app tiles)
         const columns = Math.max(1, Math.min(2, this._settings.get('shortcut-columns')));
-        const apps = this._apps().slice(0, columns * ROWS);
+        const room = columns * ROWS;
+        const apps = this._apps().slice(0, room);
 
         if (apps.length === 0) {
-            const empty = new St.BoxLayout({
-                orientation: Clutter.Orientation.VERTICAL,
-                x_expand: true,
+            const empty = new EmptyState({iconName: 'view-app-grid-symbolic', text: 'No shortcuts yet'});
+            const choose = new St.Button({
+                label: 'Choose apps in the settings',
+                style_class: 'muna-empty-button',
                 x_align: Clutter.ActorAlign.CENTER,
-                y_align: Clutter.ActorAlign.CENTER,
-                style_class: 'muna-shortcuts-empty',
+                can_focus: true,
             });
-            empty.add_child(new St.Icon({
-                icon_name: 'view-app-grid-symbolic',
-                style_class: 'muna-shortcuts-empty-icon',
-                x_align: Clutter.ActorAlign.CENTER,
-            }));
-            empty.add_child(new St.Label({
-                text: 'No shortcuts yet',
-                style_class: 'muna-shortcuts-empty-text',
-                x_align: Clutter.ActorAlign.CENTER,
-            }));
-            empty.add_child(new St.Label({
-                text: 'Choose apps in the settings',
-                style_class: 'muna-shortcuts-empty-hint',
-                x_align: Clutter.ActorAlign.CENTER,
-            }));
+            choose.connect('clicked', () => this._ui?.openSettings?.());
+            empty.add_child(choose);
             this._root.add_child(empty);
             return;
         }
-
-        for (let c = 0; c < columns; c++) {
-            const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-shortcuts-column'});
-            for (const app of apps.slice(c * ROWS, (c + 1) * ROWS))
-                column.add_child(this._tile(app, columns > 1));
-            if (column.get_n_children() > 0)
-                this._root.add_child(column);
-        }
+        for (const app of apps)
+            this._root.add_child(this._tile(app.get_icon(), app.get_name(), () => this._launch(app)));
+        // room left: a dashed "Add" tile opens the settings
+        if (apps.length < room)
+            this._root.add_child(this._tile(null, 'Add', () => this._ui?.openSettings?.()));
     }
 
-    _tile(app, stacked) {
+    _tile(gicon, name, onClick) {
         const button = new St.Button({
-            style_class: 'muna-shortcut',
+            style_class: gicon ? 'muna-shortcut' : 'muna-shortcut muna-shortcut-add',
             reactive: true,
             can_focus: true,
             track_hover: true,
             x_expand: true,
             y_expand: true,
         });
-        const row = new St.BoxLayout({
-            orientation: stacked ? Clutter.Orientation.VERTICAL : Clutter.Orientation.HORIZONTAL,
+        const box = new St.BoxLayout({
+            orientation: Clutter.Orientation.VERTICAL,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER,
-            style_class: stacked ? 'muna-shortcut-row muna-shortcut-stacked' : 'muna-shortcut-row',
+            style_class: 'muna-shortcut-box',
         });
-        row.add_child(new St.Icon({
-            gicon: app.get_icon(),
-            style_class: 'muna-shortcut-icon',
+        const badge = new St.Widget({
+            style_class: 'muna-shortcut-badge',
+            layout_manager: new Clutter.BinLayout(),
             x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER,
-        }));
-        const label = new St.Label({
-            text: app.get_name(),
-            style_class: stacked ? 'muna-shortcut-label muna-shortcut-label-small' : 'muna-shortcut-label',
-            x_align: stacked ? Clutter.ActorAlign.CENTER : Clutter.ActorAlign.FILL,
-            y_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
+            x_expand: false,
+            y_expand: false,
         });
+        if (!gicon)
+            badge.add_child(new DashedFrame({radius: 13, width: 1.5, rgba: [1, 1, 1, 0.3]}));
+        badge.add_child(gicon ? new St.Icon({gicon, style_class: 'muna-shortcut-icon'})
+            : new St.Icon({icon_name: 'list-add-symbolic', style_class: 'muna-shortcut-add-icon',
+                x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
+        box.add_child(badge);
+        const label = new St.Label({text: name, style_class: 'muna-shortcut-label', x_align: Clutter.ActorAlign.CENTER});
         label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        row.add_child(label);
-        button.set_child(row);
-        button.connect('clicked', () => this._launch(app));
+        box.add_child(label);
+        button.set_child(box);
+        button.connect('clicked', onClick);
         return button;
     }
 

@@ -46,7 +46,6 @@ import {SignalTracker} from './utils/signals.js';
 import {MonitorDesktops} from './windows/monitorDesktops.js';
 import {BarReadings} from './ui/barReadings.js';
 import {DisplayService} from './displays/displayService.js';
-import {destroyGlassManager, glassManager} from './ui/liquidGlass.js';
 
 const SHORTCUTS = [
     ['shortcut-muna', 'muna'],
@@ -82,7 +81,6 @@ export class MunaHost {
      */
     constructor(settings, {openPreferences = () => {}, path = null} = {}) {
         this._settings = settings;
-        glassManager(settings);   // Liquid glass, before anything attaches to it
         // The settings are the window of the Muna app (its own icon and name); the Extensions app's window only when
         // the service cannot be reached.
         this._openPreferences = () => {
@@ -217,7 +215,6 @@ export class MunaHost {
     }
 
     destroy() {
-        destroyGlassManager();
         this._settings?.disconnectObject(this);
         this._removeShortcuts();
         this._edges?.destroy();
@@ -354,6 +351,8 @@ export class MunaHost {
             cycleAppWindows(name.slice(APP_WINDOWS.length), 1);
         } else if (name === 'quickpanel') {
             this._menu?.menu?.toggle();
+        } else if (name === 'scratchpad') {
+            this._backend?.service?.call('openScratchpad').catch(e => console.warn(`[muna] scratchpad: ${e.message}`));
         } else if (name.startsWith('page-')) {
             this._menu?.openPage(name.slice(5));
             this._menu?.menu?.open();
@@ -769,7 +768,6 @@ export class MunaHost {
             bar._munaPrimary = isPrimary;
             // the primary's bar takes no room of its own: GNOME's bar under it keeps its place (and hides with it)
             Main.layoutManager.addChrome(bar, {affectsStruts: !isPrimary, trackFullscreen: true});
-            glassManager(this._settings).attach(bar, () => ({radius: 0}), {mark: bar});
             if (isPrimary) {
                 // over GNOME's (invisible) bar, under the capsules
                 bar.get_parent()?.set_child_above_sibling(bar, Main.layoutManager.panelBox);
@@ -790,14 +788,14 @@ export class MunaHost {
     _followPanel(bar) {
         const box = Main.layoutManager.panelBox;
         Main.panel.opacity = 0;
-        // the menus of GNOME's items in Muna's look, on liquid glass when that is on
+        // the menus of GNOME's items in Muna's look
         const styled = [];
         for (const item of Object.values(Main.panel.statusArea)) {
             const menu = item?.menu;
             if (!menu?.actor || !menu.box || menu.actor.has_style_class_name('muna-menu'))
                 continue;
             menu.actor.add_style_class_name('muna-styled');
-            styled.push({menu, glass: glassManager(this._settings).attach(menu.box, () => ({radius: 24}), {mark: menu.actor, panes: true})});
+            styled.push(menu);
         }
         const sync = () => {
             bar.translation_y = box.translation_y;
@@ -809,11 +807,8 @@ export class MunaHost {
         sync();
         bar.connect('destroy', () => {
             box.disconnectObject(bar);
-            for (const {menu, glass} of styled) {
-                glass.remove();
+            for (const menu of styled)
                 menu.actor?.remove_style_class_name('muna-styled');
-                menu.actor?.remove_style_class_name('muna-liquid');
-            }
             if (![...(this._munaBars?.values() ?? [])].some(b => b !== bar && b._munaPrimary))
                 Main.panel.opacity = 255;
         });

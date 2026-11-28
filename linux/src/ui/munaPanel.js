@@ -6,7 +6,9 @@ import St from 'gi://St';
 import {animDuration} from '../utils/animation.js';
 import {BUTTERFLY_ICON, iconFor} from './logo.js';
 import {createButton} from './button.js';
-import {currentGlassManager} from './liquidGlass.js';
+
+/** How much taller (CSS px) a list tab (Clipboard, Alerts) opens than the widgets' row: about four rows. */
+const LIST_EXTRA = 96;
 
 export const PanelMode = Object.freeze({MUNA: 'muna', TRAY: 'tray', LOCALSEND: 'localsend', CLIPBOARD: 'clipboard', NOTIFICATIONS: 'notifications', COMMAND: 'command'});
 const MODE_ORDER = [PanelMode.MUNA, PanelMode.TRAY, PanelMode.LOCALSEND, PanelMode.CLIPBOARD, PanelMode.NOTIFICATIONS, PanelMode.COMMAND];
@@ -168,10 +170,6 @@ export class MunaPanel extends St.BoxLayout {
                     holder.add_style_class_name('muna-widget-holder-card');
                 else
                     holder.remove_style_class_name('muna-widget-holder-card');
-                // every widget card is its own piece of glass, with its own rim (Liquid glass)
-                const view = holder.get_child();
-                if (cards && view && !view._munaGlass)
-                    view._munaGlass = currentGlassManager()?.attach(view, () => ({radius: px(18, this._scale ?? 1)}));
             });
         });
         this._updateDots();
@@ -188,11 +186,18 @@ export class MunaPanel extends St.BoxLayout {
         return this._mode === PanelMode.MUNA ? [] : (this._viewFor(this._mode).scrollTargets ?? []);
     }
 
-    /** px the section on screen needs beyond the normal body height to show all its content (LocalSend). */
+    /**
+     * px the section on screen needs beyond the normal body height (the design: every tab takes the height
+     * it needs): LocalSend and the Tray all of it, the lists (Clipboard, Alerts) room for a few more rows.
+     */
     contentExtra(width) {
-        if (this._mode !== PanelMode.LOCALSEND || !this._baseBodyHeight)
+        if (this._mode === PanelMode.MUNA || this._mode === PanelMode.COMMAND || !this._baseBodyHeight)
             return 0;
-        return Math.max(0, this._localsend.get_preferred_height(width)[1] - this._baseBodyHeight);
+        const view = this._viewFor(this._mode);
+        const extra = Math.max(0, view.get_preferred_height(width)[1] - this._baseBodyHeight);
+        if (this._mode === PanelMode.LOCALSEND || this._mode === PanelMode.TRAY)
+            return extra;
+        return Math.min(extra, px(LIST_EXTRA, this._scale ?? 1));
     }
 
     /**
@@ -209,7 +214,7 @@ export class MunaPanel extends St.BoxLayout {
     /** Makes the body (and the list in it) `extra` px taller than the widgets' row (0 = back to normal). */
     setExtraHeight(extra) {
         if (this._baseBodyHeight)
-            this._body.set_height(this._baseBodyHeight + (this.growable || this._mode === PanelMode.LOCALSEND ? Math.max(0, extra) : 0));
+            this._body.set_height(this._baseBodyHeight + (this.growable || this._mode === PanelMode.LOCALSEND || this._mode === PanelMode.TRAY ? Math.max(0, extra) : 0));
         // The new height must reach the cached size request of the panel before it is asked for it.
         this.queue_relayout();
     }
@@ -466,15 +471,15 @@ export class MunaPanel extends St.BoxLayout {
         this._tabButtons = new Map();
         for (const [mode, label, icon] of [
             [PanelMode.MUNA, 'Muna', BUTTERFLY_ICON],
-            [PanelMode.TRAY, 'Tray', 'folder-download-symbolic'],
+            [PanelMode.TRAY, 'Tray', 'muna-tray-symbolic'],
             [PanelMode.LOCALSEND, 'LocalSend', 'network-wireless-symbolic'],
             [PanelMode.CLIPBOARD, 'Clipboard', 'edit-paste-symbolic'],
             [PanelMode.NOTIFICATIONS, 'Alerts', 'preferences-system-notifications-symbolic'],
         ]) {
             const tab = createButton({
                 label,
-                ...(icon === BUTTERFLY_ICON ? {gicon: iconFor(icon)} : {iconName: icon}),
-                styleClass: 'muna-tab',
+                ...(icon.startsWith('muna-') ? {gicon: iconFor(icon)} : {iconName: icon}),
+                styleClass: mode === PanelMode.MUNA ? 'muna-tab muna-tab-muna' : 'muna-tab',
                 onClick: () => this.setMode(mode),
             });
             this._tabButtons.set(mode, tab);

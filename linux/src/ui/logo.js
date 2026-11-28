@@ -14,10 +14,10 @@ export function logoFile() {
 /** The butterfly of the logo as a one-colour icon, the default of the top-bar button. */
 export const BUTTERFLY_ICON = 'muna-butterfly-symbolic';
 
-/** A Gio.Icon for an icon name: the theme's, or Muna's own butterfly (icons/ of the extension). */
+/** A Gio.Icon for an icon name: the theme's, or Muna's own (muna-…: icons/ of the extension). */
 export function iconFor(name) {
-    if (name === BUTTERFLY_ICON)
-        return new Gio.FileIcon({file: logoFile().get_parent().get_child(`${BUTTERFLY_ICON}.svg`)});
+    if (name.startsWith('muna-'))
+        return new Gio.FileIcon({file: logoFile().get_parent().get_child(`${name}.svg`)});
     return new Gio.ThemedIcon({name});
 }
 

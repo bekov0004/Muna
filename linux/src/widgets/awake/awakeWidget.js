@@ -1,25 +1,27 @@
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import {ToolActions} from '../../tools/toolActions.js';
-import {collapsible, iconRow, iconChoices, colorDots, menuCard, menuChips, menuDivider, menuRow, pillButton, setChecked, switchRow} from '../../ui/menuKit.js';
+import {chipFlow, colorDots, menuCard, menuHead, menuNote, setChecked, switchRow} from '../../ui/menuKit.js';
 import {MunaWidget} from '../widget.js';
 
-const CHIPS = [[15, '15m'], [30, '30m'], [60, '1h'], [120, '2h'], [240, '4h'], [480, '8h'], [-1, '∞']]; // minutes; -1 until turned off
-const ICONS = ['weather-clear-night-symbolic', 'preferences-system-time-symbolic', 'view-reveal-symbolic', 'weather-clear-symbolic', 'dialog-information-symbolic'];
+// the design (7.4.4): 30 min, 1 h, 2 h, 5 h, Until off (minutes; -1 until turned off)
+const CHIPS = [[30, '30 min'], [60, '1 h'], [120, '2 h'], [300, '5 h'], [-1, 'Until off']];
+// the top-bar icon while it is on: Cup, Sun, Bolt, Eye, Moon
+const ICONS = [['muna-cup-symbolic', 'Cup'], ['weather-clear-symbolic', 'Sun'], ['thunderbolt-symbolic', 'Bolt'],
+    ['view-reveal-symbolic', 'Eye'], ['weather-clear-night-symbolic', 'Moon']];
 const COLORS = ['#ff9500', '#30d158', '#3b8ef5', '#bf5af2', '#ff453a', ''];
-const COLOR_NAMES = {'#ff9500': 'Orange', '#30d158': 'Green', '#3b8ef5': 'Blue', '#bf5af2': 'Purple', '#ff453a': 'Red', '': 'None'};
 
 /**
- * Keep awake: the computer does not sleep for a while or until you turn it off, optionally with the
- * lid closed. The icon of the top-bar button shows while it is on, in the icon and colour you pick.
+ * Keep awake: the computer does not sleep for a while, until a time or until you turn it off, optionally
+ * with the screen on and the lid closed. The icon of the top-bar button shows while it is on, in the icon
+ * and colour you pick (the design, 7.4.4).
  */
 export class AwakeWidget extends MunaWidget {
     static id = 'awake';
     static title = 'Keep awake';
-    static iconName = 'weather-clear-night-symbolic';
+    static iconName = 'muna-cup-symbolic';
     static menuNative = true;
 
     constructor(context) {
@@ -36,69 +38,46 @@ export class AwakeWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-awake muna-menu-page', x_expand: true});
+
+        // "Staying awake · until 20:30 [Off]", the chips, Until (hh:mm), the screen and the lid (the design, 7.4.4)
         const card = menuCard();
-        card.add_style_class_name('muna-bigcard');
+        card.add_style_class_name('muna-qcard');
         root.add_child(card);
-
-        this._main = switchRow({title: 'The computer follows its normal energy rules', onToggle: on => this._actions.setAwake(on ? -1 : 0)});
-        this._mainTitle = this._main.title;
-        card.add_child(this._main.row);
-
-        const chips = menuChips([...CHIPS.map(([minutes, label]) => ({id: String(minutes), label})), {id: 'until', label: 'Until…', icon: 'preferences-system-time-symbolic'}],
-            id => id === 'until' ? this._toggleUntil() : this._chip(Number(id)), {perRow: 4});
-        chips.actor.add_style_class_name('muna-card-pad');
+        this._head = menuHead({icon: 'muna-cup-symbolic', color: '#ff9500'});
+        card.add_child(this._head.actor);
+        const chips = chipFlow(CHIPS.map(([minutes, label]) => ({id: String(minutes), label})), id => this._chip(Number(id)));
         card.add_child(chips.actor);
         this._chips = chips.buttons;
-
-        this._untilRow = new St.BoxLayout({style_class: 'muna-value-row', x_expand: true, visible: false});
-        this._untilRow.add_child(new St.Label({text: 'Until (hh:mm)', style_class: 'muna-value-label', x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
-        this._untilEntry = new St.Entry({style_class: 'muna-entry', text: '', hint_text: '18:30', width: 90});
-        this._untilRow.add_child(this._untilEntry);
-        this._untilRow.add_child(pillButton({label: 'Start', onClick: () => this._startUntil()}));
-        card.add_child(this._untilRow);
-        card.add_child(new St.Label({text: 'Click a chip to start. Click it again to stop.', style_class: 'muna-hint'}));
-
-        const options = collapsible('Options', {open: true});
-        card.add_child(options.actor);
-        const sub = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-subcard', x_expand: true});
-        const iconLine = new St.BoxLayout({x_expand: true, style_class: 'muna-value-row'});
-        iconLine.add_child(new St.Label({text: 'Active icon', style_class: 'muna-value-label', x_expand: true}));
-        iconLine.add_child(new St.Label({text: 'Top bar icon', style_class: 'muna-value-muted'}));
-        sub.add_child(iconLine);
-        this._icons = iconChoices(ICONS, icon => this._settings?.gsettings?.set_string('awake-icon', icon));
-        sub.add_child(this._icons.actor);
-        const colorLine = new St.BoxLayout({x_expand: true, style_class: 'muna-value-row'});
-        colorLine.add_child(new St.Label({text: 'Active icon color', style_class: 'muna-value-label', x_expand: true}));
-        this._colorName = new St.Label({text: '', style_class: 'muna-value-muted'});
-        colorLine.add_child(this._colorName);
-        sub.add_child(colorLine);
-        this._colors = colorDots(COLORS, color => this._settings?.gsettings?.set_string('awake-color', color));
-        sub.add_child(this._colors.actor);
-        options.body.add_child(sub);
-
-        this._display = this._optionRow('video-display-symbolic', 'Allow the display to sleep', on => this._actions.power?.call('setDisplaySleep', {allow: on}));
-        options.body.add_child(this._display.row);
-        const gs = this._settings?.gsettings;
-        this._onStart = this._optionRow('media-playback-start-symbolic', 'Keep awake when Muna opens', on => gs?.set_boolean('awake-on-start', on));
-        this._onStart.set(!!gs?.get_boolean('awake-on-start'));
-        options.body.add_child(this._onStart.row);
-        card.add_child(menuDivider());
+        card.add_child(menuNote('Click a chip to start. Click it again to stop.'));
+        this._untilEntry = new St.Entry({style_class: 'muna-qentry', hint_text: 'Until (hh:mm)', can_focus: true, x_expand: true});
+        this._untilEntry.clutter_text.connect('activate', () => this._startUntil());
+        card.add_child(this._untilEntry);
+        this._screen = switchRow({title: 'Keep the screen on too', onToggle: on => this._actions.power?.call('setDisplaySleep', {allow: !on})});
+        card.add_child(this._screen.row);
         this._lid = switchRow({title: 'Keep going with the lid closed', subtitle: 'Works without an administrator password', onToggle: on => this._setLid(on)});
         card.add_child(this._lid.row);
 
+        // TOP BAR ICON: the icon and its colour while it is on
+        const iconCard = menuCard();
+        iconCard.add_style_class_name('muna-qcard');
+        iconCard.add_child(new St.Label({text: 'TOP BAR ICON', style_class: 'muna-qcard-caption'}));
+        const icons = chipFlow(ICONS.map(([id, label]) => ({id, label})), id => this._settings?.gsettings?.set_string('awake-icon', id));
+        iconCard.add_child(icons.actor);
+        this._iconChips = icons.buttons;
+        const colorLine = new St.BoxLayout({style_class: 'muna-qrow', x_expand: true});
+        this._colorDot = new St.Widget({style_class: 'muna-qrow-dot', y_align: Clutter.ActorAlign.CENTER});
+        colorLine.add_child(this._colorDot);
+        colorLine.add_child(new St.Label({text: 'Active icon color', style_class: 'muna-qrow-label', x_expand: true, y_align: Clutter.ActorAlign.CENTER}));
+        this._colorName = new St.Label({style_class: 'muna-qrow-value', y_align: Clutter.ActorAlign.CENTER});
+        colorLine.add_child(this._colorName);
+        iconCard.add_child(colorLine);
+        this._colors = colorDots(COLORS, color => this._settings?.gsettings?.set_string('awake-color', color));
+        this._colors.actor.style = 'padding: 0;';
+        iconCard.add_child(this._colors.actor);
+        root.add_child(iconCard);
+
         this._update();
         return root;
-    }
-
-    _optionRow(icon, title, onToggle) {
-        const toggle = new PopupMenu.Switch(false);
-        const {row} = iconRow({icon, title, control: toggle, onClick: () => onToggle(!toggle.state)});
-        row.add_style_class_name('muna-option-line');
-        return {row, set: on => (toggle.state = on)};
-    }
-
-    _toggleUntil() {
-        this._untilRow.visible = !this._untilRow.visible;
     }
 
     /** "hh:mm" -> minutes from now to the next time it is that o'clock. */
@@ -111,8 +90,9 @@ export class AwakeWidget extends MunaWidget {
         if (target.to_unix() <= now.to_unix())
             target = target.add_days(1);
         this._chipOn = null;
+        this._until = target.format('%H:%M');
         this._actions.setAwake(Math.max(1, Math.round((target.to_unix() - now.to_unix()) / 60)));
-        this._untilRow.visible = false;
+        this._untilEntry.text = '';
     }
 
     async _setLid(on) {
@@ -130,25 +110,29 @@ export class AwakeWidget extends MunaWidget {
         else
             this._actions.setAwake(minutes);
         this._chipOn = minutes;
+        this._until = null;
     }
 
     _update() {
         const awake = this._actions.awake;
-        const icon = this._settings?.get('awake-icon') ?? ICONS[0];
+        const icon = this._settings?.get('awake-icon') ?? ICONS[0][0];
         const color = this._settings?.get('awake-color') ?? '';
         this.context.ui?.setBarLook?.(awake.active ? icon : null, awake.active ? color : null);
         if (!this._view)
             return;
-        this._main.set(awake.active);
-        this._mainTitle.text = awake.forever ? 'Awake until you turn it off'
-            : awake.until > Date.now() ? `Awake, ${Math.ceil((awake.until - Date.now()) / 60000)} minutes left`
-                : 'The computer follows its normal energy rules';
+        const until = awake.until > Date.now() ? GLib.DateTime.new_from_unix_local(Math.round(awake.until / 1000)).format('%H:%M') : null;
+        this._head.set(awake.active
+            ? {title: 'Staying awake', subtitle: awake.forever ? 'until you turn it off' : `until ${until ?? this._until ?? ''}`,
+                color: color || '#ff9500', icon, action: {label: 'Off', onClick: () => this._actions.setAwake(0)}}
+            : {title: 'Keep awake', subtitle: 'The computer follows its normal energy rules', color: 'rgba(158, 166, 255, 0.15)', icon, action: null});
         for (const [minutes, chip] of this._chips)
-            setChecked(chip, awake.active && minutes !== 'until' && (awake.forever ? minutes === '-1' : minutes === String(this._chipOn)));
-        this._icons.set(icon);
+            setChecked(chip, awake.active && (awake.forever ? minutes === '-1' : minutes === String(this._chipOn)));
+        for (const [id, chip] of this._iconChips)
+            setChecked(chip, id === icon);
         this._colors.set(color);
-        this._colorName.text = COLOR_NAMES[color] ?? '';
-        this._display.set(!!this._actions.power?.state?.allowDisplaySleep);
+        this._colorDot.style = `background-color: ${color || 'rgba(255, 255, 255, 0.3)'};`;
+        this._colorName.text = color || 'None';
+        this._screen.set(!this._actions.power?.state?.allowDisplaySleep);
         this._lid.set(!!this._actions.power?.state?.lid);
     }
 

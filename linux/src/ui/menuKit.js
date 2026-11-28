@@ -3,6 +3,8 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import {iconFor} from './logo.js';
+
 // Building blocks for the pages of the top-bar button's window: a small header, a rounded card, rows
 // with a switch, and chips. Every page is made of these so the window reads as one design.
 
@@ -138,6 +140,7 @@ export function usageBar() {
     track.connect('notify::mapped', apply);
     return {
         actor: track,
+        fill,
         set: (value, warn = false) => {
             fraction = value;
             warning = warn;
@@ -409,16 +412,16 @@ export function dropdown({items = [], current = null, onPick}) {
 
 /** A row of coloured dots to choose from ("" is the no-colour dot). @returns {{actor, set}} */
 export function colorDots(colors, onPick) {
-    const actor = new St.BoxLayout({style_class: 'muna-dots', x_expand: true});
+    const actor = new St.BoxLayout({style_class: 'muna-swatches', x_expand: true});
     const dots = new Map();
     colors.forEach(color => {
-        const dot = new St.Button({style_class: 'muna-dot', reactive: true, can_focus: true, track_hover: true, x_align: Clutter.ActorAlign.CENTER});
+        const dot = new St.Button({style_class: 'muna-swatch', reactive: true, can_focus: true, track_hover: true, x_align: Clutter.ActorAlign.CENTER});
         if (color)
             dot.style = `background-color: ${color};`;
         else
-            dot.set_child(new St.Icon({icon_name: 'action-unavailable-symbolic', style_class: 'muna-dot-none'}));
+            dot.set_child(new St.Icon({icon_name: 'action-unavailable-symbolic', style_class: 'muna-swatch-none'}));
         dot.connect('clicked', () => onPick(color));
-        actor.add_child(new St.Bin({child: dot, x_expand: true, style_class: 'muna-dot-cell'}));
+        actor.add_child(new St.Bin({child: dot, x_expand: true, style_class: 'muna-swatch-cell'}));
         dots.set(color, dot);
     });
     return {actor, set: value => dots.forEach((dot, color) => setChecked(dot, color === value))};
@@ -426,7 +429,7 @@ export function colorDots(colors, onPick) {
 
 /** A row of icons to choose from. @returns {{actor, set}} */
 export function iconChoices(icons, onPick) {
-    const actor = new St.BoxLayout({style_class: 'muna-dots', x_expand: true});
+    const actor = new St.BoxLayout({style_class: 'muna-swatches', x_expand: true});
     const buttons = new Map();
     icons.forEach(icon => {
         const button = new St.Button({style_class: 'muna-icon-choice', reactive: true, can_focus: true, track_hover: true, x_expand: true});
@@ -436,4 +439,186 @@ export function iconChoices(icons, onPick) {
         buttons.set(icon, button);
     });
     return {actor, set: value => buttons.forEach((button, icon) => setChecked(button, icon === value))};
+}
+
+/**
+ * The head of a card (the design, 7.4.7): a badge 34 (radius 13) in a colour with an icon in black, a title
+ * 13 / 700 and a line 11 at 64 % under it, a small button on the right.
+ * @returns {{actor, set: ({title?, subtitle?, color?, icon?, action?}) => void}}
+ */
+export function menuHead({icon = 'dialog-information-symbolic', color = '#93a5ff', title = '', subtitle = '', action = null} = {}) {
+    const actor = new St.BoxLayout({style_class: 'muna-qhead', x_expand: true});
+    const badge = new St.Bin({style_class: 'muna-qhead-badge', y_align: Clutter.ActorAlign.CENTER});
+    const glyph = new St.Icon({style_class: 'muna-qhead-icon', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+    badge.set_child(glyph);
+    actor.add_child(badge);
+    const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+    const titleLabel = new St.Label({style_class: 'muna-qhead-title'});
+    const subLabel = new St.Label({style_class: 'muna-qhead-subtitle'});
+    titleLabel.clutter_text.ellipsize = subLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    texts.add_child(titleLabel);
+    texts.add_child(subLabel);
+    actor.add_child(texts);
+    const button = new St.Button({style_class: 'muna-qhead-action', can_focus: true, y_align: Clutter.ActorAlign.CENTER, visible: false});
+    let onAction = null;
+    button.connect('clicked', () => onAction?.());
+    actor.add_child(button);
+    const set = values => {
+        if ('title' in values)
+            titleLabel.text = values.title ?? '';
+        if ('subtitle' in values) {
+            subLabel.text = values.subtitle ?? '';
+            subLabel.visible = !!values.subtitle;
+        }
+        if ('color' in values)
+            badge.style = `background-color: ${values.color};`;
+        if ('icon' in values)
+            glyph.gicon = iconFor(values.icon);
+        if ('action' in values) {
+            button.visible = !!values.action;
+            button.label = values.action?.label ?? '';
+            onAction = values.action?.onClick ?? null;
+        }
+    };
+    set({icon, color, title, subtitle, action});
+    return {actor, set};
+}
+
+/** A quiet line of words in a card (11 at 52 %). */
+export function menuNote(text) {
+    const label = new St.Label({text, style_class: 'muna-qnote', x_expand: true});
+    label.clutter_text.line_wrap = true;
+    return label;
+}
+
+/**
+ * Chips as wide as their words (the design, 7.4.7), `perRow` to a line.
+ * @param {Array<{id, label, icon?}>} items
+ * @returns {{actor, buttons: Map}}
+ */
+export function chipFlow(items, onPick, {perRow = 5} = {}) {
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-chips', x_expand: true});
+    const buttons = new Map();
+    let row = null;
+    items.forEach(({id, label, icon}, index) => {
+        if (index % perRow === 0) {
+            row = new St.BoxLayout({style_class: 'muna-chips-row', x_align: Clutter.ActorAlign.START});
+            actor.add_child(row);
+        }
+        const chip = new St.Button({style_class: 'muna-chip', can_focus: true, reactive: true, track_hover: true});
+        const content = new St.BoxLayout({x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+        if (icon)
+            content.add_child(new St.Icon({icon_name: icon, style_class: 'muna-chip-icon'}));
+        content.add_child(new St.Label({text: label, y_align: Clutter.ActorAlign.CENTER}));
+        chip.set_child(content);
+        chip.connect('clicked', () => onPick(id));
+        row.add_child(chip);
+        buttons.set(id, chip);
+    });
+    return {actor, buttons};
+}
+
+/**
+ * A line of a card: a small coloured dot, the name, the value at 60 % (the design, 7.4.7).
+ * @returns {{actor, set: (value: string) => void, setColor: (css: string) => void, label: St.Label}}
+ */
+export function dotRow(name, value = '–', color = 'rgba(255, 255, 255, 0.3)') {
+    const actor = new St.BoxLayout({style_class: 'muna-qrow', x_expand: true});
+    const dot = new St.Widget({style_class: 'muna-qrow-dot', y_align: Clutter.ActorAlign.CENTER});
+    dot.style = `background-color: ${color};`;
+    actor.add_child(dot);
+    const label = new St.Label({text: name, style_class: 'muna-qrow-label', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+    label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    actor.add_child(label);
+    const valueLabel = new St.Label({text: value, style_class: 'muna-qrow-value', y_align: Clutter.ActorAlign.CENTER});
+    actor.add_child(valueLabel);
+    return {
+        actor,
+        label: valueLabel,
+        name: label,
+        set: text => (valueLabel.text = text),
+        setColor: css => (dot.style = `background-color: ${css};`),
+    };
+}
+
+/** A card in the design's look (padding 12, parts 9 apart), with an optional caption. */
+export function qCard(caption = '') {
+    const card = menuCard();
+    card.add_style_class_name('muna-qcard');
+    if (caption)
+        card.add_child(new St.Label({text: caption, style_class: 'muna-qcard-caption'}));
+    return card;
+}
+
+/**
+ * A meter of the design (7.4.7): the name (12 / 600) and the value at 60 % on one line, a bar of 5 under
+ * them filled in `color`. Expandable: a click on the name shows `detail` (e.g. the busiest programs).
+ * @returns {{actor, detail, set: (fraction: number, text: string, warn?: boolean) => void, setName}}
+ */
+export function qMeter(name, {color = '#93a5ff', expandable = false} = {}) {
+    const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qmeter', x_expand: true});
+    const line = new St.BoxLayout({x_expand: true});
+    const lead = new St.Button({style_class: 'muna-qmeter-lead', reactive: expandable, can_focus: expandable, track_hover: expandable, x_expand: true});
+    const leadBox = new St.BoxLayout({x_expand: true, x_align: Clutter.ActorAlign.START});
+    const nameLabel = new St.Label({text: name, style_class: 'muna-qmeter-name', y_align: Clutter.ActorAlign.CENTER});
+    leadBox.add_child(nameLabel);
+    const chevron = new St.Icon({icon_name: 'pan-end-symbolic', style_class: 'muna-meter-chevron', y_align: Clutter.ActorAlign.CENTER, visible: expandable});
+    leadBox.add_child(chevron);
+    lead.set_child(leadBox);
+    line.add_child(lead);
+    const value = new St.Label({text: '–', style_class: 'muna-qmeter-value', y_align: Clutter.ActorAlign.CENTER});
+    line.add_child(value);
+    actor.add_child(line);
+    const bar = usageBar();
+    actor.add_child(bar.actor);
+    const detail = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-meter-detail', x_expand: true, visible: false});
+    actor.add_child(detail);
+    if (expandable) {
+        lead.connect('clicked', () => {
+            detail.visible = !detail.visible;
+            chevron.icon_name = detail.visible ? 'pan-down-symbolic' : 'pan-end-symbolic';
+        });
+    }
+    return {
+        actor,
+        detail,
+        set: (fraction, text, warn = false) => {
+            value.text = text;
+            bar.fill.style = `background-color: ${warn ? '#ff6b6b' : color};`;
+            bar.set(Math.max(0, Math.min(1, fraction)), warn);
+        },
+        setName: text => (nameLabel.text = text),
+    };
+}
+
+/**
+ * A row of a list in the design (7.4.7): a pill of lilac 9 % with a square 24 (radius 7) in a colour and
+ * its icon in black, the title 12 / 600 and a line 11 at 64 %, a value or › on the right.
+ * @returns {{row: St.Button, title: St.Label, subtitle: St.Label, value: St.Label}}
+ */
+export function listRow({icon, color = '#93a5ff', title, subtitle = '', value = '›', control = null, onClick = null}) {
+    const row = new St.Button({style_class: 'muna-qlist-row', reactive: !!onClick, can_focus: !!onClick, track_hover: !!onClick, x_expand: true});
+    const line = new St.BoxLayout({x_expand: true, style_class: 'muna-qlist-line'});
+    const square = new St.Bin({style_class: 'muna-qlist-square', y_align: Clutter.ActorAlign.CENTER});
+    square.style = `background-color: ${color};`;
+    square.set_child(new St.Icon({gicon: iconFor(icon), style_class: 'muna-qlist-icon'}));
+    line.add_child(square);
+    const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+    const titleLabel = new St.Label({text: title, style_class: 'muna-qlist-title'});
+    titleLabel.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    texts.add_child(titleLabel);
+    const sub = new St.Label({text: subtitle, style_class: 'muna-qlist-subtitle', visible: !!subtitle});
+    sub.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+    texts.add_child(sub);
+    line.add_child(texts);
+    const valueLabel = new St.Label({text: value ?? '', style_class: 'muna-qlist-value', y_align: Clutter.ActorAlign.CENTER, visible: !control && !!value});
+    line.add_child(valueLabel);
+    if (control) {
+        control.y_align = Clutter.ActorAlign.CENTER;
+        line.add_child(control);
+    }
+    row.set_child(line);
+    if (onClick)
+        row.connect('clicked', () => onClick());
+    return {row, title: titleLabel, subtitle: sub, value: valueLabel};
 }

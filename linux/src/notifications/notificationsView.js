@@ -20,7 +20,10 @@ function ago(unix) {
     return `${Math.round(seconds / 86400)} d`;
 }
 
-/** One notification: icon, app, title, text; click opens the app, ✕ dismisses. */
+/**
+ * One notification (the design, 7.3.4): a card with the app's icon, "App · Title" and the time, the text
+ * under it; an urgent one is amber. A click opens the app, ✕ dismisses.
+ */
 class NotificationRow extends St.Widget {
     static {
         GObject.registerClass({GTypeName: 'MunaNotificationRow'}, this);
@@ -34,23 +37,34 @@ class NotificationRow extends St.Widget {
             track_hover: true,
             x_expand: true,
         });
+        if (item.urgent)
+            this.add_style_class_name('muna-notif-urgent');
         const main = new St.Button({style_class: 'muna-notif-main', x_expand: true, can_focus: true});
         const row = new St.BoxLayout({x_expand: true, style_class: 'muna-notif-row'});
-        const icon = new St.Icon({style_class: 'muna-notif-icon', y_align: Clutter.ActorAlign.CENTER});
-        if (item.gicon)
-            icon.gicon = item.gicon;
-        else
-            icon.icon_name = 'dialog-information-symbolic';
-        row.add_child(icon);
-        const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_align: Clutter.ActorAlign.CENTER});
-        const head = new St.Label({
-            text: [item.app, ago(item.time)].filter(Boolean).join(' · '),
-            style_class: 'muna-notif-app',
+        const badge = new St.Bin({style_class: 'muna-notif-badge', y_align: Clutter.ActorAlign.START});
+        if (item.urgent) {
+            badge.set_child(new St.Label({text: '!', style_class: 'muna-notif-bang', x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
+        } else {
+            const icon = new St.Icon({style_class: 'muna-notif-icon'});
+            if (item.gicon)
+                icon.gicon = item.gicon;
+            else
+                icon.icon_name = 'dialog-information-symbolic';
+            badge.set_child(icon);
+        }
+        row.add_child(badge);
+        const text = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-notif-text', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
+        const head = new St.BoxLayout({x_expand: true});
+        const title = new St.Label({
+            text: [item.app, item.title].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(' · '),
+            style_class: 'muna-notif-title',
+            x_expand: true,
         });
-        text.add_child(head);
-        const title = new St.Label({text: item.title, style_class: 'muna-notif-title'});
         title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        text.add_child(title);
+        head.add_child(title);
+        this._time = new St.Label({text: ago(item.time), style_class: 'muna-notif-time'});
+        head.add_child(this._time);
+        text.add_child(head);
         if (item.body) {
             const body = new St.Label({text: item.body.replace(/\s+/g, ' '), style_class: 'muna-notif-body'});
             body.clutter_text.ellipsize = Pango.EllipsizeMode.END;
@@ -69,11 +83,15 @@ class NotificationRow extends St.Widget {
         this._close.set({x_expand: true, y_expand: true, x_align: Clutter.ActorAlign.END,
             y_align: Clutter.ActorAlign.CENTER, opacity: 0});
         this.add_child(this._close);
-        this.connect('notify::hover', () => this._close.ease({
-            opacity: this.hover ? 255 : 0,
-            duration: 120,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        }));
+        // ✕ takes the time's place while the pointer is on the card
+        this.connect('notify::hover', () => {
+            this._time.opacity = this.hover ? 0 : 255;
+            this._close.ease({
+                opacity: this.hover ? 255 : 0,
+                duration: 120,
+                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            });
+        });
     }
 }
 
@@ -119,6 +137,11 @@ export class NotificationsView extends St.BoxLayout {
         this.add_child(this._scroll);
 
         this._service.connectObject('changed', () => this._rebuild(), this);
+        // its size is only right once it is styled on screen: ask again then
+        this.connect('notify::mapped', () => {
+            if (this.mapped)
+                this.onContentChanged?.();
+        });
         this._rebuild();
     }
 
@@ -144,8 +167,9 @@ export class NotificationsView extends St.BoxLayout {
 
     _rebuildNow() {
         const items = this._service.items;
-        this._caption.text = items.length === 0 ? 'NOTIFICATIONS' : `NOTIFICATIONS · ${items.length}`;
-        this._dnd.label = this._service.dnd ? 'Do Not Disturb: on' : 'Do Not Disturb: off';
+        this._caption.text = 'ALERTS';
+        // Do Not Disturb: the button lights up while it is on
+        this._dnd.label = 'Do Not Disturb';
         if (this._service.dnd)
             this._dnd.add_style_pseudo_class('checked');
         else

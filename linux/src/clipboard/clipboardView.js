@@ -10,20 +10,7 @@ import {EmptyState} from '../ui/emptyState.js';
 
 const PREVIEW_CHARS = 140;
 
-const isLink = text => /^https?:\/\/\S+$/.test(text.trim());
-
-function ago(at) {
-    const seconds = Math.max(0, Math.round((Date.now() - at) / 1000));
-    if (seconds < 60)
-        return 'now';
-    if (seconds < 3600)
-        return `${Math.round(seconds / 60)} min`;
-    if (seconds < 86400)
-        return `${Math.round(seconds / 3600)} h`;
-    return `${Math.round(seconds / 86400)} d`;
-}
-
-/** One item of the history: a single row (kind, text, when); hover shows copy / pin / remove. */
+/** One item of the history: a single row (kind, text, "pinned"); hover shows copy / pin / private / remove. */
 class ClipRow extends St.Widget {
     static {
         GObject.registerClass({GTypeName: 'MunaClipRow'}, this);
@@ -55,24 +42,21 @@ class ClipRow extends St.Widget {
             }
         }
         if (hidden) {
-            flat = 'Private · touch the fingerprint reader';
+            flat = 'Private, open with your fingerprint';
             fileIcon = null;
+            this.add_style_class_name('muna-clip-private');
         }
-        let iconName = 'text-x-generic-symbolic';
-        if (hidden)
-            iconName = 'auth-fingerprint-symbolic';
-        else if (item.saved)
-            iconName = 'starred-symbolic';
-        else if (isLink(item.text))
-            iconName = 'insert-link-symbolic';
-        const kind = new St.Icon({
-            icon_name: iconName,
-            style_class: item.saved ? 'muna-clip-star' : 'muna-clip-kind',
-            y_align: Clutter.ActorAlign.CENTER,
-        });
-        if (fileIcon && !item.saved)
-            kind.gicon = fileIcon;
-        row.add_child(kind);
+        // the kind (the design, 7.3.4): ★ pinned, ¶ a text, ●●● private, a file its icon
+        if (fileIcon && !item.saved && !hidden) {
+            row.add_child(new St.Icon({gicon: fileIcon, style_class: 'muna-clip-kind', y_align: Clutter.ActorAlign.CENTER}));
+        } else {
+            const glyph = hidden ? '●●●' : item.saved ? '★' : '¶';
+            row.add_child(new St.Label({
+                text: glyph,
+                style_class: hidden ? 'muna-clip-glyph muna-clip-glyph-private' : item.saved ? 'muna-clip-glyph muna-clip-star' : 'muna-clip-glyph',
+                y_align: Clutter.ActorAlign.CENTER,
+            }));
+        }
         const text = new St.Label({
             text: flat.length > PREVIEW_CHARS ? `${flat.slice(0, PREVIEW_CHARS)}…` : flat,
             style_class: 'muna-clip-text',
@@ -82,7 +66,7 @@ class ClipRow extends St.Widget {
         text.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         row.add_child(text);
         this._when = new St.Label({
-            text: item.note ? 'Note' : ago(item.at),
+            text: item.note ? 'note' : item.saved ? 'pinned' : '',
             style_class: 'muna-clip-when',
             y_align: Clutter.ActorAlign.CENTER,
         });
@@ -183,6 +167,11 @@ export class ClipboardView extends St.BoxLayout {
 
         this._service.connectObject('changed', () => this._rebuild(), this);
         this._fingerprint?.connectObject('changed', () => this._rebuild(), this);
+        // its size is only right once it is styled on screen: ask again then
+        this.connect('notify::mapped', () => {
+            if (this.mapped)
+                this.onContentChanged?.();
+        });
         this._rebuild();
     }
 
@@ -206,12 +195,11 @@ export class ClipboardView extends St.BoxLayout {
     _buildBar() {
         this._bar = new St.BoxLayout({style_class: 'muna-clip-bar', x_expand: true});
         this._entry = new St.Entry({
-            hint_text: 'Search…',
+            hint_text: 'Search what you copied',
             style_class: 'muna-clip-entry',
             can_focus: true,
             x_expand: true,
         });
-        this._entry.set_primary_icon(new St.Icon({icon_name: 'edit-find-symbolic', style_class: 'muna-clip-find'}));
         const text = this._entry.clutter_text;
         text.connect('text-changed', () => {
             if (!this._noteMode)
@@ -246,7 +234,7 @@ export class ClipboardView extends St.BoxLayout {
     _setNoteMode(on) {
         this._noteMode = on;
         this._entry.text = '';
-        this._entry.hint_text = on ? 'Write a note, Enter saves it' : 'Search…';
+        this._entry.hint_text = on ? 'Write a note, Enter saves it' : 'Search what you copied';
         if (!on)
             this._rebuild();
         if (on)
@@ -283,8 +271,6 @@ export class ClipboardView extends St.BoxLayout {
         const items = all
             .filter(item => !query || (!fingerprint?.hides(item) && item.text.toLowerCase().includes(query)))
             .sort((a, b) => Number(!!b.saved) - Number(!!a.saved));
-        if (!this._noteMode)
-            this._entry.hint_text = all.length === 0 ? 'Search…' : `Search ${all.length} ${all.length === 1 ? 'item' : 'items'}…`;
         this._clear.visible = this._service.hasUnsaved;
         this._empty.text = all.length === 0 ? 'Copied text shows up here' : 'Nothing found';
         this._empty.visible = items.length === 0;

@@ -1,4 +1,5 @@
 import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -8,10 +9,28 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {createButton} from './button.js';
 import {BUTTERFLY_ICON, iconFor, Logo} from './logo.js';
 import {menuCard, menuHeader} from './menuKit.js';
-import {currentGlassManager} from './liquidGlass.js';
 
 const ROLE = 'muna-tools';
-const MENU_WIDTH = 420;
+/** The window of Muna's icon: 360 wide and 640 high for every tab (the design, 7.4.2). */
+const MENU_WIDTH = 360;
+
+/**
+ * A box that asks for its full height as its least: a scroll view lays its content out at the least
+ * height, which would squeeze rows whose text wraps.
+ */
+const FullHeightBox = GObject.registerClass({GTypeName: 'MunaFullHeightBox'}, class FullHeightBox extends St.BoxLayout {
+    vfunc_get_preferred_height(forWidth) {
+        const [, natural] = super.vfunc_get_preferred_height(forWidth);
+        return [natural, natural];
+    }
+});
+
+/** Captions that differ from the widget's title. */
+const CAPTIONS = {'Volume mixer': 'Sound'};
+
+/** The tabs that have a line icon of the design. */
+const TAB_ICONS = new Set(['awake', 'reminders', 'phone', 'displays', 'sound', 'system', 'network', 'disks', 'power', 'utilities',
+    'controls', 'toggles', 'windows', 'workspaces', 'focus', 'input', 'downloads', 'agents']);
 
 /**
  * The button in the top bar and the window it opens: a row of icon tabs, and under it the page of
@@ -75,8 +94,6 @@ export class ToolsMenu {
         this._icon = new St.Icon({gicon: iconFor(this._baseIcon), style_class: 'system-status-icon'});
         this._button.add_child(this._icon);
         this._button.menu.actor.add_style_class_name('muna-menu');
-        // Liquid glass: the window is a pane of glass
-        this._glass = currentGlassManager()?.attach(this._button.menu.box, () => ({radius: 22}), {mark: this._button.menu.actor, panes: true});
 
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false, activate: false});
         item.add_style_class_name('muna-menu-item');
@@ -95,14 +112,17 @@ export class ToolsMenu {
         const tabsFrame = new St.Bin({style_class: 'muna-menu-tabs', x_expand: true});
         const grid = new Clutter.GridLayout({column_homogeneous: true, column_spacing: 4, row_spacing: 4});
         const tabs = new St.Widget({layout_manager: grid, x_expand: true});
-        const SHORT = {'Keep awake': 'Awake', 'Quick toggles': 'Toggles', 'AI agents': 'Agents', 'Volume mixer': 'Sound'};
+        const SHORT = {'Keep awake': 'Awake', 'Quick toggles': 'Toggles', 'AI agents': 'Agents', 'AI Agents': 'Agents', 'Volume mixer': 'Sound', 'Reminders': 'Remind'};
         this._widgets.forEach((widget, index) => {
             const title = widget.constructor.title ?? '';
             const tab = new St.Button({style_class: 'muna-button muna-menu-tab', can_focus: true, reactive: true, track_hover: true,
                 button_mask: St.ButtonMask.PRIMARY ?? St.ButtonMask.ONE, x_expand: true});
             const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-menu-tab-box',
                 x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
-            box.add_child(new St.Icon({icon_name: widget.constructor.iconName, style_class: 'muna-menu-tab-icon', x_align: Clutter.ActorAlign.CENTER}));
+            // the design's line icons (shared/brand/muna-q-<id>.svg, white "-on" for the chosen tab), the theme's for any other
+            const icon = new St.Icon({gicon: this._tabIcon(widget, false), style_class: 'muna-menu-tab-icon', x_align: Clutter.ActorAlign.CENTER});
+            tab._munaIcon = icon;
+            box.add_child(icon);
             box.add_child(new St.Label({text: SHORT[title] ?? title, style_class: 'muna-menu-tab-label', x_align: Clutter.ActorAlign.CENTER}));
             tab.set_child(box);
             tab.connect('clicked', () => this._select(index));
@@ -125,15 +145,19 @@ export class ToolsMenu {
         this._ok.hide();
         root.add_child(titleRow);
 
-        // The pages: only the chosen one is shown; a tall one scrolls.
+        // The pages: only the chosen one is shown; a tall one scrolls. The window keeps one height, so the
+        // tabs and the button below stay under the pointer; a short tab keeps its own height.
         this._scroll = new St.ScrollView({
             style_class: 'muna-menu-scroll',
+            y_expand: true,
             hscrollbar_policy: St.PolicyType.NEVER,
             vscrollbar_policy: St.PolicyType.AUTOMATIC,
             overlay_scrollbars: true,
         });
-        const pages = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: false, y_align: Clutter.ActorAlign.START});
-        this._scroll.set_child(pages);
+        const viewport = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: false, y_align: Clutter.ActorAlign.START});
+        const pages = new FullHeightBox({orientation: Clutter.Orientation.VERTICAL, x_expand: true, y_expand: false, y_align: Clutter.ActorAlign.START});
+        viewport.add_child(pages);
+        this._scroll.set_child(viewport);
         root.add_child(this._scroll);
         // A widget laid out with the menu kit is a page as it is; any other is put in a card under its title.
         this._pages = this._widgets.map(widget => {
@@ -265,6 +289,12 @@ export class ToolsMenu {
             widget?.onPageHidden();
     }
 
+    /** A tab's icon: the design's line icon (white when chosen), or the theme's. */
+    _tabIcon(widget, chosen) {
+        const id = widget.constructor.id;
+        return TAB_ICONS.has(id) ? iconFor(`muna-q-${id}${chosen ? '-on' : ''}`) : iconFor(widget.constructor.iconName);
+    }
+
     _select(index) {
         if (index === this._current || index < 0 || index >= this._widgets.length)
             return;
@@ -277,12 +307,14 @@ export class ToolsMenu {
         this._current = index;
         const widget = this._widgets[index];
         this._pages[index].show();
-        this._title.text = widget.constructor.title.toUpperCase();
+        // the tab's name as a caption (the design: SOUND for the volume mixer)
+        this._title.text = (CAPTIONS[widget.constructor.title] ?? widget.constructor.title).toUpperCase();
         this._tabs.forEach((tab, i) => {
             if (i === index)
                 tab.add_style_pseudo_class('checked');
             else
                 tab.remove_style_pseudo_class('checked');
+            tab._munaIcon.gicon = this._tabIcon(this._widgets[i], i === index);
         });
         this._customize.visible = !!widget.customizable;
         this._scroll.vadjustment.value = 0;

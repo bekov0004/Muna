@@ -2,7 +2,7 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
-import {iconRow, menuCard, menuDivider, pillButton} from '../../ui/menuKit.js';
+import {chipFlow, menuHead, menuNote, qCard} from '../../ui/menuKit.js';
 import {QrCode} from '../../ui/qrCode.js';
 import {MunaWidget} from '../widget.js';
 
@@ -29,11 +29,9 @@ export class PhoneWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-phone muna-menu-page', x_expand: true});
-        this._card = menuCard();
-        this._card.add_style_class_name('muna-bigcard');
-        root.add_child(this._card);
-        this._body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        this._card.add_child(this._body);
+        // a card for each part: adb, every phone, connecting one (the design, 7.4.4)
+        this._body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-menu-page', x_expand: true});
+        root.add_child(this._body);
         this._phone?.connectObject('state-changed', () => this._draw(), this);
         this._draw();
         return root;
@@ -86,78 +84,69 @@ export class PhoneWidget extends MunaWidget {
         const body = this._body;
 
         if (!state.adb) {
-            const {row} = iconRow({icon: 'dialog-information-symbolic', title: 'Install adb first',
-                subtitle: 'adb is the standard Android tool that talks to the phone. One command installs it:'});
-            body.add_child(row);
-            const command = new St.Label({text: INSTALL_COMMAND, style_class: 'muna-code', x_expand: true});
-            body.add_child(command);
-            const copy = pillButton({label: 'Copy the command', icon: 'edit-copy-symbolic', onClick: () => {
+            const card = qCard();
+            card.add_child(new St.Label({text: 'Install adb first', style_class: 'muna-qtitle'}));
+            card.add_child(menuNote('adb is the standard Android tool that talks to the phone. One command installs it:'));
+            card.add_child(new St.Label({text: INSTALL_COMMAND, style_class: 'muna-code', x_expand: true}));
+            card.add_child(chipFlow([{id: 'copy', label: 'Copy the command'}], () => {
                 St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, INSTALL_COMMAND);
                 this._say('Copied. Paste it in a terminal.');
-            }});
-            const wrap = new St.BoxLayout({style_class: 'muna-pill-row', x_expand: true});
-            wrap.add_child(copy);
-            body.add_child(wrap);
-            body.add_child(menuDivider());
+            }).actor);
+            body.add_child(card);
         }
 
         const devices = state.devices ?? [];
         for (const device of devices) {
             const showing = state.mirroring === device.serial;
-            const title = device.model || device.serial;
-            const subtitle = device.state !== 'device' ? device.state : showing ? 'Open in a window' : 'Connected';
-            const controls = new St.BoxLayout({style_class: 'muna-phone-actions'});
-            if (device.state === 'device') {
-                controls.add_child(pillButton({label: 'In the panel', icon: 'video-display-symbolic', onClick: () => {
-                    if (showing)
-                        this._call('stopMirror');
-                    this.context.ui?.closeCapsule?.();
-                    this.context.ui?.openSection?.('phone');
-                }}));
-                controls.add_child(pillButton({label: showing ? 'Close window' : 'In a window', icon: 'window-new-symbolic',
-                    onClick: () => this._call(showing ? 'stopMirror' : 'mirror', {serial: device.serial, dark: !!this.context.settings?.get('phone-dark-screen')})}));
+            const card = qCard();
+            const ready = device.state === 'device';
+            const head = menuHead({icon: 'phone-symbolic', color: ready ? '#57e389' : '#f2a93b', title: device.model || device.serial,
+                subtitle: !ready ? device.state : showing ? 'Open in a window' : 'Connected',
+                action: {label: 'Disconnect', onClick: () => this._call('disconnect', {serial: device.serial})}});
+            card.add_child(head.actor);
+            if (ready) {
+                card.add_child(chipFlow([{id: 'panel', label: 'In the panel'}, {id: 'window', label: showing ? 'Close window' : 'In a window'}], id => {
+                    if (id === 'panel') {
+                        if (showing)
+                            this._call('stopMirror');
+                        this.context.ui?.closeCapsule?.();
+                        this.context.ui?.openSection?.('phone');
+                    } else {
+                        this._call(showing ? 'stopMirror' : 'mirror', {serial: device.serial, dark: !!this.context.settings?.get('phone-dark-screen')});
+                    }
+                }).actor);
             }
-            controls.add_child(pillButton({label: 'Disconnect', onClick: () => this._call('disconnect', {serial: device.serial})}));
-            const {row} = iconRow({icon: 'phone-symbolic', title, subtitle, extra: controls});
-            body.add_child(row);
-            body.add_child(menuDivider());
+            body.add_child(card);
         }
 
         const pairing = state.pairing;
+        const card = qCard();
+        body.add_child(card);
         if (pairing) {
             const qr = new QrCode(196);
             qr.setText(pairing.text);
             const qrBox = new St.BoxLayout({x_expand: true, style_class: 'muna-qr-box', x_align: Clutter.ActorAlign.CENTER});
             qrBox.add_child(qr);
-            body.add_child(qrBox);
-            body.add_child(this._label(pairing.message || (pairing.status === 'waiting' ? 'Waiting for the phone…' : ''), 'muna-phone-status'));
+            card.add_child(qrBox);
+            card.add_child(this._label(pairing.message || (pairing.status === 'waiting' ? 'Waiting for the phone…' : ''), 'muna-qrow-label'));
             const steps = ['On the phone: Settings › Developer options › Wireless debugging.',
                 'Turn it on, tap “Pair device with QR code” and scan this code.',
                 'The phone and the computer must be on the same Wi-Fi.'];
             for (const [i, text] of steps.entries())
-                body.add_child(this._label(`${i + 1}. ${text}`, 'muna-phone-step'));
-            const wrap = new St.BoxLayout({style_class: 'muna-pill-row', x_expand: true});
-            wrap.add_child(pillButton({label: pairing.status === 'failed' ? 'Try again' : 'Cancel', onClick: () => {
-                if (pairing.status === 'failed')
-                    this._call('startPairing');
-                else
-                    this._call('cancelPairing');
-            }}));
-            if (pairing.status === 'failed')
-                wrap.add_child(pillButton({label: 'Cancel', onClick: () => this._call('cancelPairing')}));
-            body.add_child(wrap);
+                card.add_child(menuNote(`${i + 1}. ${text}`));
+            const items = pairing.status === 'failed' ? [{id: 'again', label: 'Try again'}, {id: 'cancel', label: 'Cancel'}] : [{id: 'cancel', label: 'Cancel'}];
+            card.add_child(chipFlow(items, id => this._call(id === 'again' ? 'startPairing' : 'cancelPairing')).actor);
         } else {
             const ready = state.adb;
-            const {row} = iconRow({icon: 'phone-symbolic', title: devices.length ? 'Connect another phone' : 'Connect a phone',
-                subtitle: 'Show its screen here and control it with the mouse and keyboard. Android 11 or newer.'});
-            body.add_child(row);
-            const wrap = new St.BoxLayout({style_class: 'muna-pill-row', x_expand: true});
-            const button = pillButton({label: 'Show the QR code', icon: 'view-grid-symbolic', onClick: () => ready && this._call('startPairing')});
+            card.add_child(new St.Label({text: devices.length ? 'Connect another phone' : 'Connect a phone', style_class: 'muna-qtitle'}));
+            card.add_child(menuNote('Show its screen here and control it with the mouse and keyboard. Android 11 or newer.'));
+            const chips = chipFlow([{id: 'qr', label: 'Show the QR code'}], () => ready && this._call('startPairing'));
+            const button = chips.buttons.get('qr');
+            button.add_style_class_name('muna-chip-primary');
             button.reactive = !!ready;
             button.opacity = ready ? 255 : 90;
-            wrap.add_child(button);
-            body.add_child(wrap);
-            body.add_child(this._label('Over a USB cable it works too: turn on USB debugging, plug the phone in and it appears in this list.', 'muna-phone-step'));
+            card.add_child(chips.actor);
+            card.add_child(menuNote('Over a USB cable it works too: turn on USB debugging, plug the phone in and it appears in this list.'));
         }
     }
 

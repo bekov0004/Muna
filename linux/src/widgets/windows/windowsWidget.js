@@ -4,7 +4,7 @@ import Meta from 'gi://Meta';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {menuCard, menuChips, setChecked} from '../../ui/menuKit.js';
+import {chipFlow, menuChips, menuNote, qCard, setChecked} from '../../ui/menuKit.js';
 import {maximizeWindow, placeWindow, restoreTiled, snap, tile} from '../../windows/layout.js';
 import {WindowMap} from '../../windows/windowMap.js';
 import {MunaWidget} from '../widget.js';
@@ -13,38 +13,6 @@ import {MunaWidget} from '../widget.js';
 const LEFT = [['columns', 'Columns'], ['rows', 'Rows'], ['grid', 'Grid']];
 const RIGHT = [['main', 'Main + side'], ['undo', 'Undo']];
 
-/** A small drawing of a layout: the cells of it. */
-function glyph(kind) {
-    const cell = () => new St.Widget({style_class: 'muna-glyph-cell', x_expand: true, y_expand: true});
-    const box = (vertical, children, extra = {}) => {
-        const b = new St.BoxLayout({orientation: vertical ? Clutter.Orientation.VERTICAL : Clutter.Orientation.HORIZONTAL, x_expand: true, y_expand: true, style_class: 'muna-glyph-box', ...extra});
-        children.forEach(c => b.add_child(c));
-        return b;
-    };
-    let inner;
-    switch (kind) {
-    case 'columns':
-        inner = box(false, [cell(), cell(), cell()]);
-        break;
-    case 'rows':
-        inner = box(true, [cell(), cell(), cell()]);
-        break;
-    case 'grid':
-        inner = box(true, [box(false, [cell(), cell()]), box(false, [cell(), cell()])]);
-        break;
-    case 'main': {
-        const big = cell();
-        big.x_expand = false;
-        big.width = 15;
-        inner = box(false, [big, box(true, [cell(), cell()])]);
-        break;
-    }
-    default:
-        return new St.Icon({icon_name: 'edit-undo-symbolic', icon_size: 16, style_class: 'muna-glyph-icon'});
-    }
-    const frame = new St.Bin({style_class: 'muna-glyph', child: inner});
-    return frame;
-}
 
 /**
  * Windows: a picture of one screen with its windows, to arrange them by hand. Choose the monitor above it, and the
@@ -74,12 +42,11 @@ export class WindowsWidget extends MunaWidget {
         this._monitorRow = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         root.add_child(this._monitorRow);
 
-        const card = menuCard();
+        // the desktops as tabs, a live map of the screen, how to use it (the design, 7.4.6)
+        const card = qCard();
         card.add_style_class_name('muna-winmap-card');
         this._tabs = new St.BoxLayout({style_class: 'muna-winmap-tabs', x_expand: true});
         card.add_child(this._tabs);
-        const row = new St.BoxLayout({style_class: 'muna-winmap-row', x_expand: true});
-        row.add_child(this._column(LEFT));
         this._map = new WindowMap({
             onRaise: window => this._raise(window),
             onClose: window => window.delete(global.get_current_time()),
@@ -87,31 +54,16 @@ export class WindowsWidget extends MunaWidget {
             onDropOutside: (window, x, y) => this._dropOutside(window, x, y),
             onDragging: window => this._markDropTargets(!!window),
         });
-        const mapBox = new St.Bin({style_class: 'muna-winmap-frame', x_expand: true, child: this._map, y_align: Clutter.ActorAlign.CENTER});
-        row.add_child(mapBox);
-        row.add_child(this._column(RIGHT));
-        card.add_child(row);
-        const hint = new St.Label({
-            text: 'Drag a window to an edge for half, a corner for a quarter, the top for the whole screen. Drop it on a tab or a monitor to move it there.',
-            style_class: 'muna-hint',
-        });
-        hint.clutter_text.line_wrap = true;
-        card.add_child(hint);
+        const mapBox = new St.Bin({style_class: 'muna-winmap-frame', x_expand: true, child: this._map});
+        card.add_child(mapBox);
+        card.add_child(menuNote('Drag a window to an edge for half, a corner for a quarter, the top for the whole screen. Drop it on a tab or a monitor to move it there.'));
         root.add_child(card);
-        return root;
-    }
 
-    _column(buttons) {
-        const column = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-winmap-side', y_align: Clutter.ActorAlign.CENTER});
-        for (const [id, label] of buttons) {
-            const content = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER});
-            content.add_child(glyph(id));
-            content.add_child(new St.Label({text: label, style_class: 'muna-winmap-side-label', x_align: Clutter.ActorAlign.CENTER}));
-            const button = new St.Button({style_class: 'muna-winmap-side-button', child: content, can_focus: true, reactive: true, track_hover: true, accessible_name: label});
-            button.connect('clicked', () => this._arrange(id));
-            column.add_child(button);
-        }
-        return column;
+        // every window of this screen at once
+        const all = qCard('ALL WINDOWS OF THIS SCREEN');
+        all.add_child(chipFlow([...LEFT, ...RIGHT].map(([id, label]) => ({id, label})), id => this._arrange(id), {perRow: 4}).actor);
+        root.add_child(all);
+        return root;
     }
 
     onPageShown() {

@@ -6,15 +6,26 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {HorizontalSlider} from '../../ui/horizontalSlider.js';
-import {checkRow, collapsible, dropdown, menuCard, menuDivider} from '../../ui/menuKit.js';
+import {chipFlow, menuNote, qCard, setChecked, switchRow} from '../../ui/menuKit.js';
 import {MunaWidget} from '../widget.js';
 
 const MAX_APPS = 8;
 
+/** An output's name for a chip: "Speakers" rather than "Built-in Audio Analog Stereo". */
+function shortName(description) {
+    if (/headphone/i.test(description))
+        return 'Headphones';
+    if (/hdmi|displayport/i.test(description))
+        return 'HDMI';
+    if (/built-in|analog|speaker/i.test(description))
+        return 'Speakers';
+    return description.length > 18 ? `${description.slice(0, 17)}…` : description;
+}
+
 /**
- * Volume mixer: the output with its volume, the sound of system events, the microphone, and every
- * application on its own (volume up to the amplified maximum, the device it plays on, a reset and a
- * mute), through the same library GNOME's own volume menu uses.
+ * Volume mixer (the design, 7.4.4): the output with its volume and the outputs as chips, the microphone,
+ * every application and the system sounds on their own (up to the amplified maximum; a click on the name
+ * mutes), and the options, through the same library GNOME's own volume menu uses.
  */
 export class SoundWidget extends MunaWidget {
     static id = 'sound';
@@ -41,79 +52,88 @@ export class SoundWidget extends MunaWidget {
 
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-sound muna-menu-page', x_expand: true});
-        const card = menuCard();
-        card.add_style_class_name('muna-bigcard');
+        // the output's volume, the outputs, the microphone
+        const card = qCard();
         root.add_child(card);
-
-        // Output: the device and the volume.
-        this._outputPick = dropdown({items: [], onPick: id => this._setOutput(id)});
-        card.add_child(this._labelled('audio-speakers-symbolic', 'Output', this._outputPick));
-        const master = new St.BoxLayout({style_class: 'muna-sound-row', x_expand: true});
-        this._muteIcon = new St.Icon({icon_name: 'audio-volume-high-symbolic', style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER});
-        const muteButton = new St.Button({reactive: true, child: this._muteIcon, y_align: Clutter.ActorAlign.CENTER});
-        muteButton.connect('clicked', () => this._toggleMute());
-        master.add_child(muteButton);
-        this._slider = new HorizontalSlider({min: 0, max: 100, value: 0, onChange: value => this._setVolume(value)});
-        this._slider.y_align = Clutter.ActorAlign.CENTER;
-        master.add_child(this._slider);
-        this._percent = new St.Label({text: '', style_class: 'muna-sound-percent', y_align: Clutter.ActorAlign.CENTER});
-        master.add_child(this._percent);
-        card.add_child(master);
-
-        // System sounds.
-        this._eventsPick = dropdown({items: [{id: 'on', label: 'Play'}, {id: 'off', label: 'Silent'}],
-            current: this._sound?.get_boolean('event-sounds') ? 'on' : 'off', onPick: id => this._sound?.set_boolean('event-sounds', id === 'on')});
-        card.add_child(this._labelled('preferences-system-notifications-symbolic', 'System sounds', this._eventsPick));
-
-        // Microphone.
-        this._micPick = dropdown({items: [], onPick: id => this._setInput(id)});
-        this._micRow = this._labelled('audio-input-microphone-symbolic', 'Microphone', this._micPick);
-        card.add_child(this._micRow);
-        const mic = new St.BoxLayout({style_class: 'muna-sound-row', x_expand: true});
-        this._micSliderRow = mic;
-        this._micIcon = new St.Icon({icon_name: 'audio-input-microphone-symbolic', style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER});
-        const micButton = new St.Button({reactive: true, child: this._micIcon, y_align: Clutter.ActorAlign.CENTER});
-        micButton.connect('clicked', () => this._toggleMic());
-        mic.add_child(micButton);
-        this._micSlider = new HorizontalSlider({min: 0, max: 100, value: 0, onChange: value => this._setMicVolume(value)});
-        this._micSlider.y_align = Clutter.ActorAlign.CENTER;
-        mic.add_child(this._micSlider);
-        this._micPercent = new St.Label({text: '', style_class: 'muna-sound-percent', y_align: Clutter.ActorAlign.CENTER});
-        mic.add_child(this._micPercent);
-        card.add_child(mic);
-
-        this._appsDivider = menuDivider();
-        card.add_child(this._appsDivider);
-        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        card.add_child(this._list);
-        this._note = new St.Label({text: '', style_class: 'muna-hint'});
+        this._output = this._volumeRow('Speakers', value => this._setVolume(value), () => this._toggleMute());
+        card.add_child(this._output.actor);
+        this._outputs = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
+        card.add_child(this._outputs);
+        this._mic = this._volumeRow('Microphone', value => this._setMicVolume(value), () => this._toggleMic());
+        card.add_child(this._mic.actor);
+        this._note = menuNote('');
         card.add_child(this._note);
-        card.add_child(menuDivider());
 
-        const options = collapsible('Options', {open: false});
-        card.add_child(options.actor);
+        // APPLICATIONS: every program that plays, and the system sounds
+        const apps = qCard('APPLICATIONS');
+        root.add_child(apps);
+        this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qcard-list', x_expand: true});
+        apps.add_child(this._list);
+        this._events = this._volumeRow('System sounds', value => this._setEventVolume(value), null);
+        apps.add_child(this._events.actor);
+
+        // OPTIONS
+        const options = qCard('OPTIONS');
+        root.add_child(options);
         if (this._keys) {
-            this._fine = checkRow({title: 'Use finer volume steps', subtitle: 'Turns the volume keys into smaller steps.', state: this._keys.get_int('volume-step') <= 2,
-                onToggle: on => this._keys.set_int('volume-step', on ? 2 : 6)});
-            options.body.add_child(this._fine.row);
+            this._fine = switchRow({title: 'Use finer volume steps', subtitle: 'Turns the volume keys into smaller steps.',
+                onToggle: on => {
+                    this._keys.set_int('volume-step', on ? 2 : 6);
+                    this._fine.set(on);
+                }});
+            this._fine.set(this._keys.get_int('volume-step') <= 2);
+            options.add_child(this._fine.row);
         }
-        this._amplify = checkRow({title: 'Allow volume above 100%', subtitle: 'Louder than the normal maximum, for quiet recordings.',
-            state: !!this._sound?.get_boolean('allow-volume-above-100-percent'), onToggle: on => this._sound?.set_boolean('allow-volume-above-100-percent', on)});
-        if (this._sound)
-            options.body.add_child(this._amplify.row);
+        if (this._sound) {
+            this._amplify = switchRow({title: 'Allow volume above 100%', subtitle: 'Louder than the normal maximum.',
+                onToggle: on => {
+                    this._sound.set_boolean('allow-volume-above-100-percent', on);
+                    this._amplify.set(on);
+                    this._update();
+                }});
+            this._amplify.set(this._sound.get_boolean('allow-volume-above-100-percent'));
+            options.add_child(this._amplify.row);
+        }
 
         this._connect();
         return root;
     }
 
-    /** A label with an icon on the left and a drop-down on the right. */
-    _labelled(icon, text, pick) {
-        const row = new St.BoxLayout({style_class: 'muna-value-row muna-labelled', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
-        row.add_child(new St.Icon({icon_name: icon, style_class: 'muna-meter-icon', y_align: Clutter.ActorAlign.CENTER}));
-        row.add_child(new St.Label({text, style_class: 'muna-value-label', y_align: Clutter.ActorAlign.CENTER}));
-        pick.actor.x_expand = true;
-        row.add_child(pick.actor);
-        return row;
+    /** A volume: the name (a click mutes) and the percent, a slider under them. */
+    _volumeRow(name, onChange, onMute) {
+        const actor = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qmeter', x_expand: true});
+        const head = new St.BoxLayout({x_expand: true});
+        const label = new St.Label({text: name, style_class: 'muna-qmeter-name', y_align: Clutter.ActorAlign.CENTER});
+        label.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+        const nameButton = new St.Button({child: label, reactive: !!onMute, can_focus: !!onMute, x_expand: true, x_align: Clutter.ActorAlign.START});
+        if (onMute)
+            nameButton.connect('clicked', () => onMute());
+        head.add_child(nameButton);
+        const percent = new St.Label({text: '', style_class: 'muna-qmeter-value', y_align: Clutter.ActorAlign.CENTER});
+        head.add_child(percent);
+        actor.add_child(head);
+        const slider = new HorizontalSlider({min: 0, max: 100, value: 0, onChange});
+        slider.add_style_class_name('muna-qslider');
+        actor.add_child(slider);
+        return {
+            actor, slider,
+            setName: text => (label.text = text),
+            show: (volume, norm, max, muted) => {
+                slider.max = max;
+                slider.value = volume;
+                const value = Math.round(100 * volume / norm);
+                percent.text = muted ? 'muted' : `${value > 100 ? '⚡' : ''}${value} %`;
+                percent.style = value > 100 && !muted ? 'color: #ff9f0a;' : '';
+            },
+        };
+    }
+
+    _setEventVolume(value) {
+        const stream = this._mixer?.get_event_sink_input?.();
+        if (!stream)
+            return;
+        stream.volume = Math.round(value);
+        stream.push_volume();
     }
 
     _connect() {
@@ -148,39 +168,45 @@ export class SoundWidget extends MunaWidget {
             return;
         if (!this._ready) {
             this._note.text = this._mixer?.get_state() === Gvc.MixerControlState.FAILED ? 'The sound system is not available' : 'Connecting to the sound system…';
+            this._note.visible = true;
             return;
         }
-        this._note.text = '';
+        this._note.visible = false;
         const sink = this._mixer.get_default_sink();
         const norm = this._mixer.get_vol_max_norm();
         const max = this._maxFor(norm);
+        this._output.actor.visible = !!sink;
         if (sink) {
-            this._slider.max = max;
-            this._slider.value = sink.volume;
-            this._percent.text = sink.is_muted ? 'muted' : `${Math.round(100 * sink.volume / norm)}%`;
-            this._muteIcon.icon_name = sink.is_muted || sink.volume === 0 ? 'audio-volume-muted-symbolic'
-                : sink.volume < norm / 2 ? 'audio-volume-medium-symbolic' : 'audio-volume-high-symbolic';
+            this._output.setName(sink.get_port?.()?.human_port ?? sink.description ?? 'Speakers');
+            this._output.show(sink.volume, norm, max, sink.is_muted);
             sink.disconnectObject(this);
             sink.connectObject('notify::volume', () => this._update(), 'notify::is-muted', () => this._update(), this);
+            // the outputs as chips, the one in use violet
             this._sinks = this._mixer.get_sinks();
-            this._outputPick.setItems(this._sinks.map(s => ({id: String(s.id), label: s.description ?? s.name})));
-            this._outputPick.setCurrent(String(sink.id));
+            const key = this._sinks.map(s => `${s.id}:${s.description}`).join('|') + `#${sink.id}`;
+            if (key !== this._outputsKey) {
+                this._outputsKey = key;
+                this._outputs.destroy_all_children();
+                if (this._sinks.length > 1) {
+                    const chips = chipFlow(this._sinks.map(s => ({id: String(s.id), label: shortName(s.description ?? s.name)})), id => this._setOutput(id), {perRow: 3});
+                    chips.buttons.forEach((chip, id) => setChecked(chip, id === String(sink.id)));
+                    this._outputs.add_child(chips.actor);
+                }
+            }
         }
         const source = this._mixer.get_default_source();
-        // no microphone at all: no empty list and no slider for it
+        // no microphone at all: no slider for it
         const hasMic = !!source && this._mixer.get_sources().some(s => !/monitor/i.test(s.name ?? ''));
-        this._micRow.visible = this._micSliderRow.visible = hasMic;
+        this._mic.actor.visible = hasMic;
         if (source && hasMic) {
-            this._micSlider.max = norm;
-            this._micSlider.value = source.volume;
-            this._micPercent.text = source.is_muted ? 'muted' : `${Math.round(100 * source.volume / norm)}%`;
-            this._micIcon.icon_name = source.is_muted ? 'microphone-disabled-symbolic' : 'audio-input-microphone-symbolic';
-            this._sources = this._mixer.get_sources().filter(s => !/monitor/i.test(s.name ?? ''));
-            this._micPick.setItems(this._sources.map(s => ({id: String(s.id), label: s.description ?? s.name})));
-            this._micPick.setCurrent(String(source.id));
+            this._mic.show(source.volume, norm, norm, source.is_muted);
             source.disconnectObject(this);
             source.connectObject('notify::volume', () => this._update(), 'notify::is-muted', () => this._update(), this);
         }
+        const events = this._mixer.get_event_sink_input?.();
+        this._events.actor.visible = !!events;
+        if (events)
+            this._events.show(events.volume, norm, norm, events.is_muted);
         this._rebuildApps(norm, max);
     }
 
@@ -189,88 +215,25 @@ export class SoundWidget extends MunaWidget {
         const ids = new Set(streams.map(s => s.id));
         for (const [id, app] of this._apps) {
             if (!ids.has(id)) {
-                app.row.destroy();
+                app.actor.destroy();
                 this._apps.delete(id);
             }
         }
         for (const stream of streams) {
             let app = this._apps.get(stream.id);
-            if (!app)
-                app = this._addApp(stream, norm, max);
-            app.slider.max = max;
-            app.slider.value = stream.volume;
-            this._showApp(app, stream, norm);
+            if (!app) {
+                app = this._volumeRow(stream.name || 'Application', value => {
+                    stream.volume = Math.round(value);
+                    stream.push_volume();
+                }, () => stream.change_is_muted(!stream.is_muted));
+                this._list.add_child(app.actor);
+                this._apps.set(stream.id, app);
+                stream.connectObject('notify::volume', () => app.show(stream.volume, norm, this._maxFor(norm), stream.is_muted),
+                    'notify::is-muted', () => app.show(stream.volume, norm, this._maxFor(norm), stream.is_muted), this);
+            }
+            app.show(stream.volume, norm, max, stream.is_muted);
         }
-        this._list.visible = this._appsDivider.visible = streams.length > 0;
-        if (streams.length === 0)
-            this._note.text = 'Applications that play sound appear here.';
-    }
-
-    _addApp(stream, norm, max) {
-        const row = new St.BoxLayout({style_class: 'muna-app-line', x_expand: true});
-        const icon = new St.Icon({icon_name: stream.icon_name || 'audio-x-generic-symbolic', style_class: 'muna-app-icon', y_align: Clutter.ActorAlign.CENTER});
-        row.add_child(icon);
-        const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true, style_class: 'muna-app-body'});
-        const head = new St.BoxLayout({x_expand: true});
-        const name = new St.Label({text: stream.name || 'Application', style_class: 'muna-value-label muna-value-strong', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
-        name.clutter_text.ellipsize = Pango.EllipsizeMode.END;
-        head.add_child(name);
-        const device = dropdown({items: [], onPick: sinkId => this._moveStream(stream, sinkId)});
-        device.actor.width = 150;
-        head.add_child(device.actor);
-        body.add_child(head);
-        const line = new St.BoxLayout({x_expand: true, style_class: 'muna-app-slider'});
-        const slider = new HorizontalSlider({min: 0, max, value: stream.volume, onChange: value => {
-            stream.volume = Math.round(value);
-            stream.push_volume();
-        }});
-        slider.y_align = Clutter.ActorAlign.CENTER;
-        line.add_child(slider);
-        const percent = new St.Label({text: '', style_class: 'muna-sound-percent', y_align: Clutter.ActorAlign.CENTER});
-        line.add_child(percent);
-        const reset = new St.Button({style_class: 'muna-app-reset', reactive: true, track_hover: true, y_align: Clutter.ActorAlign.CENTER,
-            child: new St.Icon({icon_name: 'view-refresh-symbolic', icon_size: 13})});
-        reset.connect('clicked', () => {
-            stream.volume = norm;
-            stream.push_volume();
-        });
-        line.add_child(reset);
-        const mute = new St.Button({style_class: 'muna-app-reset', reactive: true, track_hover: true, y_align: Clutter.ActorAlign.CENTER});
-        const muteIcon = new St.Icon({icon_name: 'audio-volume-high-symbolic', icon_size: 14});
-        mute.set_child(muteIcon);
-        mute.connect('clicked', () => stream.change_is_muted(!stream.is_muted));
-        line.add_child(mute);
-        body.add_child(line);
-        row.add_child(body);
-        this._list.add_child(row);
-        const app = {row, slider, percent, reset, muteIcon, device};
-        this._apps.set(stream.id, app);
-        stream.connectObject('notify::volume', () => {
-            app.slider.value = stream.volume;
-            this._showApp(app, stream, this._mixer.get_vol_max_norm());
-        }, 'notify::is-muted', () => this._showApp(app, stream, this._mixer.get_vol_max_norm()), this);
-        return app;
-    }
-
-    /** The percent (orange with a bolt above 100%), the reset and the mute icon of one application. */
-    _showApp(app, stream, norm) {
-        const percent = Math.round(100 * stream.volume / norm);
-        const boosted = percent > 100;
-        app.percent.text = stream.is_muted ? 'muted' : `${boosted ? '⚡' : ''}${percent}%`;
-        app.percent.style = boosted ? 'color: #ff9f0a;' : '';
-        app.reset.visible = percent !== 100;
-        app.muteIcon.icon_name = stream.is_muted ? 'audio-volume-muted-symbolic' : 'audio-volume-high-symbolic';
-        const sinks = this._sinks ?? [];
-        app.device.setItems([{id: 'default', label: 'Default'}, ...sinks.map(s => ({id: String(s.id), label: s.description ?? s.name}))]);
-        app.device.setCurrent('default');
-    }
-
-    /** Moves one application's sound to another output (PipeWire / PulseAudio). */
-    _moveStream(stream, sinkId) {
-        const sink = sinkId === 'default' ? this._mixer.get_default_sink() : this._sinks.find(s => String(s.id) === sinkId);
-        if (!sink || stream.index === undefined)
-            return;
-        GLib.spawn_async(null, ['pactl', 'move-sink-input', String(stream.index), sink.name], null, GLib.SpawnFlags.SEARCH_PATH, null);
+        this._list.visible = streams.length > 0;
     }
 
     _setOutput(id) {

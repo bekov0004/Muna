@@ -3,7 +3,7 @@ import {FileService} from './fileService.js';
 
 /**
  * The file tray (a list of file:// URIs; the files are never copied or moved).
- * state: {items: [{uri, name, icon, thumbnail, isDirectory}]} where `icon` is a serialized Gio.Icon
+ * state: {items: [{uri, name, icon, thumbnail, isDirectory, size}]} where `icon` is a serialized Gio.Icon
  * and `thumbnail` a file path (or null).
  * events: adding {count}, added {count}
  */
@@ -26,6 +26,7 @@ export class FilesModule extends Module {
                 icon: item.icon?.to_string() ?? null,
                 thumbnail: item.thumbnail?.get_file()?.get_path() ?? null,
                 isDirectory: item.isDirectory,
+                size: item.size ?? 0,
             })),
         };
     }

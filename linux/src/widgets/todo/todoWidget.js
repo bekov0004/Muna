@@ -33,14 +33,21 @@ export class TodoWidget extends MunaWidget {
             y_align: Clutter.ActorAlign.CENTER,
         });
         header.add_child(this._caption);
+        // the count ("2 of 4" left); on hover, while some are done, "Clear done" in its place
+        this._count = new St.Label({style_class: 'muna-todo-count', y_align: Clutter.ActorAlign.CENTER});
+        header.add_child(this._count);
         this._clear = new St.Button({
             label: 'Clear done',
             style_class: 'muna-todo-clear',
             can_focus: true,
+            visible: false,
         });
         this._clear.connect('clicked', () => this._todo.clearDone());
         header.add_child(this._clear);
         root.add_child(header);
+        root.reactive = true;
+        root.track_hover = true;
+        root.connect('notify::hover', () => this._syncHeader());
 
         this._empty = new EmptyState({iconName: 'object-select-symbolic', text: 'Nothing to do'});
         root.add_child(this._empty);
@@ -58,7 +65,7 @@ export class TodoWidget extends MunaWidget {
         root.add_child(this._scroll);
 
         this._entry = new St.Entry({
-            hint_text: 'Add a task',
+            hint_text: 'Add a task…',
             style_class: 'muna-todo-entry',
             can_focus: true,
             x_expand: true,
@@ -114,13 +121,22 @@ export class TodoWidget extends MunaWidget {
             this._ui.endTextInput();
     }
 
+    _syncHeader() {
+        if (!this._view)
+            return;
+        const clear = this._todo.hasDone && this._view.hover;
+        this._clear.visible = clear;
+        this._count.visible = !clear;
+    }
+
     _rebuild() {
         if (!this._view)
             return;
         const items = this._todo.items;
         const left = this._todo.remaining;
-        this._caption.text = items.length === 0 ? 'TO-DO' : `TO-DO · ${left} left`;
-        this._clear.visible = this._todo.hasDone;
+        this._caption.text = 'To-do';
+        this._count.text = items.length === 0 ? '' : `${left} of ${items.length}`;
+        this._syncHeader();
         this._empty.visible = items.length === 0;
         this._scroll.visible = items.length > 0;
 

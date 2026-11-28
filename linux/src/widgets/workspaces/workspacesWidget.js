@@ -1,11 +1,9 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-import Meta from 'gi://Meta';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {createButton} from '../../ui/button.js';
-import {menuCard, menuChip, menuChips, menuDivider, menuHeader, menuRow, setChecked, switchRow} from '../../ui/menuKit.js';
+import {chipFlow, qCard, setChecked, switchRow} from '../../ui/menuKit.js';
 import {targetWindow} from '../../windows/layout.js';
 import {MunaWidget} from '../widget.js';
 
@@ -53,41 +51,36 @@ export class WorkspacesWidget extends MunaWidget {
     createView() {
         const root = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-widget muna-workspaces muna-menu-page', x_expand: true});
 
+        // the desktops as chips (the one you are on violet), then making new ones (the design, 7.4.6)
+        const card = qCard();
+        root.add_child(card);
         this._monitorChips = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
-        root.add_child(this._monitorChips);
-        const card = menuCard();
+        card.add_child(this._monitorChips);
         this._list = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_expand: true});
         card.add_child(this._list);
-        card.add_child(menuDivider());
-        const actions = new St.BoxLayout({style_class: 'muna-chips-row muna-card-pad', x_expand: true});
-        actions.add_child(menuChip({label: 'New desktop', icon: 'list-add-symbolic', primary: true, onClick: () => this._create(false)}));
-        actions.add_child(menuChip({label: 'Move window to a new one', icon: 'go-next-symbolic', onClick: () => this._create(true)}));
-        card.add_child(actions);
-        root.add_child(card);
+        card.add_child(chipFlow([{id: 'new', label: 'New desktop'}, {id: 'move', label: 'Move window to a new one'}],
+            id => this._create(id === 'move')).actor);
 
-        root.add_child(menuHeader('Behaviour'));
-        const behaviour = menuCard();
+        const behaviour = qCard('BEHAVIOUR');
         this._dynamic = switchRow({
             title: 'Dynamic desktops',
             subtitle: 'An empty desktop waits at the end; empty ones in between go away.',
             onToggle: on => this._mutter.set_boolean('dynamic-workspaces', on),
         });
         behaviour.add_child(this._dynamic.row);
-        behaviour.add_child(menuDivider());
         this._perMonitorRow = switchRow({
             title: 'Separate desktops for every monitor',
-            subtitle: 'Each monitor switches on its own. Keys and gestures act on the monitor under the pointer.',
+            subtitle: 'Each monitor switches on its own.',
             state: this._perMonitor,
             onToggle: on => this.context.settings?.gsettings?.set_boolean('desktops-per-monitor', on),
         });
-        behaviour.add_child(this._perMonitorRow.row);
-        behaviour.add_child(menuDivider());
         this._everywhere = switchRow({
             title: 'Desktops only on the main monitor',
             subtitle: 'The other monitors keep showing the same windows.',
             onToggle: on => this._mutter.set_boolean('workspaces-only-on-primary', on),
         });
         behaviour.add_child(this._everywhere.row);
+        behaviour.add_child(this._perMonitorRow.row);
         root.add_child(behaviour);
 
         this._manager.connectObject(
@@ -115,10 +108,6 @@ export class WorkspacesWidget extends MunaWidget {
         this._everywhere?.set(this._mutter.get_boolean('workspaces-only-on-primary'));
     }
 
-    _windowsOn(workspace) {
-        return workspace.list_windows().filter(w => w.get_window_type() === Meta.WindowType.NORMAL && !w.is_skip_taskbar() && !w.is_on_all_workspaces());
-    }
-
     _rebuild() {
         if (!this._list)
             return;
@@ -133,30 +122,14 @@ export class WorkspacesWidget extends MunaWidget {
         }
         const count = this._manager.get_n_workspaces();
         const active = this._manager.get_active_workspace_index();
-        for (let i = 0; i < count; i++) {
-            if (i > 0)
-                this._list.add_child(menuDivider());
-            const workspace = this._manager.get_workspace_by_index(i);
-            const n = this._windowsOn(workspace).length;
-            const empty = n === 0;
-            let control = null;
-            if (empty && count > 1) {
-                control = createButton({
-                    iconName: 'window-close-symbolic', styleClass: 'muna-ls-file-remove',
-                    onClick: () => this._remove(workspace),
-                });
-            } else if (i === active) {
-                control = new St.Icon({icon_name: 'object-select-symbolic', style_class: 'muna-tool-icon'});
-            }
-            const {row} = menuRow({
-                title: `Desktop ${i + 1}${i === active ? ' (this one)' : ''}`,
-                subtitle: empty ? 'Empty' : `${n} window${n === 1 ? '' : 's'}`,
-                control,
-                onClick: () => workspace.activate(global.get_current_time()),
-            });
-            setChecked(row, i === active);
-            this._list.add_child(row);
-        }
+        this._desktopChips(count, active, i => this._manager.get_workspace_by_index(i)?.activate(global.get_current_time()));
+    }
+
+    /** "Desktop 1", "Desktop 2" … as chips, the one you are on violet. */
+    _desktopChips(count, current, onPick) {
+        const chips = chipFlow(Array.from({length: count}, (_v, i) => ({id: String(i), label: `Desktop ${i + 1}`})), id => onPick(Number(id)), {perRow: 3});
+        chips.buttons.forEach((chip, id) => setChecked(chip, Number(id) === current));
+        this._list.add_child(chips.actor);
     }
 
     _shownMonitor() {
@@ -169,7 +142,7 @@ export class WorkspacesWidget extends MunaWidget {
         if (md.monitorCount > 1) {
             const primary = global.display.get_primary_monitor();
             const items = Array.from({length: md.monitorCount}, (_v, i) => ({id: String(i), label: i === primary ? `Monitor ${i + 1} (main)` : `Monitor ${i + 1}`}));
-            const {actor, buttons} = menuChips(items, id => {
+            const {actor, buttons} = chipFlow(items, id => {
                 this._monitor = Number(id);
                 this._rebuild();
             }, {perRow: 2});
@@ -178,25 +151,11 @@ export class WorkspacesWidget extends MunaWidget {
         }
     }
 
-    /** The list for a monitor with desktops of its own. */
+    /** The desktops of a monitor that has its own. */
     _rebuildMonitor() {
         const md = this._monitors;
         const monitor = this._shownMonitor();
-        const count = md.count(monitor);
-        const current = md.current(monitor);
-        for (let i = 0; i < count; i++) {
-            if (i > 0)
-                this._list.add_child(menuDivider());
-            const n = md.windowsOn(monitor, i).length;
-            const {row} = menuRow({
-                title: `Desktop ${i + 1}${i === current ? ' (this one)' : ''}`,
-                subtitle: n === 0 ? 'Empty' : `${n} window${n === 1 ? '' : 's'}`,
-                control: i === current ? new St.Icon({icon_name: 'object-select-symbolic', style_class: 'muna-tool-icon'}) : null,
-                onClick: () => md.switchTo(monitor, i),
-            });
-            setChecked(row, i === current);
-            this._list.add_child(row);
-        }
+        this._desktopChips(md.count(monitor), md.current(monitor), i => md.switchTo(monitor, i));
     }
 
     /** @param {boolean} withWindow also send the window you were working in to it */
@@ -222,12 +181,6 @@ export class WorkspacesWidget extends MunaWidget {
         this._rebuild();
     }
 
-    _remove(workspace) {
-        if (this._windowsOn(workspace).length > 0 || this._manager.get_n_workspaces() < 2)
-            return;
-        this._manager.remove_workspace(workspace, global.get_current_time());
-        this._rebuild();
-    }
 
     destroy() {
         this.context.settings?.disconnectObject(this);

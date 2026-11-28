@@ -36,7 +36,6 @@ import {getScaleFactor, scaled} from './utils/scale.js';
 import {listOverflow} from './ui/overflow.js';
 import {SignalTracker} from './utils/signals.js';
 import {Timers} from './utils/timers.js';
-import {glassManager} from './ui/liquidGlass.js';
 
 // Resizing between two cards, or after a card update: calm, no overshoot.
 const COMMAND_WIDTH = 680; // css px: the capsule as the command bar
@@ -212,6 +211,8 @@ export class Muna {
             },
         });
         this._localSendView.onContentChanged = () => this._onListChanged();
+        // the tray takes the height its files need
+        this._tray.view.onContentChanged = () => this._onListChanged();
         this._widgets = this._createWidgets();
         this._buildActor();
         this._applyAppearance();
@@ -220,8 +221,6 @@ export class Muna {
         Main.layoutManager.addChrome(this._actor, {trackFullscreen: false});
         for (const ear of this._ears)
             Main.layoutManager.addChrome(ear, {trackFullscreen: false});
-        // Liquid glass (Settings → Appearance): the bent desktop behind the capsule
-        this._glass = glassManager(this._settings).attach(this._actor, () => this._glassShape(), {mark: this._actor, panes: true});
 
         this._signals.connect(St.ThemeContext.get_for_stage(global.stage),
             'notify::scale-factor', () => this._relayout());
@@ -306,8 +305,6 @@ export class Muna {
             Main.layoutManager.removeChrome(ear);
             ear.destroy();
         }
-        this._glass?.remove();
-        this._glass = null;
         if (this._actor) {
             Main.layoutManager.removeChrome(this._actor);
             this._actor.destroy();
@@ -371,6 +368,10 @@ export class Muna {
                     beginTextInput: onEnd => this._beginTextInput(onEnd),
                     endTextInput: () => this._endTextInput(),
                     closeCapsule: () => this._settle(),
+                    openSettings: () => {
+                        this._settle();
+                        this._openPreferences();
+                    },
                     showCard: (activity, options) => this._services.activities.peek(activity, {...options, force: true, target: this}),
                     hideCard: activity => this._cards.hide(`activity:${activity.id}`),
                     // Back to the main section of the panel, which then closes by itself after a few seconds.
@@ -390,9 +391,7 @@ export class Muna {
             return;
         setAnimationSpeed(this._settings.get('animation-speed'));
         const radius = this._settings.get('corner-radius');
-        const liquid = this._settings.get('liquid-glass');
-        // with liquid glass the capsule is only a light indigo tint over the bent desktop
-        const opacity = liquid ? Math.min(0.36, this._settings.get('background-opacity')) : this._settings.get('background-opacity');
+        const opacity = this._settings.get('background-opacity');
 
         // The indigo glass of the design (7 · Fixed version): #262954 at the top to #13142c below,
         // with a thin lilac rim; the opacity setting still applies (98 % by default).
@@ -400,27 +399,24 @@ export class Muna {
             `background-gradient-start: rgba(20, 22, 47, ${opacity}); background-gradient-end: rgba(7, 8, 20, ${opacity}); ` +
             'border-color: rgba(176, 184, 255, 0.19);';
 
+        // the shadow under it (the design: 0 2 10 black 30 %, deeper when open), scaled by Appearance → Shadow
+        const strength = Math.max(0, Math.min(1, this._settings.get('shadow-strength') ?? 0.6)) / 0.6;
+        const open = !COLLAPSED.has(this._state);
+        const shadow = strength <= 0 ? 'box-shadow: none;'
+            : open ? `box-shadow: 0 10px 30px rgba(0, 0, 0, ${(0.45 * strength).toFixed(2)});`
+                : `box-shadow: 0 2px 10px rgba(0, 0, 0, ${(0.30 * strength).toFixed(2)});`;
         if (HANGING.has(this._state)) {
             // The collapsed notch is only ~36px tall: its corners are smaller than the open capsule's.
             const bottom = COLLAPSED.has(this._state) ? Math.min(radius, 14) : radius;
             this._actor.style = `border-radius: 0 0 ${bottom}px ${bottom}px; ` +
                 `${background} border-top-width: 0; border-left-width: 1px; border-right-width: 1px; border-bottom-width: 1px; ` +
-                'box-shadow: none;';
+                shadow;
         } else {
-            this._actor.style = `border-radius: ${radius}px; ${background} ` +
-                'box-shadow: none;';
+            this._actor.style = `border-radius: ${radius}px; ${background} ${shadow}`;
         }
         for (const ear of this._ears)
             ear.setGradient([20, 22, 47, opacity], [7, 8, 20, opacity]);
 
-    }
-
-    /** The capsule's outline for its liquid glass. */
-    _glassShape() {
-        const radius = this._settings.get('corner-radius');
-        const hanging = HANGING.has(this._state);
-        const bottom = hanging && COLLAPSED.has(this._state) ? Math.min(radius, 14) : radius;
-        return {radius: scaled(bottom), hanging};
     }
 
     /**
@@ -517,7 +513,6 @@ export class Muna {
         case 'animation-speed':
         case 'corner-radius':
         case 'background-opacity':
-        case 'liquid-glass':
         case 'shadow-strength':
             this._applyAppearance();
             break;
@@ -1237,8 +1232,8 @@ export class Muna {
 
     /** The items of an open list changed: a grown panel follows the new count. */
     _onListChanged() {
-        if (this._state === State.OPEN && ((this._expanded && this._panelView.growable) || this._panelView.mode === PanelMode.LOCALSEND ||
-            this._panelView.mode === PanelMode.COMMAND))
+        // every tab but the widgets' takes the height its content needs
+        if (this._state === State.OPEN && this._panelView.mode !== PanelMode.MUNA)
             this._applyGeometry({duration: 150, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
     }
 
@@ -1510,7 +1505,7 @@ export class Muna {
         // A list grown to fit its items (the size is measured with the panel at its normal height).
         this._panelView.setExtraHeight(0);
         let base = Math.min(this._panelView.getHeightForWidth(width), normalCap);
-        // A section that is not a scrolling list (LocalSend) simply gets the height it needs.
+        // Every tab gets the height it needs (the lists: a few rows more; the design, 7.3.4).
         const needed = this._panelView.contentExtra(width);
         if (needed > 0) {
             this._panelView.setExtraHeight(needed);

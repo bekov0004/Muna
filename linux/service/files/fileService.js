@@ -29,7 +29,7 @@ export class FileService extends EventEmitter {
         this._loaded = false;
     }
 
-    /** [{uri, name, icon (Gio.Icon), thumbnail (Gio.Icon|null), isDirectory}] */
+    /** [{uri, name, icon (Gio.Icon), thumbnail (Gio.Icon|null), isDirectory, size (bytes)}] */
     get items() {
         return this._items;
     }
@@ -141,6 +141,7 @@ export class FileService extends EventEmitter {
             icon: info.get_icon(),
             thumbnail,
             isDirectory: info.get_file_type() === Gio.FileType.DIRECTORY,
+            size: info.get_size(),
         };
     }
 

@@ -3,13 +3,13 @@ import Gio from 'gi://Gio';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import {menuCard, pillButton} from '../../ui/menuKit.js';
+import {pillButton, qCard} from '../../ui/menuKit.js';
 import {RowList} from '../../ui/rowList.js';
 import {MunaWidget} from '../widget.js';
 
 /**
- * Controls: switches for windows, mouse and keyboard, and files, in groups that fold. Each group
- * shows how many of its switches are on ("6/8"). Every switch flips one setting; in customize mode
+ * Controls (the design, 7.4.5): switches for windows, mouse and keyboard, and files, a card for each
+ * group, headed by how many of its switches are on ("WINDOWS  2/4"); a group folds. Every switch flips one setting; in customize mode
  * the rows can be dragged and hidden.
  */
 export class ControlsWidget extends MunaWidget {
@@ -118,25 +118,28 @@ export class ControlsWidget extends MunaWidget {
         return root;
     }
 
+    /** A group: a card headed by its name and how many of its switches are on ("WINDOWS  2/4"); a click on that folds it. */
     _addGroup(root, id, title, items) {
-        // The header lies outside the card: a chevron, the name in capitals and the count in blue.
+        const card = qCard();
         const header = new St.Button({style_class: 'muna-group-head', reactive: true, can_focus: true, track_hover: true, x_expand: true});
         const line = new St.BoxLayout({x_expand: true});
-        const chevron = new St.Icon({icon_name: 'pan-down-symbolic', style_class: 'muna-meter-chevron'});
-        line.add_child(chevron);
-        line.add_child(new St.Label({text: title.toUpperCase(), style_class: 'muna-group-title', x_expand: true}));
-        const count = new St.Label({text: '', style_class: 'muna-collapse-count'});
+        const name = new St.Label({text: title.toUpperCase(), style_class: 'muna-qcard-caption', y_align: Clutter.ActorAlign.CENTER});
+        name.clutter_text.ellipsize = 0;   // Pango.EllipsizeMode.NONE: the name is short
+        line.add_child(name);
+        const count = new St.Label({text: '', style_class: 'muna-qcard-caption muna-group-count', x_expand: true, y_align: Clutter.ActorAlign.CENTER});
         line.add_child(count);
+        const chevron = new St.Icon({icon_name: 'pan-down-symbolic', style_class: 'muna-meter-chevron', y_align: Clutter.ActorAlign.CENTER});
+        line.add_child(chevron);
         header.set_child(line);
-        const card = menuCard();
-        card.add_style_class_name('muna-bigcard');
+        card.add_child(header);
+        const body = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, style_class: 'muna-qcard-list', x_expand: true});
+        card.add_child(body);
         header.connect('clicked', () => {
-            card.visible = !card.visible;
-            chevron.icon_name = card.visible ? 'pan-down-symbolic' : 'pan-end-symbolic';
+            body.visible = !body.visible;
+            chevron.icon_name = body.visible ? 'pan-down-symbolic' : 'pan-end-symbolic';
         });
-        root.add_child(header);
         root.add_child(card);
-        const list = new RowList({page: `controls-${id}`, settings: this._settings, card, items});
+        const list = new RowList({page: `controls-${id}`, settings: this._settings, card: body, items: items.map(i => ({...i, plain: true}))});
         this._groups.push({list, items, count});
     }
 

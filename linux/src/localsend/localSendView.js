@@ -7,6 +7,8 @@ import St from 'gi://St';
 import {createButton} from '../ui/button.js';
 import {isMuna} from './localSendSession.js';
 import {scaled} from '../utils/scale.js';
+import {EmptyState} from '../ui/emptyState.js';
+import {chooseFiles} from '../utils/chooseFiles.js';
 
 const BAR_WIDTH = 300;
 const TILE_BAR_WIDTH = 80;
@@ -186,25 +188,42 @@ export class LocalSendView extends St.BoxLayout {
             chips.insert_child_at_index(chip, 0);
         }
 
-        const title = files.length === 0 ? (text ? 'TEXT' : 'FILES') : `FILES · ${files.length} · ${sizeText(total)}${text ? ' · TEXT' : ''}`;
+        // "FILES · photo.jpg, report.pdf" (the design, 7.3.4)
+        const names = files.map(uri => Gio.File.new_for_uri(uri).get_basename());
+        const title = files.length === 0 ? (text ? 'TEXT' : 'FILES')
+            : `FILES · ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` +${names.length - 3}` : ''}${text ? ' · TEXT' : ''}`;
         this.add_child(this._caption(title, [
             {label: 'Text', onClick: () => this._startWriting()},
-            {label: 'Add from Tray', onClick: () => this._session.offer(this._getTrayUris())},
-            ...(files.length > 0 || text ? [{label: 'Clear', onClick: () => {
-                this._session.setText('');
-                this._session.remove([...files]);
-            }}] : []),
+            ...(files.length > 0 || text ? [
+                {label: 'Choose…', onClick: () => this._choose()},
+                {label: 'Clear', onClick: () => {
+                    this._session.setText('');
+                    this._session.remove([...files]);
+                }},
+            ] : []),
         ]));
         if (files.length === 0 && !text) {
-            this.add_child(new St.Label({
-                text: 'Drop files on the capsule, add them from the Tray, or write a text',
-                style_class: 'muna-lsv-hint',
-                y_align: Clutter.ActorAlign.CENTER,
-                y_expand: true,
-            }));
+            // nothing to send yet: an icon in a lilac circle, the words, two ways to add files
+            const empty = new EmptyState({iconName: 'send-to-symbolic', text: 'Drop files on the capsule, or add them from the Tray'});
+            empty.add_style_class_name('muna-lsv-empty');
+            const buttons = new St.BoxLayout({style_class: 'muna-empty-buttons', x_align: Clutter.ActorAlign.CENTER});
+            for (const [label, handler] of [['Add from Tray', () => this._session.offer(this._getTrayUris())], ['Choose…', () => this._choose()]]) {
+                const button = new St.Button({label, style_class: 'muna-empty-button', can_focus: true});
+                button.connect('clicked', handler);
+                buttons.add_child(button);
+            }
+            empty.add_child(buttons);
+            this.add_child(empty);
             return;
         }
         this.add_child(createSideScroll(chips));
+    }
+
+    /** "Choose…": GTK's file dialog; the chosen files join the ones to send. */
+    async _choose() {
+        const uris = await chooseFiles();
+        if (uris.length > 0)
+            this._session.offer(uris);
     }
 
     // --- devices / groups / transfers ---------------------------------------------
@@ -226,11 +245,25 @@ export class LocalSendView extends St.BoxLayout {
         const group = s.activeGroup;
         if (this._confirmDelete && this._confirmDelete !== group?.id)
             this._confirmDelete = null;
+        const receiving = this._receiving.get();
+        // "DEVICES", All and Receiving (green while on); Refresh only while nothing is found
+        this.add_child(this._caption(s.phase === 'scan' && s.devices.length === 0 ? 'LOOKING FOR DEVICES…'
+            : group ? `${group.name.toUpperCase()} · ${chosen} OF ${group.members.length} HERE` : 'DEVICES', [
+            ...(s.devices.length >= 2 ? [{label: 'All', onClick: () => s.selectAll()}] : []),
+            ...(s.devices.length === 0 ? [{label: 'Refresh', onClick: () => s.refresh({force: true})}] : []),
+            {
+                label: receiving ? 'Receiving: on' : 'Receiving: off',
+                active: receiving,
+                onClick: () => {
+                    this._receiving.set(!this._receiving.get());
+                    this._render();
+                },
+            },
+        ]));
+        this.add_child(this._createDevices());
+        // some chosen: "Send to N" and "Save as group" under the tiles
         if (chosen > 0) {
             const empty = !s.hasContent;
-            const title = group
-                ? `${group.name.toUpperCase()} · ${chosen} OF ${group.members.length} HERE`
-                : `SEND TO · ${chosen} CHOSEN`;
             const groupAction = group
                 ? {
                     label: this._confirmDelete ? 'Delete it?' : 'Delete group',
@@ -246,48 +279,48 @@ export class LocalSendView extends St.BoxLayout {
                     },
                 }
                 : {label: 'Save as group', onClick: () => this._startNaming()};
-            this.add_child(this._caption(title, [
-                {label: 'Clear', onClick: () => s.clearSelection()},
+            const row = new St.BoxLayout({style_class: 'muna-lsv-actions'});
+            for (const action of [
+                {label: empty ? 'Add files or a text' : `Send to ${chosen}`, accent: !empty, disabled: empty, onClick: () => s.send()},
                 groupAction,
-                {
-                    label: empty ? 'Add files or a text' : `Send to ${chosen}`,
-                    accent: !empty,
-                    disabled: empty,
-                    onClick: () => s.send(),
-                },
-            ]));
-        } else {
-            const receiving = this._receiving.get();
-            this.add_child(this._caption(s.phase === 'scan' ? 'LOOKING FOR DEVICES…' : 'SEND TO', [
-                ...(s.devices.length >= 2 ? [{label: 'All', onClick: () => s.selectAll()}] : []),
-                {label: 'Refresh', onClick: () => s.refresh({force: true})},
-                {
-                    label: receiving ? 'Receiving: on' : 'Receiving: off',
-                    active: receiving,
-                    onClick: () => {
-                        this._receiving.set(!this._receiving.get());
-                        this._render();
-                    },
-                },
-            ]));
+                {label: 'Clear', onClick: () => s.clearSelection()},
+            ]) {
+                const button = new St.Button({
+                    label: action.label,
+                    style_class: `muna-lsv-action${action.accent ? ' muna-lsv-action-primary' : ''}${action.active ? ' muna-lsv-on' : ''}`,
+                    can_focus: !action.disabled,
+                    reactive: !action.disabled,
+                    opacity: action.disabled ? 120 : 255,
+                });
+                button.connect('clicked', () => action.onClick());
+                row.add_child(button);
+            }
+            this.add_child(row);
         }
-        this.add_child(this._createDevices());
     }
 
     /** A round badge with an icon, the start of every tile. */
     _badge(iconName, extraClass = '') {
-        const badge = new St.Bin({style_class: `muna-lsv-badge ${extraClass}`, y_align: Clutter.ActorAlign.CENTER});
+        const badge = new St.Bin({style_class: `muna-lsv-badge ${extraClass}`, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
         badge.set_child(new St.Icon({icon_name: iconName, style_class: 'muna-lsv-badge-icon'}));
+        return badge;
+    }
+
+    /** A group's badge: its initial on a lilac circle. */
+    _letterBadge(name) {
+        const badge = new St.Bin({style_class: 'muna-lsv-badge muna-lsv-badge-group', x_align: Clutter.ActorAlign.CENTER});
+        badge.set_child(new St.Label({text: (name.trim()[0] ?? '?').toUpperCase(), style_class: 'muna-lsv-badge-letter',
+            x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER}));
         return badge;
     }
 
     /** The two lines of a tile: a name and a small line under it. */
     _tileTexts(name, detail, detailClass = 'muna-ls-device-model') {
-        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, y_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-tile-texts'});
-        const title = new St.Label({text: name, style_class: 'muna-ls-device-name'});
+        const texts = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER, style_class: 'muna-lsv-tile-texts'});
+        const title = new St.Label({text: name, style_class: 'muna-ls-device-name', x_align: Clutter.ActorAlign.CENTER});
         title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         texts.add_child(title);
-        const line = new St.Label({text: detail, style_class: detailClass});
+        const line = new St.Label({text: detail, style_class: detailClass, x_align: Clutter.ActorAlign.CENTER});
         line.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         texts.add_child(line);
         return texts;
@@ -315,9 +348,11 @@ export class LocalSendView extends St.BoxLayout {
                 can_focus: true,
                 accessible_name: `Group ${group.name}`,
             });
-            const box = new St.BoxLayout({y_align: Clutter.ActorAlign.CENTER});
-            box.add_child(this._badge(active ? 'object-select-symbolic' : 'system-users-symbolic', 'muna-lsv-badge-group'));
-            box.add_child(this._tileTexts(group.name, `${here} of ${group.members.length} here`));
+            const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+            // a group: its initial on a lilac circle (the design, 7.3.4)
+            box.add_child(active ? this._badge('object-select-symbolic', 'muna-lsv-badge-chosen')
+                : this._letterBadge(group.name));
+            box.add_child(this._tileTexts(group.name, `group · ${group.members.length}${here < group.members.length ? ` · ${here} here` : ''}`));
             chip.set_child(box);
             chip.connect('clicked', () => s.selectGroup(group));
             tiles.add_child(chip);
@@ -330,11 +365,12 @@ export class LocalSendView extends St.BoxLayout {
                 can_focus: true,
                 accessible_name: device.alias,
             });
-            const box = new St.BoxLayout({y_align: Clutter.ActorAlign.CENTER});
+            const box = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, x_align: Clutter.ActorAlign.CENTER, y_align: Clutter.ActorAlign.CENTER});
+            // chosen: violet with a check; Muna computers say "Muna" in lilac
             box.add_child(this._badge(
                 selected ? 'object-select-symbolic' : DEVICE_ICONS[device.deviceType] ?? 'computer-symbolic',
-                muna ? 'muna-lsv-badge-muna' : ''));
-            box.add_child(this._tileTexts(device.alias, device.deviceModel || 'LocalSend',
+                selected ? 'muna-lsv-badge-chosen' : ''));
+            box.add_child(this._tileTexts(device.alias, muna ? 'Muna' : device.deviceModel || 'LocalSend',
                 muna ? 'muna-ls-device-model muna-lsv-muna' : 'muna-ls-device-model'));
             tile.set_child(box);
             tile.connect('clicked', () => s.toggle(device));

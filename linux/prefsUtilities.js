@@ -492,8 +492,8 @@ export const utilityMethods = {
         const form = this._form();
         body.append(form);
         this._title(form, _('Quick panel'));
-        this._pill(form, 'view-app-grid-symbolic', _('Open quick panel'), () => this._request(settings, 'quickpanel'));
-        this._hint(form, _('The window of the top-bar button with your favorite tools, summoned by a shortcut from anywhere.'));
+        this._pill(form, 'view-app-grid-symbolic', _('Open Quick panel'), () => this._request(settings, 'quickpanel'));
+        this._hint(form, _('Muna’s window with your favorite tools, summoned by a shortcut from anywhere.'));
         this._hint(form, _('Use the Customize button in the window to choose, hide and drag the tools around.'));
         this._shortcutPair(form, settings, 'shortcut-quickpanel', '<Control><Super>q');
         // Quick toggles, the microphone, the camera, the scratchpad and Cleaning Mode have pages of their own
@@ -517,6 +517,7 @@ export const utilityMethods = {
         if (!into)
             body.append(form);
         this._title(form, _('Scratchpad'));
+        this._pill(form, 'accessories-text-editor-symbolic', _('Open the scratchpad'), () => this._request(settings, 'scratchpad'));
         this._row(form, _('Show in the capsule'), this._widgetSwitch(settings, 'notes'));
         this._hint(form, _('Quick notes in separate tabs, kept on this computer.'));
         this._row(form, _('To-do list'), this._widgetSwitch(settings, 'todo'));

@@ -60,8 +60,6 @@ export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaB
             this._signals.connect(box, 'child-added', () => this._queueMirrors());
             this._signals.connect(box, 'child-removed', () => this._queueMirrors());
         }
-        // liquid glass on or off: the background turns into a tint or back
-        this._signals.connect(this, 'style-changed', () => this._applyLook());
         this._mirrorsQueued = 0;
         this._queueMirrors();
         this.place();
@@ -96,10 +94,7 @@ export const MunaBar = GObject.registerClass({GTypeName: 'MunaBar'}, class MunaB
         const match = /^#?([0-9a-f]{6})$/i.exec(color ?? '');
         const hex = match ? match[1] : '000000';
         const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
-        let alpha = Math.min(Math.max(Number(opacity) || 0, 0), 1);
-        // on liquid glass the bar is the glass alone
-        if (this.has_style_class_name('muna-liquid'))
-            alpha = Math.min(alpha, 0.28);
+        const alpha = Math.min(Math.max(Number(opacity) || 0, 0), 1);
         const style = `background-color: rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)});`;
         if (this.style !== style)
             this.style = style;

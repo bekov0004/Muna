@@ -6,3 +6,8 @@ linux/airdrop/build/
 linux/airdrop/captures/
 macos/.build/
 macos/build/
+
+# notes for Claude Code: local only, never in the repository
+CLAUDE.md
+**/CLAUDE.md
+.claude/

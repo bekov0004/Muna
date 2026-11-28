@@ -2,6 +2,8 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
+import {iconFor} from './logo.js';
+
 /**
  * What an empty place says (the design, 7.3.5): an icon in a soft lilac circle (44) over a line of text
  * (11 / 600 at 52 %), centred. `text` can change later, like a label's.
@@ -21,7 +23,7 @@ export class EmptyState extends St.BoxLayout {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const badge = new St.Bin({style_class: 'muna-empty-badge', x_align: Clutter.ActorAlign.CENTER,
-            child: new St.Icon({icon_name: iconName, style_class: 'muna-empty-badge-icon'})});
+            child: new St.Icon({gicon: iconFor(iconName), style_class: 'muna-empty-badge-icon'})});
         this.add_child(badge);
         this._label = new St.Label({text, style_class: 'muna-empty-text', x_align: Clutter.ActorAlign.CENTER});
         this.add_child(this._label);

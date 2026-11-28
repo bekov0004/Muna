@@ -52,7 +52,7 @@ export class NotificationsService extends Signals.EventEmitter {
         this._settings?.set_boolean('show-banners', !value);
     }
 
-    /** [{notification, source, title, body, time}] newest first */
+    /** [{notification, source, app, title, body, gicon, time, urgent}] newest first */
     get items() {
         const result = [];
         for (const source of this._sources) {
@@ -65,6 +65,7 @@ export class NotificationsService extends Signals.EventEmitter {
                     body: notification.body ?? '',
                     gicon: notification.gicon ?? source.icon ?? null,
                     time: notification.datetime?.to_unix() ?? 0,
+                    urgent: notification.urgency === MessageTray.Urgency.CRITICAL,
                 });
             }
         }

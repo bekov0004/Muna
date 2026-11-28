@@ -400,12 +400,8 @@ export class Muna {
             `background-gradient-start: rgba(16, 16, 18, ${opacity}); background-gradient-end: rgba(0, 0, 0, ${opacity}); ` +
             'border-color: rgba(255, 255, 255, 0.114);';
 
-        // the shadow under it (the design: 0 2 10 black 30 %, deeper when open), scaled by Appearance → Shadow
-        const strength = Math.max(0, Math.min(1, this._settings.get('shadow-strength') ?? 0.6)) / 0.6;
-        const open = !COLLAPSED.has(this._state);
-        const shadow = strength <= 0 ? 'box-shadow: none;'
-            : open ? `box-shadow: 0 10px 30px rgba(0, 0, 0, ${(0.45 * strength).toFixed(2)});`
-                : `box-shadow: 0 2px 10px rgba(0, 0, 0, ${(0.30 * strength).toFixed(2)});`;
+        // no shadow around the capsule or its panel (it only made them look muddy)
+        const shadow = 'box-shadow: none;';
         if (HANGING.has(this._state)) {
             // The collapsed notch is only ~36px tall: its corners are smaller than the open capsule's.
             const bottom = COLLAPSED.has(this._state) ? Math.min(radius, 14) : radius;

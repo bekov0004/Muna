@@ -1572,8 +1572,6 @@ export class MunaPreferences {
             _('In pixels.'));
         this._row(form, _('Transparency'), this._slider(settings, 'background-opacity', [0.5, 1.0, 0.02], 2),
             _('Background opacity: 1.00 is fully opaque.'));
-        this._row(form, _('Shadow'), this._slider(settings, 'shadow-strength', [0, 1, 0.05], 2),
-            _('0 turns the shadow off.'));
 
         this._rule(form);
         const picker = new Gtk.ColorDialogButton({dialog: new Gtk.ColorDialog({with_alpha: false})});

@@ -2233,8 +2233,8 @@
 }
 
 .muna-button.muna-menu-tab {
-    width: 58px;
-    height: 46px;
+    width: 40px;
+    height: 36px;
     border-radius: 13px;
     padding: 0 2px;
     background-color: transparent;
@@ -2248,7 +2248,7 @@
 }
 
 .muna-menu-tab-icon {
-    icon-size: 15px;
+    icon-size: 18px;
 }
 
 .muna-menu-tab-label {
@@ -3135,3 +3135,10 @@
 .muna-clean-pill { color: white; font-size: 13px; font-weight: 700; padding: 8px 16px; border-radius: 99px; background-color: rgba(255, 255, 255, 0.112); margin-top: 6px; }
 .muna-clean-corner { margin: 14px; }
 .muna-clean-corner .muna-clean-pill { background-color: rgba(0, 0, 0, 0.7); }
+
+/* no shadow under the Quick panel's window (GNOME's menus draw one) */
+.muna-menu.popup-menu-boxpointer,
+.muna-menu .popup-menu-boxpointer {
+    -arrow-box-shadow: none;
+    box-shadow: none;
+}

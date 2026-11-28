@@ -137,10 +137,10 @@ export class ToolsMenu {
             const icon = new St.Icon({gicon: this._tabIcon(widget, false), style_class: 'muna-menu-tab-icon', x_align: Clutter.ActorAlign.CENTER});
             tab._munaIcon = icon;
             box.add_child(icon);
-            box.add_child(new St.Label({text: SHORT[title] ?? title, style_class: 'muna-menu-tab-label', x_align: Clutter.ActorAlign.CENTER}));
+            // icons only: the chosen tab's name is the caption under the row
             tab.set_child(box);
             tab.connect('clicked', () => this._select(index));
-            tab.accessible_name = title;
+            tab.accessible_name = SHORT[title] ?? title;
             tabs.add_child(tab);
             this._tabs.push(tab);
         });

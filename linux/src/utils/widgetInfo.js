@@ -4,10 +4,10 @@
 // not a widget: it is the second mode of the capsule.)
 export const WIDGET_INFO = Object.freeze([
     {id: 'media', title: 'Media Player', subtitle: 'The music or video playing in any player', cells: 5, minCells: 3},
-    {id: 'calendar', title: 'Calendar', subtitle: 'The days around today and the events', cells: 4, minCells: 3},
+    {id: 'calendar', title: 'Calendar', subtitle: 'The days around today and the events', cells: 5, minCells: 3},
     {id: 'mirror', title: 'Mirror', subtitle: 'A webcam preview, only while open', cells: 3, minCells: 2},
     {id: 'phonecard', title: 'Phone', subtitle: 'Your Android phone in the capsule: its screen as tall as the phone, with control; a QR code connects it', cells: 3, minCells: 2},
-    {id: 'timer', title: 'Timer', subtitle: 'A countdown that shows in the capsule', cells: 3, minCells: 3},
+    {id: 'timer', title: 'Timer', subtitle: 'A countdown that shows in the capsule', cells: 5, minCells: 3},
     {id: 'focus', title: 'Focus', subtitle: 'A Pomodoro focus timer and a stopwatch with laps', cells: 3, minCells: 3, menu: true},
     {id: 'system', title: 'System', subtitle: 'Processor, memory, temperature, network, disk and battery, with alerts', cells: 4, minCells: 4, menu: true},
     {id: 'network', title: 'Network', subtitle: 'Download and upload speed with a graph, the connection, this session\'s traffic', cells: 4, minCells: 4, menu: true},

@@ -131,10 +131,10 @@ export class CalendarWidget extends MunaWidget {
             onClick: () => this._enlargeNow(),
         });
         enlarge.y_align = Clutter.ActorAlign.CENTER;
-        enlarge.opacity = 0;
+        // hidden (taking no room, so the arrows stay at the edge) until the pointer is on the calendar
+        enlarge.visible = false;
         header.add_child(enlarge);
-        root.connect('notify::hover', () =>
-            enlarge.ease({opacity: root.hover ? 255 : 0, duration: 140, mode: Clutter.AnimationMode.EASE_OUT_QUAD}));
+        root.connect('notify::hover', () => (enlarge.visible = root.hover));
         this._pull = new PullGesture(direction => {
             if (direction === 'down')
                 this._enlargeNow();

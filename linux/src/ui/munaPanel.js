@@ -145,7 +145,8 @@ export class MunaPanel extends St.BoxLayout {
         this.set_width(px(layout.widthCss, scale));
         this._header.set_height(headerHeight);
         this._header.style = `padding: 0 ${layout.padding}px;`;
-        this._baseBodyHeight = px(layout.rowHeight, scale);
+        // the row of cards is `rowHeight` high (the design: 112); the panel's bottom padding comes on top of it
+        this._baseBodyHeight = px(layout.rowHeight + Math.round(layout.padding * 0.75), scale);
         this._body.set_height(this._baseBodyHeight);
 
         const signature = layout.pages.map(page => page.map(w => w.id).join('+')).join('|');

@@ -195,7 +195,10 @@ export class MunaPanel extends St.BoxLayout {
         if (this._mode === PanelMode.MUNA || this._mode === PanelMode.COMMAND || !this._baseBodyHeight)
             return 0;
         const view = this._viewFor(this._mode);
-        const extra = Math.max(0, view.get_preferred_height(width)[1] - this._baseBodyHeight);
+        // the body's own padding (the panel's bottom edge) comes on top of what the view needs
+        const node = this._body.get_theme_node();
+        const padding = node.get_padding(St.Side.TOP) + node.get_padding(St.Side.BOTTOM);
+        const extra = Math.max(0, view.get_preferred_height(width)[1] + padding - this._baseBodyHeight);
         if (this._mode === PanelMode.LOCALSEND || this._mode === PanelMode.TRAY)
             return extra;
         return Math.min(extra, px(LIST_EXTRA, this._scale ?? 1));
